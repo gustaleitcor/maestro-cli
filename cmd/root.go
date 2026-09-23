@@ -12,9 +12,13 @@ import (
 var githubToken string
 var maestroKey string
 
+// Version is set via -ldflags at release build time (see .goreleaser.yaml).
+var Version = "dev"
+
 var rootCmd = &cobra.Command{
-	Use:   "maestro",
-	Short: "Maestro CLI — orchestration and repository tooling",
+	Use:     "maestro",
+	Short:   "Maestro CLI — orchestration and repository tooling",
+	Version: Version,
 	// login, help, and completion shouldn't require credentials to run.
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		switch cmd.Name() {
