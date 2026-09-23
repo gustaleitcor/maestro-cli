@@ -1,7 +1,3 @@
-// Package githubapi wraps go-github with a small, presentation-agnostic
-// surface: functions here return plain structs and never print anything,
-// so the same calls can back a plain CLI command today and a Bubble Tea
-// tea.Cmd later without any duplicated fetch logic.
 package githubapi
 
 import (

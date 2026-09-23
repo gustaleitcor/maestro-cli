@@ -7,9 +7,6 @@ import (
 	"github.com/google/go-github/v66/github"
 )
 
-// Repo is the subset of GitHub's repository fields Maestro cares about.
-// Kept flat and small on purpose — this is the shape a bubbletea
-// list.Item or table row will wrap later.
 type Repo struct {
 	Name        string
 	FullName    string
@@ -23,8 +20,6 @@ type Repo struct {
 	CloneURL    string
 }
 
-// ListRepos fetches all repositories visible to the authenticated user
-// (owned, collaborator, and org member repos), paginating as needed.
 func ListRepos(ctx context.Context, client *github.Client) ([]Repo, error) {
 	opts := &github.RepositoryListByAuthenticatedUserOptions{
 		Sort:        "updated",
@@ -66,9 +61,7 @@ type FileContent struct {
 	Content string
 }
 
-// GetFileContent fetches and decodes a single file from a repository at
-// the given ref (branch, tag, or commit SHA — empty string means the
-// repo's default branch).
+// ref empty means the repo's default branch.
 func GetFileContent(ctx context.Context, client *github.Client, owner, repo, path, ref string) (*FileContent, error) {
 	opts := &github.RepositoryContentGetOptions{Ref: ref}
 	fileContent, _, _, err := client.Repositories.GetContents(ctx, owner, repo, path, opts)

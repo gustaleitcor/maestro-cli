@@ -43,8 +43,6 @@ func (m model) View() string {
 	return ""
 }
 
-// bar renders a full-width header/footer bar, falling back to the style's
-// natural width until the first WindowSizeMsg reports a real terminal width.
 func bar(s lipgloss.Style, width int, text string) string {
 	if width > 0 {
 		s = s.Width(width - s.GetHorizontalFrameSize())
@@ -67,23 +65,11 @@ func renderUser(u *githubapi.User) string {
 	return cardStyle.Render(b.String())
 }
 
-// cellPad is the horizontal padding bubbles/table's default Cell and Header
-// styles add on each side of every column (see table.DefaultStyles).
-const cellPad = 2
+const cellPad = 2 // bubbles/table's Cell/Header padding on each side of every column
 
-// tableChromeLines is the vertical space taken up by everything around the
-// table itself: the page header and footer bars (2 lines each, text plus
-// border) and the two newlines joining header/table/footer.
-const tableChromeLines = 6
+const tableChromeLines = 6 // page header + footer bars, plus their joining newlines
+const tableHeaderLines = 2 // the table's own column-header row plus its border
 
-// tableHeaderLines is the vertical space the table's own column-header row
-// takes (text plus the border line under it).
-const tableHeaderLines = 2
-
-// buildRepoTable lays out repo rows into a bubbles/table.Model, sizing the
-// name column to fill whatever width the terminal reports and the row count
-// to whatever height the terminal reports, so the page header and footer
-// bars around it are never pushed off-screen.
 func buildRepoTable(repos []githubapi.Repo, width, height int) table.Model {
 	if width <= 0 {
 		width = 80

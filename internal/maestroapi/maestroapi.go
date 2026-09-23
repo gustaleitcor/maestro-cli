@@ -1,4 +1,3 @@
-// Package maestroapi talks to maestro-orq to validate a Maestro key.
 package maestroapi
 
 import (
@@ -13,7 +12,6 @@ import (
 
 const defaultBaseURL = "https://maestro.logsad.com"
 
-// BaseURL returns maestro-orq's base URL, overridable via MAESTRO_ORQ_URL.
 func BaseURL() string {
 	if u := os.Getenv("MAESTRO_ORQ_URL"); u != "" {
 		return strings.TrimRight(u, "/")
@@ -26,8 +24,6 @@ type verifyKeyResponse struct {
 	Email string `json:"email"`
 }
 
-// VerifyKey checks a Maestro key against maestro-orq and returns the email
-// of the account it belongs to.
 func VerifyKey(ctx context.Context, key string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, BaseURL()+"/api/keys/verify", nil)
 	if err != nil {

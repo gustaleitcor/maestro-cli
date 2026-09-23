@@ -1,6 +1,3 @@
-// Package tui provides Bubble Tea screens for the Maestro CLI: a "me"
-// profile view and a "repo list" table, each fetching its own data via
-// internal/githubapi once the program starts.
 package tui
 
 import (
@@ -49,16 +46,12 @@ func newModel(ctx context.Context, client *github.Client, s screen) model {
 	}
 }
 
-// RunMe starts a Bubble Tea program that fetches and displays the
-// authenticated GitHub user.
 func RunMe(ctx context.Context, client *github.Client) error {
 	m := newModel(ctx, client, meScreen)
 	_, err := tea.NewProgram(m, tea.WithAltScreen()).Run()
 	return err
 }
 
-// RunRepoList starts a Bubble Tea program that fetches and displays the
-// repositories visible to the authenticated user in a scrollable table.
 func RunRepoList(ctx context.Context, client *github.Client) error {
 	m := newModel(ctx, client, repoListScreen)
 	_, err := tea.NewProgram(m, tea.WithAltScreen()).Run()

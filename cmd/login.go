@@ -99,10 +99,7 @@ func loginMaestro(ctx context.Context, stdin *bufio.Reader) error {
 	return nil
 }
 
-// readSecret prompts for a secret, hiding input on an interactive terminal
-// and falling back to a plain read for piped input (e.g. CI). If hasExisting
-// is true, an empty answer returns "" (keep what's already stored) instead
-// of erroring.
+// If hasExisting, a blank answer returns "" instead of erroring.
 func readSecret(stdin *bufio.Reader, label string, hasExisting bool) (string, error) {
 	if hasExisting {
 		fmt.Printf("%s (leave blank to keep current): ", label)
