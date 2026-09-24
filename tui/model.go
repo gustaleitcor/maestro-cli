@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-github/v66/github"
 
 	"maestro-cli/internal/githubapi"
+	"maestro-cli/internal/maestroapi"
 )
 
 type screen int
@@ -16,6 +17,7 @@ type screen int
 const (
 	meScreen screen = iota
 	repoListScreen
+	imageListScreen
 )
 
 type model struct {
@@ -26,9 +28,12 @@ type model struct {
 	loading bool
 	err     error
 
-	user  *githubapi.User
-	repos []githubapi.Repo
-	table table.Model
+	maestroKey string
+
+	user   *githubapi.User
+	repos  []githubapi.Repo
+	images []maestroapi.Image
+	table  table.Model
 
 	width, height int
 }
@@ -54,6 +59,13 @@ func RunMe(ctx context.Context, client *github.Client) error {
 
 func RunRepoList(ctx context.Context, client *github.Client) error {
 	m := newModel(ctx, client, repoListScreen)
+	_, err := tea.NewProgram(m, tea.WithAltScreen()).Run()
+	return err
+}
+
+func RunImageList(ctx context.Context, maestroKey string) error {
+	m := newModel(ctx, nil, imageListScreen)
+	m.maestroKey = maestroKey
 	_, err := tea.NewProgram(m, tea.WithAltScreen()).Run()
 	return err
 }

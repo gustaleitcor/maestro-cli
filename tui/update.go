@@ -15,8 +15,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		if m.screen == repoListScreen && m.repos != nil {
+		switch {
+		case m.screen == repoListScreen && m.repos != nil:
 			m.table = buildRepoTable(m.repos, m.width, m.height)
+		case m.screen == imageListScreen && m.images != nil:
+			m.table = buildImageTable(m.images, m.width, m.height)
 		}
 		return m, nil
 
@@ -29,6 +32,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loading = false
 		m.repos = msg.repos
 		m.table = buildRepoTable(m.repos, m.width, m.height)
+		return m, nil
+
+	case imagesLoadedMsg:
+		m.loading = false
+		m.images = msg.images
+		m.table = buildImageTable(m.images, m.width, m.height)
 		return m, nil
 
 	case fetchErrMsg:
@@ -45,7 +54,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	if m.screen == repoListScreen && !m.loading {
+	if (m.screen == repoListScreen || m.screen == imageListScreen) && !m.loading {
 		var cmd tea.Cmd
 		m.table, cmd = m.table.Update(msg)
 		return m, cmd

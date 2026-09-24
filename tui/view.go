@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"maestro-cli/internal/githubapi"
+	"maestro-cli/internal/maestroapi"
 )
 
 var (
@@ -37,6 +38,14 @@ func (m model) View() string {
 		return renderUser(m.user) + "\n" + helpStyle.Render("press q to quit") + "\n"
 	case repoListScreen:
 		header := bar(headerStyle, m.width, fmt.Sprintf("Repositories (%d)", len(m.repos)))
+		footer := bar(footerStyle, m.width, "↑/↓ navigate · q to quit")
+		return header + "\n" + m.table.View() + "\n" + footer
+	case imageListScreen:
+		header := bar(headerStyle, m.width, fmt.Sprintf("Images (%d)", len(m.images)))
+		if len(m.images) == 0 {
+			footer := bar(footerStyle, m.width, "q to quit")
+			return header + "\n\n  No images yet. Build one with: maestro build <repo>\n\n" + footer
+		}
 		footer := bar(footerStyle, m.width, "↑/↓ navigate · q to quit")
 		return header + "\n" + m.table.View() + "\n" + footer
 	}
@@ -71,26 +80,12 @@ const tableChromeLines = 6 // page header + footer bars, plus their joining newl
 const tableHeaderLines = 2 // the table's own column-header row plus its border
 
 func buildRepoTable(repos []githubapi.Repo, width, height int) table.Model {
-	if width <= 0 {
-		width = 80
-	}
-
-	const numCols = 5
-	visW, langW, starsW, updW := 10, 14, 7, 10
-	fixed := visW + langW + starsW + updW
-
-	nameW := width - fixed - cellPad*numCols
-	if nameW < 8 {
-		nameW = 8
-	}
-	totalWidth := nameW + fixed + cellPad*numCols
-
 	columns := []table.Column{
-		{Title: "NAME", Width: nameW},
-		{Title: "VISIBILITY", Width: visW},
-		{Title: "LANGUAGE", Width: langW},
-		{Title: "STARS", Width: starsW},
-		{Title: "UPDATED", Width: updW},
+		{Title: "NAME"},
+		{Title: "VISIBILITY", Width: 10},
+		{Title: "LANGUAGE", Width: 14},
+		{Title: "STARS", Width: 7},
+		{Title: "UPDATED", Width: 10},
 	}
 
 	rows := make([]table.Row, 0, len(repos))
@@ -112,12 +107,63 @@ func buildRepoTable(repos []githubapi.Repo, width, height int) table.Model {
 		})
 	}
 
+	return newListTable(columns, rows, width, height)
+}
+
+func buildImageTable(images []maestroapi.Image, width, height int) table.Model {
+	columns := []table.Column{
+		{Title: "REPO"},
+		{Title: "REF", Width: 14},
+		{Title: "BUILD", Width: 7},
+		{Title: "IMAGE ID", Width: 12},
+		{Title: "SIZE", Width: 9},
+		{Title: "CREATED", Width: 16},
+	}
+
+	rows := make([]table.Row, 0, len(images))
+	for _, img := range images {
+		repo := img.Repo
+		if repo == "" {
+			repo = img.Tag // no build record left for it; the tag still says what it is
+		}
+		ref := img.Ref
+		if ref == "" {
+			ref = "-"
+		}
+		build := "-"
+		if img.BuildID != 0 {
+			build = "#" + strconv.FormatInt(img.BuildID, 10)
+		}
+		rows = append(rows, table.Row{
+			repo,
+			ref,
+			build,
+			shortID(img.ID),
+			humanSize(img.Size),
+			img.CreatedAt.Local().Format("2006-01-02 15:04"),
+		})
+	}
+
+	return newListTable(columns, rows, width, height)
+}
+
+// newListTable gives the first column whatever width the others leave over,
+// and caps the height so the header and footer bars always stay on screen.
+func newListTable(columns []table.Column, rows []table.Row, width, height int) table.Model {
+	if width <= 0 {
+		width = 80
+	}
+
+	fixed := 0
+	for _, c := range columns[1:] {
+		fixed += c.Width
+	}
+	columns[0].Width = max(width-fixed-cellPad*len(columns), 8)
+	totalWidth := columns[0].Width + fixed + cellPad*len(columns)
+
 	maxTableHeight := 20 + tableHeaderLines
 	if height > 0 {
-		maxTableHeight = height - tableChromeLines
-		if maxTableHeight < tableHeaderLines+1 {
-			maxTableHeight = tableHeaderLines + 1
-		}
+		maxTableHeight = max(height-tableChromeLines, tableHeaderLines+1)
 	}
 	tableHeight := min(len(rows)+tableHeaderLines, maxTableHeight)
 
@@ -135,4 +181,25 @@ func buildRepoTable(repos []githubapi.Repo, width, height int) table.Model {
 	t.SetStyles(s)
 
 	return t
+}
+
+func shortID(id string) string {
+	if len(id) > 12 {
+		return id[:12]
+	}
+	return id
+}
+
+// humanSize formats bytes in decimal units, matching `podman images`.
+func humanSize(b int64) string {
+	const unit = 1000
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "kMGTPE"[exp])
 }

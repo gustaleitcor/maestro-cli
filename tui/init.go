@@ -7,10 +7,12 @@ import (
 	"github.com/google/go-github/v66/github"
 
 	"maestro-cli/internal/githubapi"
+	"maestro-cli/internal/maestroapi"
 )
 
 type userLoadedMsg struct{ user *githubapi.User }
 type reposLoadedMsg struct{ repos []githubapi.Repo }
+type imagesLoadedMsg struct{ images []maestroapi.Image }
 type fetchErrMsg struct{ err error }
 
 func (m model) Init() tea.Cmd {
@@ -19,6 +21,8 @@ func (m model) Init() tea.Cmd {
 		return tea.Batch(m.spinner.Tick, fetchUser(m.ctx, m.client))
 	case repoListScreen:
 		return tea.Batch(m.spinner.Tick, fetchRepos(m.ctx, m.client))
+	case imageListScreen:
+		return tea.Batch(m.spinner.Tick, fetchImages(m.ctx, m.maestroKey))
 	}
 	return nil
 }
@@ -40,5 +44,15 @@ func fetchRepos(ctx context.Context, client *github.Client) tea.Cmd {
 			return fetchErrMsg{err}
 		}
 		return reposLoadedMsg{repos}
+	}
+}
+
+func fetchImages(ctx context.Context, maestroKey string) tea.Cmd {
+	return func() tea.Msg {
+		images, err := maestroapi.ListImages(ctx, maestroKey)
+		if err != nil {
+			return fetchErrMsg{err}
+		}
+		return imagesLoadedMsg{images}
 	}
 }

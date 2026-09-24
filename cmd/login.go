@@ -19,15 +19,18 @@ import (
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Authenticate the CLI with a GitHub token and a Maestro key",
-	Long: `Prompts for a GitHub personal access token (fine-grained or classic) and a
-Maestro key (generate one at https://maestro.logsad.com), validates each
-against its own service, and stores them for future commands.
+	Long: `Prompts for a GitHub personal access token and a Maestro key, validates
+each against its own service, and stores them for future commands.
 
-If a credential is already stored, leaving its prompt blank keeps the
-existing one instead of overwriting it.
+Maestro key:
+  Generate one at https://maestro.logsad.com/
 
-Both secrets are saved to your OS keyring when available, falling back to
-a restricted-permission file under your user config directory.`,
+GitHub personal access token:
+  Create a fine-grained token at
+  https://github.com/settings/personal-access-tokens/new
+  with "Repository access" set to All repositories, and under
+  "Permissions" grant Contents: Read-only.
+`,
 	RunE: runLogin,
 }
 
