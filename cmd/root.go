@@ -18,7 +18,7 @@ var Version = "dev"
 const welcomeText = `Welcome to Maestro — orchestration and repository tooling.
 
 Get started:
-  1. maestro login         Authenticate with GitHub and Maestro
+  1. maestro login         Sign in to Maestro and add a GitHub token
   2. maestro me            Show your authenticated GitHub profile
   3. maestro repo list     Browse your repositories
   4. maestro build <repo>  Build a container image from a repo

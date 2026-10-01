@@ -50,6 +50,85 @@ func VerifyKey(ctx context.Context, key string) (string, error) {
 	return result.Email, nil
 }
 
+// CLILogin is a browser-approval login in progress: the user approves
+// UserCode at VerificationURL while the CLI polls with DeviceCode.
+type CLILogin struct {
+	DeviceCode      string `json:"device_code"`
+	UserCode        string `json:"user_code"`
+	VerificationURL string `json:"verification_url"`
+	ExpiresIn       int    `json:"expires_in"`
+	Interval        int    `json:"interval"`
+}
+
+// CLILoginResult is one poll answer. Status is pending, approved, denied, or
+// expired; Key and Email are only set once, on approved.
+type CLILoginResult struct {
+	Status string `json:"status"`
+	Key    string `json:"key"`
+	Email  string `json:"email"`
+}
+
+func StartCLILogin(ctx context.Context) (*CLILogin, error) {
+	var login CLILogin
+	if err := postJSON(ctx, "/api/cli/login", nil, http.StatusCreated, &login); err != nil {
+		return nil, err
+	}
+	if login.DeviceCode == "" || login.UserCode == "" {
+		return nil, fmt.Errorf("maestro-orq returned an incomplete login")
+	}
+	return &login, nil
+}
+
+func PollCLILogin(ctx context.Context, deviceCode string) (*CLILoginResult, error) {
+	var result CLILoginResult
+	body := struct {
+		DeviceCode string `json:"device_code"`
+	}{deviceCode}
+	if err := postJSON(ctx, "/api/cli/login/poll", body, http.StatusOK, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func postJSON(ctx context.Context, path string, body any, wantStatus int, out any) error {
+	var encoded []byte
+	if body != nil {
+		var err error
+		if encoded, err = json.Marshal(body); err != nil {
+			return fmt.Errorf("encoding request: %w", err)
+		}
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, BaseURL()+path, bytes.NewReader(encoded))
+	if err != nil {
+		return fmt.Errorf("building request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("calling maestro-orq: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != wantStatus {
+		var errResp errorResponse
+		json.NewDecoder(resp.Body).Decode(&errResp)
+		if resp.StatusCode == http.StatusNotFound && errResp.Error == "" {
+			return fmt.Errorf("this Maestro server does not support browser login; use `maestro login --with-key`")
+		}
+		if errResp.Error == "" {
+			return fmt.Errorf("maestro-orq responded with %s", resp.Status)
+		}
+		return fmt.Errorf("maestro-orq: %s", errResp.Error)
+	}
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return fmt.Errorf("decoding response: %w", err)
+	}
+	return nil
+}
+
 // BuildRequest describes what to build. Server is optional; empty means let
 // maestro-orq pick.
 type BuildRequest struct {

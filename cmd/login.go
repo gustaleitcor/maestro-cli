@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v66/github"
 	"github.com/spf13/cobra"
@@ -16,14 +19,21 @@ import (
 	"maestro-cli/internal/maestroapi"
 )
 
+var (
+	loginWithKey   bool
+	loginNoBrowser bool
+)
+
 var loginCmd = &cobra.Command{
 	Use:   "login",
-	Short: "Authenticate the CLI with a GitHub token and a Maestro key",
-	Long: `Prompts for a GitHub personal access token and a Maestro key, validates
-each against its own service, and stores them for future commands.
+	Short: "Authenticate the CLI with Maestro and a GitHub token",
+	Long: `Signs the CLI in to Maestro and stores a GitHub token for future commands.
 
-Maestro key:
-  Generate one at https://maestro.logsad.com/
+Maestro:
+  Prints a short code and opens the Maestro page in your browser. Approve
+  the code there and the CLI receives its own Maestro key; nothing to paste.
+  On a machine without a browser, open the printed URL anywhere else, or
+  use --with-key to paste a key generated on the Maestro page instead.
 
 GitHub personal access token:
   Create a fine-grained token at
@@ -35,6 +45,8 @@ GitHub personal access token:
 }
 
 func init() {
+	loginCmd.Flags().BoolVar(&loginWithKey, "with-key", false, "paste a Maestro key instead of approving in the browser (headless or CI use)")
+	loginCmd.Flags().BoolVar(&loginNoBrowser, "no-browser", false, "print the approval URL without trying to open a browser")
 	rootCmd.AddCommand(loginCmd)
 }
 
@@ -44,10 +56,77 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	if err := loginGitHub(cmd.Context(), stdin); err != nil {
 		return err
 	}
-	if err := loginMaestro(cmd.Context(), stdin); err != nil {
-		return err
+	if loginWithKey {
+		return loginMaestroWithKey(cmd.Context(), stdin)
 	}
-	return nil
+	return loginMaestroInBrowser(cmd.Context())
+}
+
+// loginMaestroInBrowser has the user approve a short code on the Maestro
+// page, then receives a key minted for this CLI.
+func loginMaestroInBrowser(ctx context.Context) error {
+	login, err := maestroapi.StartCLILogin(ctx)
+	if err != nil {
+		return fmt.Errorf("starting Maestro login: %w", err)
+	}
+
+	fmt.Printf("\nTo sign in to Maestro, open:\n\n  %s\n\nand approve this code:\n\n  %s\n\n", login.VerificationURL, login.UserCode)
+	if !loginNoBrowser {
+		openBrowser(login.VerificationURL)
+	}
+	fmt.Println("Waiting for approval...")
+
+	interval := time.Duration(login.Interval) * time.Second
+	if interval <= 0 {
+		interval = 2 * time.Second
+	}
+	deadline := time.Now().Add(time.Duration(login.ExpiresIn) * time.Second)
+
+	for time.Now().Before(deadline) {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(interval):
+		}
+
+		result, err := maestroapi.PollCLILogin(ctx, login.DeviceCode)
+		if err != nil {
+			// A dropped connection shouldn't throw away a login the user
+			// may be about to approve.
+			continue
+		}
+		switch result.Status {
+		case "pending":
+		case "approved":
+			if err := config.SaveMaestroKey(result.Key); err != nil {
+				return fmt.Errorf("saving Maestro key: %w", err)
+			}
+			fmt.Printf("Maestro: logged in as %s.\n", result.Email)
+			return nil
+		case "denied":
+			return fmt.Errorf("the login was denied on the Maestro page")
+		default:
+			return fmt.Errorf("the login expired; run `maestro login` again")
+		}
+	}
+	return fmt.Errorf("the login expired; run `maestro login` again")
+}
+
+// openBrowser is best effort: the URL is already on screen for when there
+// is no browser to open.
+func openBrowser(target string) {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", target)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", target)
+	default:
+		cmd = exec.Command("xdg-open", target)
+	}
+	if err := cmd.Start(); err == nil {
+		go cmd.Wait()
+	}
 }
 
 func loginGitHub(ctx context.Context, stdin *bufio.Reader) error {
@@ -76,7 +155,7 @@ func loginGitHub(ctx context.Context, stdin *bufio.Reader) error {
 	return nil
 }
 
-func loginMaestro(ctx context.Context, stdin *bufio.Reader) error {
+func loginMaestroWithKey(ctx context.Context, stdin *bufio.Reader) error {
 	_, err := config.LoadMaestroKey()
 	hasExisting := err == nil
 
