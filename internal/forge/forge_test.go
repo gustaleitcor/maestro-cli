@@ -234,3 +234,73 @@ func TestSplitFullName(t *testing.T) {
 		}
 	}
 }
+
+func TestErrorsSayWhatToDo(t *testing.T) {
+	status := http.StatusUnauthorized
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		w.Write([]byte(`{"message":"Bad credentials"}`))
+	}))
+	defer srv.Close()
+	host := strings.TrimPrefix(srv.URL, "http://")
+
+	for _, kind := range Kinds {
+		f, err := New(kind, srv.URL, "tok")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		status = http.StatusUnauthorized
+		_, err = f.ListRepos(context.Background())
+		want := host + " rejected the token: it is wrong, expired or revoked (Bad credentials)\n\nRun `maestro forge add` to store a new one"
+		if err == nil || err.Error() != want {
+			t.Errorf("%s 401 = %v", kind, err)
+		}
+
+		status = http.StatusNotFound
+		_, err = f.GetRepo(context.Background(), "ana", "missing")
+		if err == nil || !strings.HasPrefix(err.Error(), "not found on "+host) || strings.Contains(err.Error(), "http://") {
+			t.Errorf("%s 404 = %v", kind, err)
+		}
+	}
+
+	srv.Close()
+	f, _ := New(GitHub, srv.URL, "tok")
+	_, err := f.CurrentUser(context.Background())
+	if err == nil || !strings.HasPrefix(err.Error(), "could not reach "+host+": ") || strings.Contains(err.Error(), "http://") {
+		t.Errorf("unreachable = %v", err)
+	}
+}
+
+func TestHasFile(t *testing.T) {
+	var asked []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		asked = append(asked, r.URL.Path+"?ref="+r.URL.Query().Get("ref"))
+		if !strings.HasSuffix(r.URL.Path, "/Dockerfile") {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Write([]byte(`{"name":"Dockerfile","type":"file"}`))
+	}))
+	defer srv.Close()
+
+	for _, kind := range Kinds {
+		f, err := New(kind, srv.URL, "tok")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if found, err := f.HasFile(context.Background(), "ana", "app", "v1", "Dockerfile"); err != nil || !found {
+			t.Errorf("%s HasFile(Dockerfile) = %v, %v", kind, found, err)
+		}
+		// A missing file is an answer, not an error.
+		if found, err := f.HasFile(context.Background(), "ana", "app", "v1", "Containerfile"); err != nil || found {
+			t.Errorf("%s HasFile(Containerfile) = %v, %v", kind, found, err)
+		}
+	}
+	for _, path := range asked {
+		if !strings.HasSuffix(path, "?ref=v1") {
+			t.Errorf("request %s did not carry the ref", path)
+		}
+	}
+}

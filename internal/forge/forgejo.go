@@ -104,3 +104,9 @@ func (f *forgejo) GetRepo(ctx context.Context, owner, repo string) (*Repo, error
 	converted := r.repo()
 	return &converted, nil
 }
+
+func (f *forgejo) HasFile(ctx context.Context, owner, repo, ref, path string) (bool, error) {
+	var file struct{}
+	_, err := f.api.get(ctx, "/api/v1/repos/"+url.PathEscape(owner)+"/"+url.PathEscape(repo)+"/contents/"+url.PathEscape(path), url.Values{"ref": {ref}}, &file)
+	return missing(err)
+}

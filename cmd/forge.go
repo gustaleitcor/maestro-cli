@@ -25,23 +25,19 @@ var (
 var forgeCmd = &cobra.Command{
 	Use:   "forge",
 	Short: "Manage the git forges Maestro reads repositories from",
-	Long: `A forge is where your repositories live: GitHub, a Forgejo instance
-(Codeberg and Gitea speak the same API), or GitLab. Maestro only reads from
-it, to list repos and to clone the one you build, so a read-only token is
-all it needs. Forges never sign you in to Maestro; 'maestro login' does.`,
+	Long: `A forge is where your repositories live: GitHub, Forgejo (Codeberg,
+Gitea) or GitLab. Maestro only reads from it, with a read-only token.`,
 }
 
 var forgeAddCmd = &cobra.Command{
 	Use:   "add [name]",
 	Short: "Add a forge and its read-only token",
-	Long: `Adds a forge, asking for whatever isn't given on the command line, then
-checks the token against the forge before storing it.
+	Long: `Adds a forge, or replaces the one with the same name. The token is
+checked before it is stored. Only Forgejo takes a --url.
 
-  maestro forge add                                   # asks for everything
-  maestro forge add --kind forgejo                    # Codeberg
-  maestro forge add work --kind gitlab --url https://gitlab.example.com
-
-Adding a forge under a name that already exists replaces it.`,
+  maestro forge add
+  maestro forge add --kind gitlab
+  maestro forge add work --kind forgejo --url https://git.example.com`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := ""
@@ -62,7 +58,7 @@ var forgeListCmd = &cobra.Command{
 			return err
 		}
 		if len(forges) == 0 {
-			fmt.Println("No forges configured. Add one with: maestro forge add")
+			fmt.Println(dimStyle.Render("No forges configured. Add one with: maestro forge add"))
 			return nil
 		}
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
@@ -90,7 +86,7 @@ var forgeRemoveCmd = &cobra.Command{
 		if !removed {
 			return fmt.Errorf("no forge named %q; see `maestro forge list`", args[0])
 		}
-		fmt.Printf("Removed forge %s.\n", args[0])
+		fmt.Println(successStyle.Render("Removed forge " + args[0] + "."))
 		return nil
 	},
 	ValidArgsFunction: completeForgeNames,
@@ -98,7 +94,7 @@ var forgeRemoveCmd = &cobra.Command{
 
 func init() {
 	forgeAddCmd.Flags().StringVar(&forgeAddKind, "kind", "", "forge kind: "+strings.Join(forge.Kinds, ", "))
-	forgeAddCmd.Flags().StringVar(&forgeAddURL, "url", "", "base URL of a self-hosted forge (default: the kind's public instance)")
+	forgeAddCmd.Flags().StringVar(&forgeAddURL, "url", "", "Forgejo instance URL (default: https://codeberg.org)")
 	forgeAddCmd.RegisterFlagCompletionFunc("kind", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 		return forge.Kinds, cobra.ShellCompDirectiveNoFileComp
 	})
@@ -122,7 +118,7 @@ func completeForgeNames(cmd *cobra.Command, args []string, toComplete string) ([
 // addForgeFlag gives a command the --forge flag every forge-reading
 // command shares.
 func addForgeFlag(cmd *cobra.Command, target *string) {
-	cmd.Flags().StringVar(target, "forge", "", "which configured forge to use (see `maestro forge list`)")
+	cmd.Flags().StringVar(target, "forge", "", "which forge to use (see 'maestro forge list')")
 	cmd.RegisterFlagCompletionFunc("forge", completeForgeNames)
 }
 
@@ -140,6 +136,14 @@ func addForge(ctx context.Context, stdin *bufio.Reader, name, kind, baseURL stri
 		return fmt.Errorf("unknown forge kind %q: use %s", kind, strings.Join(forge.Kinds, ", "))
 	}
 
+	// Only Forgejo is commonly self-hosted; the others are always their
+	// public instance.
+	if kind != forge.Forgejo {
+		if baseURL != "" {
+			return fmt.Errorf("--url is only for forgejo; %s is always %s", kind, forge.DefaultBaseURL(kind))
+		}
+		baseURL = forge.DefaultBaseURL(kind)
+	}
 	if baseURL == "" {
 		if baseURL, err = readLine(stdin, "Forge URL", forge.DefaultBaseURL(kind)); err != nil {
 			return err
@@ -165,7 +169,11 @@ func addForge(ctx context.Context, stdin *bufio.Reader, name, kind, baseURL stri
 		}
 	}
 
-	fmt.Printf("\n%s\n\n", forge.TokenHint(kind, baseURL))
+	hint, warning := forge.TokenHint(kind, baseURL)
+	fmt.Printf("\n%s\n\n", hint)
+	if warning != "" {
+		fmt.Printf("%s\n\n", warnStyle.Render("Warning: "+warning))
+	}
 	token, err := readSecret(stdin, "Token", false)
 	if err != nil {
 		return err
@@ -175,7 +183,7 @@ func addForge(ctx context.Context, stdin *bufio.Reader, name, kind, baseURL stri
 	if err != nil {
 		return err
 	}
-	fmt.Println("Validating token...")
+	fmt.Println(dimStyle.Render("Validating token..."))
 	user, err := client.CurrentUser(ctx)
 	if err != nil {
 		return fmt.Errorf("token validation failed: %w", err)
@@ -188,7 +196,7 @@ func addForge(ctx context.Context, stdin *bufio.Reader, name, kind, baseURL stri
 	if err := config.AddForge(stored, token); err != nil {
 		return fmt.Errorf("saving forge: %w", err)
 	}
-	fmt.Printf("Forge %s: reading %s as %s.\n", name, client.Host(), user.Login)
+	fmt.Println(successStyle.Render(fmt.Sprintf("Forge %s: reading %s as %s.", name, client.Host(), user.Login)))
 	return nil
 }
 
@@ -278,7 +286,7 @@ func selectForgeByHost(host, name string) (*activeForge, error) {
 	if name != "" {
 		return nil, fmt.Errorf("forge %q does not serve %s", name, host)
 	}
-	return nil, fmt.Errorf("no configured forge serves %s\n\nRun `maestro forge add --url https://%s` to add it", host, host)
+	return nil, fmt.Errorf("no configured forge serves %s\n\nRun `maestro forge add --kind forgejo --url https://%s` to add it", host, host)
 }
 
 func forgeNames(forges []config.Forge) string {

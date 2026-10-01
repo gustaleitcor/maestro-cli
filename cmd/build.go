@@ -2,15 +2,20 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
 
+	"maestro-cli/internal/config"
 	"maestro-cli/internal/forge"
 	"maestro-cli/internal/maestroapi"
+	"maestro-cli/internal/netfail"
 )
 
 var (
@@ -21,16 +26,15 @@ var (
 var buildCmd = &cobra.Command{
 	Use:   "build <repo>",
 	Short: "Build a container image from a repo on one of your forges",
-	Long: `Builds a container image from a repository.
+	Long: `Builds a container image from a repo's Dockerfile (or Containerfile),
+which must be at the root of the repo.
 
-<repo> is a name (one of your own repos), owner/name, or the repo's full
-URL. A URL picks the forge by its host; otherwise --forge does, and may be
-left out when only one forge is configured.
+<repo> is a name, owner/name, or URL. The forge that has it is used; pass
+--forge when several do.
 
   maestro build my-app
   maestro build some-org/my-app --ref v1.2.0
-  maestro build https://codeberg.org/some-org/my-app
-  maestro build group/subgroup/my-app --forge gitlab`,
+  maestro build https://codeberg.org/some-org/my-app`,
 	Args: cobra.ExactArgs(1),
 	RunE: runBuild,
 
@@ -38,7 +42,7 @@ left out when only one forge is configured.
 }
 
 func init() {
-	buildCmd.Flags().StringVar(&buildRef, "ref", "", "branch, tag, or commit SHA to build (default: repo's default branch)")
+	buildCmd.Flags().StringVar(&buildRef, "ref", "", "branch, tag or commit to build (default: the default branch)")
 	addForgeFlag(buildCmd, &buildForge)
 	rootCmd.AddCommand(buildCmd)
 }
@@ -58,6 +62,10 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		ref = r.DefaultBranch
 	}
 
+	if err := checkBuildFile(cmd.Context(), active.Client, owner, repo, ref); err != nil {
+		return err
+	}
+
 	fmt.Printf("Building %s/%s/%s@%s...\n", active.Client.Host(), owner, repo, ref)
 
 	final, err := maestroapi.TriggerBuild(cmd.Context(), maestroKey, active.Token, maestroapi.BuildRequest{
@@ -74,8 +82,28 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("build failed: %s", final.Error)
 	}
 
-	fmt.Printf("\nBuild succeeded: %s\n", final.ImageID)
+	fmt.Printf("\n%s %s\n", successStyle.Render("Build succeeded:"), final.ImageID)
 	return nil
+}
+
+// buildFiles are what the build looks for at the root of the repo.
+var buildFiles = []string{"Dockerfile", "Containerfile"}
+
+// checkBuildFile stops a build that has nothing to build from before it
+// reaches the server. Only a clear "not there" stops it: when the forge
+// can't say, the build goes ahead and the server decides.
+func checkBuildFile(ctx context.Context, client forge.Forge, owner, repo, ref string) error {
+	for _, name := range buildFiles {
+		found, err := client.HasFile(ctx, owner, repo, ref, name)
+		if err != nil {
+			fmt.Println(warnStyle.Render("Warning: could not check for a Dockerfile: " + err.Error()))
+			return nil
+		}
+		if found {
+			return nil
+		}
+	}
+	return fmt.Errorf("%s/%s has no Dockerfile at %s\n\nMaestro builds the image from a Dockerfile (or Containerfile) at the root of\nthe repo. Add one, or pick a branch that has it with --ref", owner, repo, ref)
 }
 
 // parseRepoArg accepts "name", "owner/name", or a full repo URL. A URL
@@ -96,24 +124,120 @@ func parseRepoArg(ctx context.Context, arg, forgeName string) (active *activeFor
 		return active, owner, repo, nil
 	}
 
-	if active, err = selectForge(forgeName); err != nil {
+	arg = strings.Trim(strings.TrimSuffix(arg, ".git"), "/")
+	if arg == "" {
+		return nil, "", "", fmt.Errorf("invalid repo: expected name, owner/name, or a repo URL")
+	}
+
+	candidates, err := forgesToSearch(forgeName)
+	if err != nil {
 		return nil, "", "", err
 	}
-	arg = strings.Trim(strings.TrimSuffix(arg, ".git"), "/")
-	if !strings.Contains(arg, "/") {
-		if arg == "" {
-			return nil, "", "", fmt.Errorf("invalid repo: expected name, owner/name, or a repo URL")
+	if len(candidates) == 1 {
+		owner, repo, err = splitRepoArg(ctx, candidates[0], arg)
+		return candidates[0], owner, repo, err
+	}
+
+	// Several forges and no --forge: the repo says which one, by being there.
+	type match struct {
+		active      *activeForge
+		owner, repo string
+	}
+	found := make([]*match, len(candidates))
+	failed := make([]error, len(candidates)) // anything but "it isn't here"
+	var wg sync.WaitGroup
+	for i, c := range candidates {
+		wg.Go(func() {
+			owner, repo, err := splitRepoArg(ctx, c, arg)
+			if err == nil {
+				_, err = c.Client.GetRepo(ctx, owner, repo)
+			}
+			switch {
+			case err == nil:
+				found[i] = &match{c, owner, repo}
+			case !errors.Is(err, forge.ErrNotFound):
+				failed[i] = fmt.Errorf("forge %s: %w", c.Name, err)
+			}
+		})
+	}
+	wg.Wait()
+
+	var matches []*match
+	var names []string
+	for _, m := range found {
+		if m != nil {
+			matches = append(matches, m)
+			names = append(names, m.active.Name)
 		}
+	}
+	switch len(matches) {
+	case 0:
+		// A forge that couldn't answer may well be the one that has it.
+		failed = slices.DeleteFunc(failed, func(err error) bool { return err == nil })
+		if len(failed) == len(candidates) && allUnreachable(failed) {
+			return nil, "", "", fmt.Errorf("could not reach any of your forges: check your internet connection")
+		}
+		if len(failed) > 0 {
+			return nil, "", "", failed[0]
+		}
+		return nil, "", "", fmt.Errorf("no configured forge has a repo %q", arg)
+	case 1:
+		return matches[0].active, matches[0].owner, matches[0].repo, nil
+	}
+	return nil, "", "", fmt.Errorf("%q is on several forges (%s); pick one with --forge", arg, strings.Join(names, ", "))
+}
+
+func allUnreachable(errs []error) bool {
+	for _, err := range errs {
+		if !errors.Is(err, netfail.ErrUnreachable) {
+			return false
+		}
+	}
+	return true
+}
+
+// forgesToSearch is the forge --forge names, or every configured one.
+func forgesToSearch(name string) ([]*activeForge, error) {
+	if name != "" {
+		active, err := selectForge(name)
+		if err != nil {
+			return nil, err
+		}
+		return []*activeForge{active}, nil
+	}
+
+	configured, err := config.Forges()
+	if err != nil {
+		return nil, err
+	}
+	if len(configured) == 0 {
+		return nil, fmt.Errorf("no forge configured\n\nRun `maestro forge add` to add GitHub, a Forgejo instance, or GitLab")
+	}
+	all := make([]*activeForge, 0, len(configured))
+	for _, f := range configured {
+		active, err := openForge(f)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, active)
+	}
+	return all, nil
+}
+
+// splitRepoArg reads "name" or "owner/name" as a repo on one forge; a bare
+// name belongs to the token's own user.
+func splitRepoArg(ctx context.Context, active *activeForge, arg string) (owner, repo string, err error) {
+	if !strings.Contains(arg, "/") {
 		user, err := active.Client.CurrentUser(ctx)
 		if err != nil {
-			return nil, "", "", fmt.Errorf("resolving authenticated user: %w", err)
+			return "", "", fmt.Errorf("resolving authenticated user: %w", err)
 		}
-		return active, user.Login, arg, nil
+		return user.Login, arg, nil
 	}
 	if owner, repo, err = splitRepoPath(active.Client.Kind(), arg); err != nil {
-		return nil, "", "", fmt.Errorf("invalid repo %q: %w", arg, err)
+		return "", "", fmt.Errorf("invalid repo %q: %w", arg, err)
 	}
-	return active, owner, repo, nil
+	return owner, repo, nil
 }
 
 // splitRepoURL returns the host and the repo path of a browser or clone URL.
@@ -148,9 +272,8 @@ func splitRepoPath(kind, path string) (owner, repo string, err error) {
 	return owner, repo, nil
 }
 
-// completeRepos offers "owner/name" for every repo the user can see, plus the
-// bare name for repos they own (parseRepoArg resolves a bare name to them),
-// most recently updated first.
+// completeRepos offers "owner/name" for every repo the user can see, most
+// recently updated first.
 func completeRepos(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
@@ -159,15 +282,7 @@ func completeRepos(cmd *cobra.Command, args []string, toComplete string) ([]stri
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	active, err := selectForge(buildForge)
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveNoFileComp
-	}
-	user, err := active.Client.CurrentUser(ctx)
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveNoFileComp
-	}
-	repos, err := active.Client.ListRepos(ctx)
+	forges, err := forgesToSearch(buildForge)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -175,22 +290,35 @@ func completeRepos(cmd *cobra.Command, args []string, toComplete string) ([]stri
 	// Tabs separate a completion from its description; newlines end it.
 	clean := strings.NewReplacer("\t", " ", "\n", " ", "\r", " ")
 
-	var completions []string
-	for _, r := range repos {
-		candidates := []string{r.FullName}
-		if r.FullName == user.Login+"/"+r.Name {
-			candidates = append(candidates, r.Name)
-		}
-		for _, c := range candidates {
-			if !strings.HasPrefix(c, toComplete) {
-				continue
+	// Every forge is asked at once; one that fails just offers nothing.
+	perForge := make([][]string, len(forges))
+	var wg sync.WaitGroup
+	for i, active := range forges {
+		wg.Go(func() {
+			repos, err := active.Client.ListRepos(ctx)
+			if err != nil {
+				return
 			}
-			if r.Description != "" {
-				c += "\t" + clean.Replace(r.Description)
+			for _, r := range repos {
+				c := r.FullName
+				description := clean.Replace(r.Description)
+				if len(forges) > 1 {
+					// Say where it lives, since `maestro build` finds that out itself.
+					description = strings.TrimSuffix(active.Name+": "+description, ": ")
+				}
+				if !strings.HasPrefix(c, toComplete) {
+					continue
+				}
+				if description != "" {
+					c += "\t" + description
+				}
+				perForge[i] = append(perForge[i], c)
 			}
-			completions = append(completions, c)
-		}
+		})
 	}
+	wg.Wait()
+	completions := slices.Concat(perForge...)
+
 	// ListRepos already returns most recently updated first; keep that order
 	// instead of letting the shell sort alphabetically.
 	return completions, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveKeepOrder

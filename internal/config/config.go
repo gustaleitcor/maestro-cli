@@ -199,3 +199,29 @@ func writeConfigFile(cfg Config) error {
 	}
 	return nil
 }
+
+// Reset forgets everything the CLI has stored: the Maestro key, every forge
+// and its token, and the config file itself.
+func Reset() error {
+	cfg, err := readConfigFile()
+	if err != nil {
+		return err
+	}
+
+	if os.Getenv(fileEnvFlag) != "1" {
+		_ = keyring.Delete(service, maestroKeyringUser)
+		_ = keyring.Delete(service, githubKeyringUser)
+		for _, f := range cfg.Forges {
+			_ = keyring.Delete(service, forgeKeyringPrefix+f.Name)
+		}
+	}
+
+	p, err := path()
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("removing config file %s: %w", p, err)
+	}
+	return nil
+}

@@ -9,40 +9,36 @@ import (
 	"maestro-cli/internal/maestroapi"
 )
 
-type userLoadedMsg struct{ user *forge.User }
-type reposLoadedMsg struct{ repos []forge.Repo }
+// forge is the index of the forge that answered: by the time it does, the
+// list may be showing another one.
+type reposLoadedMsg struct {
+	forge int
+	repos []forge.Repo
+}
+type reposErrMsg struct {
+	forge int
+	err   error
+}
 type imagesLoadedMsg struct{ images []maestroapi.Image }
 type fetchErrMsg struct{ err error }
 
 func (m model) Init() tea.Cmd {
 	switch m.screen {
-	case meScreen:
-		return tea.Batch(m.spinner.Tick, fetchUser(m.ctx, m.client))
 	case repoListScreen:
-		return tea.Batch(m.spinner.Tick, fetchRepos(m.ctx, m.client))
+		return tea.Batch(m.spinner.Tick, fetchRepos(m.ctx, m.current, m.forges[m.current].Client))
 	case imageListScreen:
 		return tea.Batch(m.spinner.Tick, fetchImages(m.ctx, m.maestroKey))
 	}
 	return nil
 }
 
-func fetchUser(ctx context.Context, client forge.Forge) tea.Cmd {
-	return func() tea.Msg {
-		u, err := client.CurrentUser(ctx)
-		if err != nil {
-			return fetchErrMsg{err}
-		}
-		return userLoadedMsg{u}
-	}
-}
-
-func fetchRepos(ctx context.Context, client forge.Forge) tea.Cmd {
+func fetchRepos(ctx context.Context, index int, client forge.Forge) tea.Cmd {
 	return func() tea.Msg {
 		repos, err := client.ListRepos(ctx)
 		if err != nil {
-			return fetchErrMsg{err}
+			return reposErrMsg{index, err}
 		}
-		return reposLoadedMsg{repos}
+		return reposLoadedMsg{index, repos}
 	}
 }
 

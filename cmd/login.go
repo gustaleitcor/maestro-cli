@@ -26,22 +26,14 @@ var (
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Sign the CLI in to Maestro",
-	Long: `Signs the CLI in to Maestro.
-
-Prints a short code and opens the Maestro page in your browser. Approve the
-code there and the CLI receives its own Maestro key; nothing to paste. On a
-machine without a browser, open the printed URL anywhere else, or use
---with-key to paste a key generated on the Maestro page instead.
-
-Signing in is separate from where your repositories live. If no git forge
-is configured yet, login offers to add one; see 'maestro forge --help'.
-`,
+	Long: `Signs in by approving a short code on the Maestro page in your browser.
+Without a browser, use --with-key to paste a key generated on that page.`,
 	RunE: runLogin,
 }
 
 func init() {
-	loginCmd.Flags().BoolVar(&loginWithKey, "with-key", false, "paste a Maestro key instead of approving in the browser (headless or CI use)")
-	loginCmd.Flags().BoolVar(&loginNoBrowser, "no-browser", false, "print the approval URL without trying to open a browser")
+	loginCmd.Flags().BoolVar(&loginWithKey, "with-key", false, "paste a Maestro key instead of using the browser")
+	loginCmd.Flags().BoolVar(&loginNoBrowser, "no-browser", false, "print the approval URL without opening a browser")
 	rootCmd.AddCommand(loginCmd)
 }
 
@@ -71,14 +63,14 @@ func offerForge(ctx context.Context, stdin *bufio.Reader) error {
 		return nil
 	}
 
-	fmt.Println("\nNo git forge is configured yet. Maestro reads your repositories from one")
+	fmt.Println("\n" + warnStyle.Render("No git forge is configured yet.") + " Maestro reads your repositories from one")
 	fmt.Println("(GitHub, a Forgejo instance such as Codeberg, or GitLab) with a read-only token.")
 	answer, err := readLine(stdin, "Add one now? (y/n)", "y")
 	if err != nil {
 		return err
 	}
 	if !strings.HasPrefix(strings.ToLower(answer), "y") {
-		fmt.Println("Skipped. Add one later with: maestro forge add")
+		fmt.Println(dimStyle.Render("Skipped. Add one later with: maestro forge add"))
 		return nil
 	}
 	return addForge(ctx, stdin, "", "", "")
@@ -92,11 +84,11 @@ func loginMaestroInBrowser(ctx context.Context) error {
 		return fmt.Errorf("starting Maestro login: %w", err)
 	}
 
-	fmt.Printf("\nTo sign in to Maestro, open:\n\n  %s\n\nand approve this code:\n\n  %s\n\n", login.VerificationURL, login.UserCode)
+	fmt.Printf("\nTo sign in to Maestro, open:\n\n  %s\n\nand approve this code:\n\n  %s\n\n", accentStyle.Render(login.VerificationURL), accentStyle.Render(login.UserCode))
 	if !loginNoBrowser {
 		openBrowser(login.VerificationURL)
 	}
-	fmt.Println("Waiting for approval...")
+	fmt.Println(dimStyle.Render("Waiting for approval..."))
 
 	interval := time.Duration(login.Interval) * time.Second
 	if interval <= 0 {
@@ -123,7 +115,7 @@ func loginMaestroInBrowser(ctx context.Context) error {
 			if err := config.SaveMaestroKey(result.Key); err != nil {
 				return fmt.Errorf("saving Maestro key: %w", err)
 			}
-			fmt.Printf("Maestro: logged in as %s.\n", result.Email)
+			fmt.Println(successStyle.Render("Maestro: logged in as " + result.Email + "."))
 			return nil
 		case "denied":
 			return fmt.Errorf("the login was denied on the Maestro page")
@@ -160,11 +152,11 @@ func loginMaestroWithKey(ctx context.Context, stdin *bufio.Reader) error {
 		return err
 	}
 	if key == "" {
-		fmt.Println("Maestro: keeping existing key.")
+		fmt.Println(dimStyle.Render("Maestro: keeping existing key."))
 		return nil
 	}
 
-	fmt.Println("Validating Maestro key...")
+	fmt.Println(dimStyle.Render("Validating Maestro key..."))
 	email, err := maestroapi.VerifyKey(ctx, key)
 	if err != nil {
 		return fmt.Errorf("Maestro key validation failed: %w", err)
@@ -173,7 +165,7 @@ func loginMaestroWithKey(ctx context.Context, stdin *bufio.Reader) error {
 	if err := config.SaveMaestroKey(key); err != nil {
 		return fmt.Errorf("saving Maestro key: %w", err)
 	}
-	fmt.Printf("Maestro: logged in as %s.\n", email)
+	fmt.Println(successStyle.Render("Maestro: logged in as " + email + "."))
 	return nil
 }
 
@@ -187,12 +179,11 @@ func readSecret(stdin *bufio.Reader, label string, hasExisting bool) (string, er
 
 	var value string
 	if term.IsTerminal(int(os.Stdin.Fd())) {
-		raw, err := term.ReadPassword(int(os.Stdin.Fd()))
-		fmt.Println()
+		masked, err := readMasked()
 		if err != nil {
 			return "", fmt.Errorf("reading input: %w", err)
 		}
-		value = string(raw)
+		value = strings.TrimSpace(masked)
 	} else {
 		line, err := stdin.ReadString('\n')
 		if err != nil && err != io.EOF {
@@ -205,4 +196,46 @@ func readSecret(stdin *bufio.Reader, label string, hasExisting bool) (string, er
 		return "", fmt.Errorf("no value provided")
 	}
 	return value, nil
+}
+
+// readMasked reads a line from the terminal, echoing a * for each character
+// typed or pasted instead of the character itself.
+func readMasked() (string, error) {
+	fd := int(os.Stdin.Fd())
+	state, err := term.MakeRaw(fd)
+	if err != nil {
+		return "", err
+	}
+	defer term.Restore(fd, state)
+
+	var value []byte
+	buf := make([]byte, 256)
+	for {
+		n, err := os.Stdin.Read(buf)
+		if err != nil {
+			fmt.Print("\r\n")
+			return "", err
+		}
+		for _, c := range buf[:n] {
+			switch {
+			case c == '\r' || c == '\n':
+				fmt.Print("\r\n")
+				return string(value), nil
+			case c == 3: // ctrl+c: raw mode keeps the terminal from sending the signal
+				fmt.Print("\r\n")
+				return "", fmt.Errorf("interrupted")
+			case c == 127 || c == 8: // backspace
+				if len(value) > 0 {
+					value = value[:len(value)-1]
+					fmt.Print("\b \b")
+				}
+			case c == 21: // ctrl+u clears the line
+				fmt.Print(strings.Repeat("\b \b", len(value)))
+				value = value[:0]
+			case c >= 32:
+				value = append(value, c)
+				fmt.Print("*")
+			}
+		}
+	}
 }

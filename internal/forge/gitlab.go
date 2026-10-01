@@ -99,3 +99,9 @@ func (g *gitlab) GetRepo(ctx context.Context, owner, repo string) (*Repo, error)
 	converted := p.repo()
 	return &converted, nil
 }
+
+func (g *gitlab) HasFile(ctx context.Context, owner, repo, ref, path string) (bool, error) {
+	var file struct{}
+	_, err := g.api.get(ctx, "/api/v4/projects/"+url.PathEscape(owner+"/"+repo)+"/repository/files/"+url.PathEscape(path), url.Values{"ref": {ref}}, &file)
+	return missing(err)
+}

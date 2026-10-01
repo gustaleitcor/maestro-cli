@@ -1,12 +1,19 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"maestro-cli/internal/config"
+	"maestro-cli/internal/maestroapi"
+	"maestro-cli/tui"
 )
 
 var maestroKey string
@@ -14,31 +21,20 @@ var maestroKey string
 // Version is set via -ldflags at release build time (see .goreleaser.yaml).
 var Version = "dev"
 
-const welcomeText = `Welcome to Maestro — orchestration and repository tooling.
-
-Get started:
-  1. maestro login         Sign in to Maestro and add a git forge
-  2. maestro forge add     Add GitHub, a Forgejo instance, or GitLab
-  3. maestro repo list     Browse your repositories
-  4. maestro build <repo>  Build a container image from a repo
-  5. maestro image list    See the images you've built
-
-Run 'maestro --help' to see all available commands.
-`
-
 var rootCmd = &cobra.Command{
 	Use:     "maestro",
 	Short:   "Maestro CLI — orchestration and repository tooling",
 	Version: Version,
-	// Bare invocation prints a welcome message instead of the usual help text.
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Print(welcomeText)
-	},
-	// maestro (bare), login, forge, help, and completion shouldn't require a
+	// Execute prints the error once; a failed command isn't a usage mistake.
+	SilenceErrors: true,
+	SilenceUsage:  true,
+	// Bare invocation shows who is signed in instead of the usual help text.
+	RunE: runWelcome,
+	// maestro (bare), login, logout, forge, help, and completion shouldn't require a
 	// Maestro key to run. Commands that read a forge load it themselves.
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		switch cmd.Name() {
-		case "maestro", "login", "help", "completion":
+		case "maestro", "login", "logout", "help", "completion":
 			return nil
 		}
 		if cmd == forgeCmd || cmd.Parent() == forgeCmd {
@@ -54,9 +50,60 @@ var rootCmd = &cobra.Command{
 	},
 }
 
+// runWelcome asks Maestro and every configured forge who the stored
+// credentials belong to. Nothing it finds out is an error: whatever can't be
+// reached is reported in place.
+func runWelcome(cmd *cobra.Command, args []string) error {
+	ctx, cancel := context.WithTimeout(cmd.Context(), 5*time.Second)
+	defer cancel()
+
+	w := tui.Welcome{Server: maestroapi.BaseURL()}
+	var wg sync.WaitGroup
+
+	if key, err := config.LoadMaestroKey(); err == nil {
+		w.SignedIn = true
+		wg.Go(func() {
+			w.Email, w.AccountErr = maestroapi.VerifyKey(ctx, key)
+		})
+	}
+
+	forges, err := config.Forges()
+	if err != nil {
+		return err
+	}
+	w.Forges = make([]tui.ForgeIdentity, len(forges))
+	for i, f := range forges {
+		id := &w.Forges[i]
+		id.Name = f.Name
+		wg.Go(func() {
+			active, err := openForge(f)
+			if err != nil {
+				id.Err = config.ErrNoForgeToken
+				return
+			}
+			id.Host = active.Client.Host()
+			user, err := active.Client.CurrentUser(ctx)
+			if err != nil {
+				id.Err = err
+				return
+			}
+			id.Login = user.Login
+		})
+	}
+	wg.Wait()
+
+	width, _, _ := term.GetSize(int(os.Stdout.Fd()))
+	fmt.Print(tui.RenderWelcome(w, width))
+	return nil
+}
+
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, "Error:", err)
+		fmt.Fprintln(os.Stderr, errorStyle.Render("Error:"), err)
+		// A mistyped command or flag, not a command that failed.
+		if strings.HasPrefix(err.Error(), "unknown ") {
+			fmt.Fprintln(os.Stderr, "Run 'maestro --help' for usage.")
+		}
 		os.Exit(1)
 	}
 }

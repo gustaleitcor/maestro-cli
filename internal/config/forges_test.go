@@ -101,3 +101,31 @@ func TestLegacyGitHubTokenMigrates(t *testing.T) {
 		t.Errorf("Forges() second call = %+v, %v", forges, err)
 	}
 }
+
+func TestReset(t *testing.T) {
+	isolate(t)
+
+	if err := AddForge(Forge{Name: "codeberg", Kind: "forgejo"}, "tok-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := SaveMaestroKey("mk_test"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Reset(); err != nil {
+		t.Fatal(err)
+	}
+	if forges, err := Forges(); err != nil || len(forges) != 0 {
+		t.Fatalf("Forges() after Reset = %v, %v", forges, err)
+	}
+	if _, err := LoadMaestroKey(); err != ErrNoMaestroKey {
+		t.Fatalf("LoadMaestroKey() after Reset = %v, want ErrNoMaestroKey", err)
+	}
+	if _, err := ForgeToken("codeberg"); err == nil {
+		t.Fatal("ForgeToken() after Reset still returns a token")
+	}
+	// Resetting an already empty config is fine.
+	if err := Reset(); err != nil {
+		t.Fatal(err)
+	}
+}

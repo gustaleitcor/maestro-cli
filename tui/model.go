@@ -14,22 +14,31 @@ import (
 type screen int
 
 const (
-	meScreen screen = iota
-	repoListScreen
+	repoListScreen screen = iota
 	imageListScreen
 )
+
+// RepoForge is one forge the repo list can show, under its configured name.
+type RepoForge struct {
+	Name   string
+	Client forge.Forge
+}
 
 type model struct {
 	screen  screen
 	ctx     context.Context
-	client  forge.Forge
 	spinner spinner.Model
 	loading bool
 	err     error
 
+	// The repo list switches between forges; current indexes forges, and
+	// repoCache keeps what each one already answered.
+	forges    []RepoForge
+	current   int
+	repoCache map[int][]forge.Repo
+
 	maestroKey string
 
-	user   *forge.User
 	repos  []forge.Repo
 	images []maestroapi.Image
 	table  table.Model
@@ -37,33 +46,31 @@ type model struct {
 	width, height int
 }
 
-func newModel(ctx context.Context, client forge.Forge, s screen) model {
+func newModel(ctx context.Context, s screen) model {
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 
 	return model{
 		screen:  s,
 		ctx:     ctx,
-		client:  client,
 		spinner: sp,
 		loading: true,
 	}
 }
 
-func RunMe(ctx context.Context, client forge.Forge) error {
-	m := newModel(ctx, client, meScreen)
-	_, err := tea.NewProgram(m, tea.WithAltScreen()).Run()
-	return err
-}
-
-func RunRepoList(ctx context.Context, client forge.Forge) error {
-	m := newModel(ctx, client, repoListScreen)
+// RunRepoList shows the repos of forges[start]; the left and right arrows
+// move to the other forges.
+func RunRepoList(ctx context.Context, forges []RepoForge, start int) error {
+	m := newModel(ctx, repoListScreen)
+	m.forges = forges
+	m.current = start
+	m.repoCache = map[int][]forge.Repo{}
 	_, err := tea.NewProgram(m, tea.WithAltScreen()).Run()
 	return err
 }
 
 func RunImageList(ctx context.Context, maestroKey string) error {
-	m := newModel(ctx, nil, imageListScreen)
+	m := newModel(ctx, imageListScreen)
 	m.maestroKey = maestroKey
 	_, err := tea.NewProgram(m, tea.WithAltScreen()).Run()
 	return err

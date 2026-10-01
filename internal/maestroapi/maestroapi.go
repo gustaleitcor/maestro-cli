@@ -7,9 +7,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
+
+	"maestro-cli/internal/netfail"
 )
 
 const defaultBaseURL = "https://maestro.logsad.com"
@@ -19,6 +22,15 @@ func BaseURL() string {
 		return strings.TrimRight(u, "/")
 	}
 	return defaultBaseURL
+}
+
+// unreachable words a request that got no answer from the Maestro server.
+func unreachable(err error) error {
+	host := BaseURL()
+	if parsed, parseErr := url.Parse(host); parseErr == nil && parsed.Host != "" {
+		host = parsed.Host
+	}
+	return netfail.Explain(host, err)
 }
 
 type verifyKeyResponse struct {
@@ -36,7 +48,7 @@ func VerifyKey(ctx context.Context, key string) (string, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("calling maestro-orq: %w", err)
+		return "", unreachable(err)
 	}
 	defer resp.Body.Close()
 
@@ -108,7 +120,7 @@ func postJSON(ctx context.Context, path string, body any, wantStatus int, out an
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("calling maestro-orq: %w", err)
+		return unreachable(err)
 	}
 	defer resp.Body.Close()
 
@@ -182,7 +194,7 @@ func TriggerBuild(ctx context.Context, maestroKey, forgeToken string, req BuildR
 	client := &http.Client{}
 	resp, err := client.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("calling maestro-orq: %w", err)
+		return nil, unreachable(err)
 	}
 	defer resp.Body.Close()
 
@@ -240,7 +252,7 @@ func ListImages(ctx context.Context, maestroKey string) ([]Image, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("calling maestro-orq: %w", err)
+		return nil, unreachable(err)
 	}
 	defer resp.Body.Close()
 

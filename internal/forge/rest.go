@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"maestro-cli/internal/netfail"
 )
 
 // restAPI is the plain JSON-over-HTTP client the Forgejo and GitLab
@@ -38,7 +40,7 @@ func (a restAPI) get(ctx context.Context, path string, query url.Values, out any
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("calling %s: %w", a.base.Host, err)
+		return nil, unreachableError(a.base.Host, err)
 	}
 	defer resp.Body.Close()
 
@@ -53,14 +55,35 @@ func (a restAPI) get(ctx context.Context, path string, query url.Values, out any
 		if detail == "" {
 			detail = body.Error
 		}
-		if detail == "" {
-			return nil, fmt.Errorf("%s responded with %s", a.base.Host, resp.Status)
-		}
-		return nil, fmt.Errorf("%s responded with %s: %s", a.base.Host, resp.Status, detail)
+		return nil, statusError(a.base.Host, resp.StatusCode, detail)
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
 		return nil, fmt.Errorf("decoding response from %s: %w", a.base.Host, err)
 	}
 	return resp.Header, nil
+}
+
+// statusError turns a forge's refusal into what went wrong and what to do
+// about it. detail is the forge's own message, if it gave one.
+func statusError(host string, status int, detail string) error {
+	said := ""
+	if detail != "" {
+		said = " (" + detail + ")"
+	}
+	switch status {
+	case http.StatusUnauthorized:
+		return fmt.Errorf("%s rejected the token: it is wrong, expired or revoked%s\n\nRun `maestro forge add` to store a new one", host, said)
+	case http.StatusForbidden:
+		return fmt.Errorf("%s does not let this token do that%s\n\nCheck the token's permissions, or run `maestro forge add` to store another", host, said)
+	case http.StatusNotFound:
+		return fmt.Errorf("%w on %s: it doesn't exist, or the token can't see it%s", ErrNotFound, host, said)
+	case http.StatusTooManyRequests:
+		return fmt.Errorf("%s is rate limiting this token; try again in a while%s", host, said)
+	}
+	return fmt.Errorf("%s responded with %d %s%s", host, status, http.StatusText(status), said)
+}
+
+func unreachableError(host string, err error) error {
+	return netfail.Explain(host, err)
 }

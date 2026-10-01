@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/lipgloss"
@@ -13,10 +12,14 @@ import (
 )
 
 var (
-	labelStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("241")).Width(11)
+	labelStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("241")).Width(9)
 	helpStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
+	warnStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
 	errorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
-	cardStyle  = lipgloss.NewStyle().Padding(1, 2).Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("62"))
+	logoStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("62"))
+
+	currentForgeStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("229")).Background(lipgloss.Color("57"))
+	otherForgeStyle   = lipgloss.NewStyle().Bold(false).Foreground(lipgloss.Color("241"))
 
 	headerStyle = lipgloss.NewStyle().Bold(true).Padding(0, 1).
 			BorderStyle(lipgloss.NormalBorder()).BorderBottom(true).BorderForeground(lipgloss.Color("240"))
@@ -25,6 +28,10 @@ var (
 )
 
 func (m model) View() string {
+	if m.screen == repoListScreen {
+		return m.repoListView()
+	}
+
 	if m.err != nil {
 		return errorStyle.Render(fmt.Sprintf("Error: %v", m.err)) + "\n" + helpStyle.Render("press q to quit") + "\n"
 	}
@@ -34,12 +41,6 @@ func (m model) View() string {
 	}
 
 	switch m.screen {
-	case meScreen:
-		return renderUser(m.client.Host(), m.user) + "\n" + helpStyle.Render("press q to quit") + "\n"
-	case repoListScreen:
-		header := bar(headerStyle, m.width, fmt.Sprintf("Repositories on %s (%d)", m.client.Host(), len(m.repos)))
-		footer := bar(footerStyle, m.width, "↑/↓ navigate · q to quit")
-		return header + "\n" + m.table.View() + "\n" + footer
 	case imageListScreen:
 		header := bar(headerStyle, m.width, fmt.Sprintf("Images (%d)", len(m.images)))
 		if len(m.images) == 0 {
@@ -52,32 +53,43 @@ func (m model) View() string {
 	return ""
 }
 
+// repoListView keeps the header and footer up while loading or failing, so
+// the forge being shown, and the way to another one, are always in sight.
+func (m model) repoListView() string {
+	title := "Repositories on " + m.forges[m.current].Client.Host()
+	if !m.loading && m.err == nil {
+		title += fmt.Sprintf(" (%d)", len(m.repos))
+	}
+	keys := "↑/↓ navigate · q to quit"
+	if len(m.forges) > 1 {
+		title += "  "
+		for i, f := range m.forges {
+			style := otherForgeStyle
+			if i == m.current {
+				style = currentForgeStyle
+			}
+			title += style.Render(" " + f.Name + " ")
+		}
+		keys = "←/→ switch forge · " + keys
+	}
+
+	var body string
+	switch {
+	case m.err != nil:
+		body = "\n  " + errorStyle.Render(fmt.Sprintf("Error: %v", m.err)) + "\n"
+	case m.loading:
+		body = fmt.Sprintf("\n  %s Loading...\n", m.spinner.View())
+	default:
+		body = m.table.View()
+	}
+	return bar(headerStyle, m.width, title) + "\n" + body + "\n" + bar(footerStyle, m.width, keys)
+}
+
 func bar(s lipgloss.Style, width int, text string) string {
 	if width > 0 {
 		s = s.Width(width - s.GetHorizontalFrameSize())
 	}
 	return s.Render(text)
-}
-
-func renderUser(host string, u *forge.User) string {
-	var b strings.Builder
-	fmt.Fprintln(&b, labelStyle.Render("Forge:")+" "+host)
-	fmt.Fprintln(&b, labelStyle.Render("Login:")+" "+u.Login)
-	if u.Name != "" {
-		fmt.Fprintln(&b, labelStyle.Render("Name:")+" "+u.Name)
-	}
-	if u.Bio != "" {
-		fmt.Fprintln(&b, labelStyle.Render("Bio:")+" "+u.Bio)
-	}
-	// Not every forge reports these; -1 means it doesn't.
-	if u.PublicRepos >= 0 {
-		fmt.Fprintln(&b, labelStyle.Render("Repos:")+fmt.Sprintf(" %d public", u.PublicRepos))
-	}
-	if u.Followers >= 0 && u.Following >= 0 {
-		fmt.Fprintln(&b, labelStyle.Render("Followers:")+fmt.Sprintf(" %d · Following: %d", u.Followers, u.Following))
-	}
-	fmt.Fprint(&b, labelStyle.Render("Profile:")+" "+u.HTMLURL)
-	return cardStyle.Render(b.String())
 }
 
 const cellPad = 2 // bubbles/table's Cell/Header padding on each side of every column

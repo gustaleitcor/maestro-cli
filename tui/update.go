@@ -3,7 +3,25 @@ package tui
 import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"maestro-cli/internal/forge"
 )
+
+// showForge moves the repo list to another forge, fetching its repos the
+// first time it is shown.
+func (m model) showForge(index int) (tea.Model, tea.Cmd) {
+	m.current = index
+	m.err = nil
+	if repos, ok := m.repoCache[index]; ok {
+		m.loading = false
+		m.repos = repos
+		m.table = buildRepoTable(m.repos, m.width, m.height)
+		return m, nil
+	}
+	m.loading = true
+	m.repos = nil
+	return m, tea.Batch(m.spinner.Tick, fetchRepos(m.ctx, index, m.forges[index].Client))
+}
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -11,6 +29,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "esc", "ctrl+c":
 			return m, tea.Quit
+		case "left", "right":
+			if m.screen == repoListScreen && len(m.forges) > 1 {
+				step := 1
+				if msg.String() == "left" {
+					step = len(m.forges) - 1
+				}
+				return m.showForge((m.current + step) % len(m.forges))
+			}
 		}
 
 	case tea.WindowSizeMsg:
@@ -23,15 +49,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case userLoadedMsg:
-		m.loading = false
-		m.user = msg.user
+	case reposLoadedMsg:
+		repos := msg.repos
+		if repos == nil {
+			repos = []forge.Repo{} // nil would read as not loaded yet
+		}
+		m.repoCache[msg.forge] = repos
+		if msg.forge == m.current {
+			m.loading = false
+			m.repos = repos
+			m.table = buildRepoTable(m.repos, m.width, m.height)
+		}
 		return m, nil
 
-	case reposLoadedMsg:
-		m.loading = false
-		m.repos = msg.repos
-		m.table = buildRepoTable(m.repos, m.width, m.height)
+	case reposErrMsg:
+		if msg.forge == m.current {
+			m.loading = false
+			m.err = msg.err
+		}
 		return m, nil
 
 	case imagesLoadedMsg:

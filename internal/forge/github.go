@@ -2,7 +2,10 @@ package forge
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/url"
+	"time"
 
 	gh "github.com/google/go-github/v66/github"
 )
@@ -34,7 +37,7 @@ func (g *github) Host() string { return g.host }
 func (g *github) CurrentUser(ctx context.Context) (*User, error) {
 	u, _, err := g.client.Users.Get(ctx, "")
 	if err != nil {
-		return nil, err
+		return nil, g.explain(err)
 	}
 	return &User{
 		Login:       u.GetLogin(),
@@ -58,7 +61,7 @@ func (g *github) ListRepos(ctx context.Context) ([]Repo, error) {
 	for {
 		repos, resp, err := g.client.Repositories.ListByAuthenticatedUser(ctx, opts)
 		if err != nil {
-			return nil, err
+			return nil, g.explain(err)
 		}
 		for _, r := range repos {
 			all = append(all, githubRepo(r))
@@ -74,10 +77,18 @@ func (g *github) ListRepos(ctx context.Context) ([]Repo, error) {
 func (g *github) GetRepo(ctx context.Context, owner, repo string) (*Repo, error) {
 	r, _, err := g.client.Repositories.Get(ctx, owner, repo)
 	if err != nil {
-		return nil, err
+		return nil, g.explain(err)
 	}
 	converted := githubRepo(r)
 	return &converted, nil
+}
+
+func (g *github) HasFile(ctx context.Context, owner, repo, ref, path string) (bool, error) {
+	_, _, _, err := g.client.Repositories.GetContents(ctx, owner, repo, path, &gh.RepositoryContentGetOptions{Ref: ref})
+	if err != nil {
+		err = g.explain(err)
+	}
+	return missing(err)
 }
 
 func githubRepo(r *gh.Repository) Repo {
@@ -94,4 +105,22 @@ func githubRepo(r *gh.Repository) Repo {
 		CloneURL:      r.GetCloneURL(),
 		DefaultBranch: r.GetDefaultBranch(),
 	}
+}
+
+// explain replaces go-github's "GET <url>: 401 Bad credentials []" with the
+// same wording the other forges' errors get.
+func (g *github) explain(err error) error {
+	var rateLimit *gh.RateLimitError
+	if errors.As(err, &rateLimit) {
+		return fmt.Errorf("%s is rate limiting this token; try again at %s", g.host, rateLimit.Rate.Reset.Local().Format(time.Kitchen))
+	}
+	var abuse *gh.AbuseRateLimitError
+	if errors.As(err, &abuse) {
+		return statusError(g.host, 429, abuse.Message)
+	}
+	var response *gh.ErrorResponse
+	if errors.As(err, &response) && response.Response != nil {
+		return statusError(g.host, response.Response.StatusCode, response.Message)
+	}
+	return unreachableError(g.host, err)
 }
