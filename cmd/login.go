@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v66/github"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
@@ -26,20 +25,16 @@ var (
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
-	Short: "Authenticate the CLI with Maestro and a GitHub token",
-	Long: `Signs the CLI in to Maestro and stores a GitHub token for future commands.
+	Short: "Sign the CLI in to Maestro",
+	Long: `Signs the CLI in to Maestro.
 
-Maestro:
-  Prints a short code and opens the Maestro page in your browser. Approve
-  the code there and the CLI receives its own Maestro key; nothing to paste.
-  On a machine without a browser, open the printed URL anywhere else, or
-  use --with-key to paste a key generated on the Maestro page instead.
+Prints a short code and opens the Maestro page in your browser. Approve the
+code there and the CLI receives its own Maestro key; nothing to paste. On a
+machine without a browser, open the printed URL anywhere else, or use
+--with-key to paste a key generated on the Maestro page instead.
 
-GitHub personal access token:
-  Create a fine-grained token at
-  https://github.com/settings/personal-access-tokens/new
-  with "Repository access" set to All repositories, and under
-  "Permissions" grant Contents: Read-only.
+Signing in is separate from where your repositories live. If no git forge
+is configured yet, login offers to add one; see 'maestro forge --help'.
 `,
 	RunE: runLogin,
 }
@@ -53,13 +48,40 @@ func init() {
 func runLogin(cmd *cobra.Command, args []string) error {
 	stdin := bufio.NewReader(os.Stdin)
 
-	if err := loginGitHub(cmd.Context(), stdin); err != nil {
+	var err error
+	if loginWithKey {
+		err = loginMaestroWithKey(cmd.Context(), stdin)
+	} else {
+		err = loginMaestroInBrowser(cmd.Context())
+	}
+	if err != nil {
 		return err
 	}
-	if loginWithKey {
-		return loginMaestroWithKey(cmd.Context(), stdin)
+	return offerForge(cmd.Context(), stdin)
+}
+
+// offerForge only speaks up when there is no forge at all. A GitHub token
+// stored by an older CLI already counts as one.
+func offerForge(ctx context.Context, stdin *bufio.Reader) error {
+	forges, err := config.Forges()
+	if err != nil {
+		return err
 	}
-	return loginMaestroInBrowser(cmd.Context())
+	if len(forges) > 0 {
+		return nil
+	}
+
+	fmt.Println("\nNo git forge is configured yet. Maestro reads your repositories from one")
+	fmt.Println("(GitHub, a Forgejo instance such as Codeberg, or GitLab) with a read-only token.")
+	answer, err := readLine(stdin, "Add one now? (y/n)", "y")
+	if err != nil {
+		return err
+	}
+	if !strings.HasPrefix(strings.ToLower(answer), "y") {
+		fmt.Println("Skipped. Add one later with: maestro forge add")
+		return nil
+	}
+	return addForge(ctx, stdin, "", "", "")
 }
 
 // loginMaestroInBrowser has the user approve a short code on the Maestro
@@ -129,32 +151,6 @@ func openBrowser(target string) {
 	}
 }
 
-func loginGitHub(ctx context.Context, stdin *bufio.Reader) error {
-	_, err := config.LoadGitHubToken()
-	hasExisting := err == nil
-
-	token, err := readSecret(stdin, "GitHub personal access token", hasExisting)
-	if err != nil {
-		return err
-	}
-	if token == "" {
-		fmt.Println("GitHub: keeping existing token.")
-		return nil
-	}
-
-	fmt.Println("Validating GitHub token...")
-	user, err := validateGitHubToken(ctx, token)
-	if err != nil {
-		return fmt.Errorf("GitHub token validation failed: %w", err)
-	}
-
-	if err := config.SaveGitHubToken(token); err != nil {
-		return fmt.Errorf("saving GitHub token: %w", err)
-	}
-	fmt.Printf("GitHub: logged in as %s.\n", user)
-	return nil
-}
-
 func loginMaestroWithKey(ctx context.Context, stdin *bufio.Reader) error {
 	_, err := config.LoadMaestroKey()
 	hasExisting := err == nil
@@ -209,13 +205,4 @@ func readSecret(stdin *bufio.Reader, label string, hasExisting bool) (string, er
 		return "", fmt.Errorf("no value provided")
 	}
 	return value, nil
-}
-
-func validateGitHubToken(ctx context.Context, token string) (string, error) {
-	client := github.NewClient(nil).WithAuthToken(token)
-	u, _, err := client.Users.Get(ctx, "")
-	if err != nil {
-		return "", err
-	}
-	return u.GetLogin(), nil
 }

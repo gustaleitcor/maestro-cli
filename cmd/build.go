@@ -3,52 +3,66 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v66/github"
 	"github.com/spf13/cobra"
 
-	"maestro-cli/internal/githubapi"
+	"maestro-cli/internal/forge"
 	"maestro-cli/internal/maestroapi"
 )
 
-var buildRef string
+var (
+	buildRef   string
+	buildForge string
+)
 
 var buildCmd = &cobra.Command{
 	Use:   "build <repo>",
-	Short: "Build a container image from a GitHub repo",
-	Args:  cobra.ExactArgs(1),
-	RunE:  runBuild,
+	Short: "Build a container image from a repo on one of your forges",
+	Long: `Builds a container image from a repository.
+
+<repo> is a name (one of your own repos), owner/name, or the repo's full
+URL. A URL picks the forge by its host; otherwise --forge does, and may be
+left out when only one forge is configured.
+
+  maestro build my-app
+  maestro build some-org/my-app --ref v1.2.0
+  maestro build https://codeberg.org/some-org/my-app
+  maestro build group/subgroup/my-app --forge gitlab`,
+	Args: cobra.ExactArgs(1),
+	RunE: runBuild,
 
 	ValidArgsFunction: completeRepos,
 }
 
 func init() {
 	buildCmd.Flags().StringVar(&buildRef, "ref", "", "branch, tag, or commit SHA to build (default: repo's default branch)")
+	addForgeFlag(buildCmd, &buildForge)
 	rootCmd.AddCommand(buildCmd)
 }
 
 func runBuild(cmd *cobra.Command, args []string) error {
-	client := githubapi.NewClient(githubToken)
-
-	owner, repo, err := parseRepoArg(cmd.Context(), client, args[0])
+	active, owner, repo, err := parseRepoArg(cmd.Context(), args[0], buildForge)
 	if err != nil {
 		return err
 	}
 
 	ref := buildRef
 	if ref == "" {
-		r, err := githubapi.GetRepo(cmd.Context(), client, owner, repo)
+		r, err := active.Client.GetRepo(cmd.Context(), owner, repo)
 		if err != nil {
 			return fmt.Errorf("resolving default branch: %w", err)
 		}
 		ref = r.DefaultBranch
 	}
 
-	fmt.Printf("Building %s/%s@%s...\n", owner, repo, ref)
+	fmt.Printf("Building %s/%s/%s@%s...\n", active.Client.Host(), owner, repo, ref)
 
-	final, err := maestroapi.TriggerBuild(cmd.Context(), maestroKey, githubToken, maestroapi.BuildRequest{
+	final, err := maestroapi.TriggerBuild(cmd.Context(), maestroKey, active.Token, maestroapi.BuildRequest{
+		Forge: active.Client.Kind(),
+		Host:  active.Client.Host(),
 		Owner: owner,
 		Repo:  repo,
 		Ref:   ref,
@@ -64,25 +78,74 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// parseRepoArg accepts "name", "owner/name", or a github.com URL; a bare
-// name resolves owner to the authenticated user.
-func parseRepoArg(ctx context.Context, client *github.Client, arg string) (owner, repo string, err error) {
-	arg = strings.TrimSuffix(arg, ".git")
-	arg = strings.TrimPrefix(arg, "https://github.com/")
-	arg = strings.TrimPrefix(arg, "http://github.com/")
-
-	switch parts := strings.Split(arg, "/"); len(parts) {
-	case 1:
-		user, err := githubapi.GetAuthenticatedUser(ctx, client)
+// parseRepoArg accepts "name", "owner/name", or a full repo URL. A URL
+// selects the forge by host; a bare name resolves the owner to the
+// authenticated user. On GitLab the owner may be a nested group path.
+func parseRepoArg(ctx context.Context, arg, forgeName string) (active *activeForge, owner, repo string, err error) {
+	if strings.Contains(arg, "://") {
+		host, path, err := splitRepoURL(arg)
 		if err != nil {
-			return "", "", fmt.Errorf("resolving authenticated user: %w", err)
+			return nil, "", "", err
 		}
-		return user.Login, parts[0], nil
-	case 2:
-		return parts[0], parts[1], nil
-	default:
-		return "", "", fmt.Errorf("invalid repo %q: expected name, owner/name, or a github.com URL", arg)
+		if active, err = selectForgeByHost(host, forgeName); err != nil {
+			return nil, "", "", err
+		}
+		if owner, repo, err = splitRepoPath(active.Client.Kind(), path); err != nil {
+			return nil, "", "", fmt.Errorf("invalid repo URL %q: %w", arg, err)
+		}
+		return active, owner, repo, nil
 	}
+
+	if active, err = selectForge(forgeName); err != nil {
+		return nil, "", "", err
+	}
+	arg = strings.Trim(strings.TrimSuffix(arg, ".git"), "/")
+	if !strings.Contains(arg, "/") {
+		if arg == "" {
+			return nil, "", "", fmt.Errorf("invalid repo: expected name, owner/name, or a repo URL")
+		}
+		user, err := active.Client.CurrentUser(ctx)
+		if err != nil {
+			return nil, "", "", fmt.Errorf("resolving authenticated user: %w", err)
+		}
+		return active, user.Login, arg, nil
+	}
+	if owner, repo, err = splitRepoPath(active.Client.Kind(), arg); err != nil {
+		return nil, "", "", fmt.Errorf("invalid repo %q: %w", arg, err)
+	}
+	return active, owner, repo, nil
+}
+
+// splitRepoURL returns the host and the repo path of a browser or clone URL.
+func splitRepoURL(raw string) (host, path string, err error) {
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "https" && parsed.Scheme != "http") {
+		return "", "", fmt.Errorf("invalid repo URL %q: expected https://host/owner/name", raw)
+	}
+	path = strings.Trim(parsed.Path, "/")
+	// GitLab puts everything that isn't the project path behind "/-/".
+	path, _, _ = strings.Cut(path, "/-/")
+	return parsed.Host, strings.TrimSuffix(path, ".git"), nil
+}
+
+// splitRepoPath splits owner/name. GitHub and Forgejo owners are a single
+// segment, so anything after owner/name (like /tree/main in a browser URL)
+// is dropped; a GitLab owner is everything before the last segment.
+func splitRepoPath(kind, path string) (owner, repo string, err error) {
+	parts := strings.Split(path, "/")
+	if len(parts) < 2 {
+		return "", "", fmt.Errorf("expected owner/name")
+	}
+	for _, part := range parts {
+		if part == "" {
+			return "", "", fmt.Errorf("expected owner/name")
+		}
+	}
+	if kind != forge.GitLab {
+		return parts[0], parts[1], nil
+	}
+	owner, repo, _ = forge.SplitFullName(path)
+	return owner, repo, nil
 }
 
 // completeRepos offers "owner/name" for every repo the user can see, plus the
@@ -95,13 +158,16 @@ func completeRepos(cmd *cobra.Command, args []string, toComplete string) ([]stri
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	client := githubapi.NewClient(githubToken)
 
-	user, err := githubapi.GetAuthenticatedUser(ctx, client)
+	active, err := selectForge(buildForge)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	repos, err := githubapi.ListRepos(ctx, client)
+	user, err := active.Client.CurrentUser(ctx)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	repos, err := active.Client.ListRepos(ctx)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -112,7 +178,7 @@ func completeRepos(cmd *cobra.Command, args []string, toComplete string) ([]stri
 	var completions []string
 	for _, r := range repos {
 		candidates := []string{r.FullName}
-		if strings.HasPrefix(r.FullName, user.Login+"/") {
+		if r.FullName == user.Login+"/"+r.Name {
 			candidates = append(candidates, r.Name)
 		}
 		for _, c := range candidates {

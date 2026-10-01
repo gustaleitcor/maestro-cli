@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/lipgloss"
 
-	"maestro-cli/internal/githubapi"
+	"maestro-cli/internal/forge"
 	"maestro-cli/internal/maestroapi"
 )
 
@@ -35,9 +35,9 @@ func (m model) View() string {
 
 	switch m.screen {
 	case meScreen:
-		return renderUser(m.user) + "\n" + helpStyle.Render("press q to quit") + "\n"
+		return renderUser(m.client.Host(), m.user) + "\n" + helpStyle.Render("press q to quit") + "\n"
 	case repoListScreen:
-		header := bar(headerStyle, m.width, fmt.Sprintf("Repositories (%d)", len(m.repos)))
+		header := bar(headerStyle, m.width, fmt.Sprintf("Repositories on %s (%d)", m.client.Host(), len(m.repos)))
 		footer := bar(footerStyle, m.width, "↑/↓ navigate · q to quit")
 		return header + "\n" + m.table.View() + "\n" + footer
 	case imageListScreen:
@@ -59,8 +59,9 @@ func bar(s lipgloss.Style, width int, text string) string {
 	return s.Render(text)
 }
 
-func renderUser(u *githubapi.User) string {
+func renderUser(host string, u *forge.User) string {
 	var b strings.Builder
+	fmt.Fprintln(&b, labelStyle.Render("Forge:")+" "+host)
 	fmt.Fprintln(&b, labelStyle.Render("Login:")+" "+u.Login)
 	if u.Name != "" {
 		fmt.Fprintln(&b, labelStyle.Render("Name:")+" "+u.Name)
@@ -68,8 +69,13 @@ func renderUser(u *githubapi.User) string {
 	if u.Bio != "" {
 		fmt.Fprintln(&b, labelStyle.Render("Bio:")+" "+u.Bio)
 	}
-	fmt.Fprintln(&b, labelStyle.Render("Repos:")+fmt.Sprintf(" %d public", u.PublicRepos))
-	fmt.Fprintln(&b, labelStyle.Render("Followers:")+fmt.Sprintf(" %d · Following: %d", u.Followers, u.Following))
+	// Not every forge reports these; -1 means it doesn't.
+	if u.PublicRepos >= 0 {
+		fmt.Fprintln(&b, labelStyle.Render("Repos:")+fmt.Sprintf(" %d public", u.PublicRepos))
+	}
+	if u.Followers >= 0 && u.Following >= 0 {
+		fmt.Fprintln(&b, labelStyle.Render("Followers:")+fmt.Sprintf(" %d · Following: %d", u.Followers, u.Following))
+	}
 	fmt.Fprint(&b, labelStyle.Render("Profile:")+" "+u.HTMLURL)
 	return cardStyle.Render(b.String())
 }
@@ -79,7 +85,7 @@ const cellPad = 2 // bubbles/table's Cell/Header padding on each side of every c
 const tableChromeLines = 6 // page header + footer bars, plus their joining newlines
 const tableHeaderLines = 2 // the table's own column-header row plus its border
 
-func buildRepoTable(repos []githubapi.Repo, width, height int) table.Model {
+func buildRepoTable(repos []forge.Repo, width, height int) table.Model {
 	columns := []table.Column{
 		{Title: "NAME"},
 		{Title: "VISIBILITY", Width: 10},

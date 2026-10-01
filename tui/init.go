@@ -4,14 +4,13 @@ import (
 	"context"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/google/go-github/v66/github"
 
-	"maestro-cli/internal/githubapi"
+	"maestro-cli/internal/forge"
 	"maestro-cli/internal/maestroapi"
 )
 
-type userLoadedMsg struct{ user *githubapi.User }
-type reposLoadedMsg struct{ repos []githubapi.Repo }
+type userLoadedMsg struct{ user *forge.User }
+type reposLoadedMsg struct{ repos []forge.Repo }
 type imagesLoadedMsg struct{ images []maestroapi.Image }
 type fetchErrMsg struct{ err error }
 
@@ -27,9 +26,9 @@ func (m model) Init() tea.Cmd {
 	return nil
 }
 
-func fetchUser(ctx context.Context, client *github.Client) tea.Cmd {
+func fetchUser(ctx context.Context, client forge.Forge) tea.Cmd {
 	return func() tea.Msg {
-		u, err := githubapi.GetAuthenticatedUser(ctx, client)
+		u, err := client.CurrentUser(ctx)
 		if err != nil {
 			return fetchErrMsg{err}
 		}
@@ -37,9 +36,9 @@ func fetchUser(ctx context.Context, client *github.Client) tea.Cmd {
 	}
 }
 
-func fetchRepos(ctx context.Context, client *github.Client) tea.Cmd {
+func fetchRepos(ctx context.Context, client forge.Forge) tea.Cmd {
 	return func() tea.Msg {
-		repos, err := githubapi.ListRepos(ctx, client)
+		repos, err := client.ListRepos(ctx)
 		if err != nil {
 			return fetchErrMsg{err}
 		}

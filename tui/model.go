@@ -6,9 +6,8 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/google/go-github/v66/github"
 
-	"maestro-cli/internal/githubapi"
+	"maestro-cli/internal/forge"
 	"maestro-cli/internal/maestroapi"
 )
 
@@ -23,22 +22,22 @@ const (
 type model struct {
 	screen  screen
 	ctx     context.Context
-	client  *github.Client
+	client  forge.Forge
 	spinner spinner.Model
 	loading bool
 	err     error
 
 	maestroKey string
 
-	user   *githubapi.User
-	repos  []githubapi.Repo
+	user   *forge.User
+	repos  []forge.Repo
 	images []maestroapi.Image
 	table  table.Model
 
 	width, height int
 }
 
-func newModel(ctx context.Context, client *github.Client, s screen) model {
+func newModel(ctx context.Context, client forge.Forge, s screen) model {
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 
@@ -51,13 +50,13 @@ func newModel(ctx context.Context, client *github.Client, s screen) model {
 	}
 }
 
-func RunMe(ctx context.Context, client *github.Client) error {
+func RunMe(ctx context.Context, client forge.Forge) error {
 	m := newModel(ctx, client, meScreen)
 	_, err := tea.NewProgram(m, tea.WithAltScreen()).Run()
 	return err
 }
 
-func RunRepoList(ctx context.Context, client *github.Client) error {
+func RunRepoList(ctx context.Context, client forge.Forge) error {
 	m := newModel(ctx, client, repoListScreen)
 	_, err := tea.NewProgram(m, tea.WithAltScreen()).Run()
 	return err

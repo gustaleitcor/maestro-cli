@@ -129,10 +129,10 @@ func postJSON(ctx context.Context, path string, body any, wantStatus int, out an
 	return nil
 }
 
-// BuildRequest describes what to build. Server is optional; empty means let
-// maestro-orq pick.
+// BuildRequest describes what to build. Forge is the forge kind and Host
+// its host[:port]; Server is optional, empty means let maestro-orq pick.
 type BuildRequest struct {
-	Owner, Repo, Ref, Server string
+	Forge, Host, Owner, Repo, Ref, Server string
 }
 
 // StreamEvent is one line of the /api/builds NDJSON response: either a
@@ -151,13 +151,17 @@ type errorResponse struct {
 // TriggerBuild POSTs to /api/builds and invokes onLine for each streamed
 // output chunk as it arrives. It blocks until the build finishes or ctx is
 // cancelled, returning the final status event.
-func TriggerBuild(ctx context.Context, maestroKey, githubToken string, req BuildRequest, onLine func(string)) (*StreamEvent, error) {
+//
+// forgeToken is the read-only token maestro-orq clones with.
+func TriggerBuild(ctx context.Context, maestroKey, forgeToken string, req BuildRequest, onLine func(string)) (*StreamEvent, error) {
 	body, err := json.Marshal(struct {
+		Forge  string `json:"forge"`
+		Host   string `json:"host"`
 		Owner  string `json:"owner"`
 		Repo   string `json:"repo"`
 		Ref    string `json:"ref"`
 		Server string `json:"server,omitempty"`
-	}{req.Owner, req.Repo, req.Ref, req.Server})
+	}{req.Forge, req.Host, req.Owner, req.Repo, req.Ref, req.Server})
 	if err != nil {
 		return nil, fmt.Errorf("encoding request: %w", err)
 	}
@@ -167,7 +171,11 @@ func TriggerBuild(ctx context.Context, maestroKey, githubToken string, req Build
 		return nil, fmt.Errorf("building request: %w", err)
 	}
 	httpReq.Header.Set("Authorization", "Bearer "+maestroKey)
-	httpReq.Header.Set("X-GitHub-Token", githubToken)
+	httpReq.Header.Set("X-Forge-Token", forgeToken)
+	if req.Forge == "github" {
+		// What a maestro-orq older than multi-forge support reads.
+		httpReq.Header.Set("X-GitHub-Token", forgeToken)
+	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
 	// No client timeout: builds can run for many minutes. Cancel via ctx instead.

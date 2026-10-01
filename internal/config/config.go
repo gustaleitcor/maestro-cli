@@ -13,8 +13,9 @@ import (
 const (
 	service = "maestro-cli"
 
-	githubKeyringUser  = "github_token"
+	githubKeyringUser  = "github_token" // legacy: migrated to a forge named "github"
 	maestroKeyringUser = "maestro_key"
+	forgeKeyringPrefix = "forge:"
 
 	appDirName  = "maestro"
 	configFile  = "config.json"
@@ -24,6 +25,18 @@ const (
 type Config struct {
 	GitHubToken string `json:"github_token,omitempty"`
 	MaestroKey  string `json:"maestro_key,omitempty"`
+
+	Forges []Forge `json:"forges,omitempty"`
+	// ForgeTokens is only used when the keyring isn't; see saveForgeToken.
+	ForgeTokens map[string]string `json:"forge_tokens,omitempty"`
+}
+
+// Forge is one configured git forge. Its token is stored apart from it, in
+// the keyring under "forge:<name>".
+type Forge struct {
+	Name    string `json:"name"`
+	Kind    string `json:"kind"`
+	BaseURL string `json:"base_url,omitempty"` // empty: the kind's public instance
 }
 
 func dir() (string, error) {
