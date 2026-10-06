@@ -38,7 +38,8 @@ checked before it is stored. Only Forgejo takes a --url.
   maestro forge add
   maestro forge add --kind gitlab
   maestro forge add work --kind forgejo --url https://git.example.com`,
-	Args: cobra.MaximumNArgs(1),
+	Args:              cobra.MaximumNArgs(1),
+	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := ""
 		if len(args) == 1 {
@@ -49,9 +50,10 @@ checked before it is stored. Only Forgejo takes a --url.
 }
 
 var forgeListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List the configured forges",
-	Args:  cobra.NoArgs,
+	Use:               "list",
+	Short:             "List the configured forges",
+	Args:              cobra.NoArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		forges, err := config.Forges()
 		if err != nil {

@@ -30,10 +30,11 @@ var rootCmd = &cobra.Command{
 	// Bare invocation shows who is signed in instead of the usual help text.
 	RunE: runWelcome,
 	// maestro (bare), login, logout, forge, help, and completion shouldn't require a
-	// Maestro key to run. Commands that read a forge load it themselves.
+	// Maestro key to run. Commands that read a forge load it themselves, and
+	// completions that need the key load it themselves too.
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		switch cmd.Name() {
-		case "maestro", "login", "logout", "help", "completion":
+		case "maestro", "login", "logout", "help", "completion", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd:
 			return nil
 		}
 		if cmd == forgeCmd || cmd.Parent() == forgeCmd {

@@ -21,7 +21,9 @@ var repoListCmd = &cobra.Command{
 	Short: "List the repositories your forge tokens can see",
 	Long: `Lists one forge's repositories. Left and right arrows switch forge;
 --forge picks the one shown first.`,
-	RunE: runRepoList,
+	Args:              cobra.NoArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
+	RunE:              runRepoList,
 }
 
 func init() {

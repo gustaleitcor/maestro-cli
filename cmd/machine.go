@@ -20,8 +20,9 @@ var machineListCmd = &cobra.Command{
 	Short: "List the machines, and whether Maestro can reach them now",
 	Long: `Lists the machines an administrator added on the Maestro page. Their
 names are what maestro.toml refers to them by.`,
-	Args: cobra.NoArgs,
-	RunE: runMachineList,
+	Args:              cobra.NoArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
+	RunE:              runMachineList,
 }
 
 func init() {

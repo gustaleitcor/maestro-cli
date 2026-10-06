@@ -18,8 +18,9 @@ var logoutCmd = &cobra.Command{
 	Short: "Sign out and forget everything the CLI has stored",
 	Long: `Forgets the Maestro key, every forge and its token, on this machine only.
 Revoke the key and tokens on the Maestro page and on each forge.`,
-	Args: cobra.NoArgs,
-	RunE: runLogout,
+	Args:              cobra.NoArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
+	RunE:              runLogout,
 }
 
 func init() {

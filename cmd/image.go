@@ -15,10 +15,11 @@ var imageCmd = &cobra.Command{
 }
 
 var imageListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List the built images",
-	Args:  cobra.NoArgs,
-	RunE:  runImageList,
+	Use:               "list",
+	Short:             "List the built images",
+	Args:              cobra.NoArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
+	RunE:              runImageList,
 }
 
 var imageRmCmd = &cobra.Command{
@@ -29,8 +30,9 @@ Each user may keep a limited number of images; this frees a place for a new
 build. The build's record and its runs, with their files, are kept.
 
 <build> is the build number shown by ` + "`maestro image list`" + `, with or without #.`,
-	Args: cobra.ExactArgs(1),
-	RunE: runImageRm,
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeBuilds,
+	RunE:              runImageRm,
 }
 
 func init() {

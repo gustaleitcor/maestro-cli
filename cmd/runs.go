@@ -21,24 +21,27 @@ var runsCmd = &cobra.Command{
 }
 
 var runsListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List your runs",
-	Args:  cobra.NoArgs,
-	RunE:  runRunsList,
+	Use:               "list",
+	Short:             "List your runs",
+	Args:              cobra.NoArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
+	RunE:              runRunsList,
 }
 
 var runsShowCmd = &cobra.Command{
-	Use:   "show <run>",
-	Short: "Show each line of a run: where it ran, how it ended, what it kept",
-	Args:  cobra.ExactArgs(1),
-	RunE:  runRunsShow,
+	Use:               "show <run>",
+	Short:             "Show each line of a run: where it ran, how it ended, what it kept",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeRuns,
+	RunE:              runRunsShow,
 }
 
 var runsLogsCmd = &cobra.Command{
-	Use:   "logs <run> <line>",
-	Short: "Print what a line's container wrote to stdout and stderr",
-	Args:  cobra.ExactArgs(2),
-	RunE:  runRunsLogs,
+	Use:               "logs <run> <line>",
+	Short:             "Print what a line's container wrote to stdout and stderr",
+	Args:              cobra.ExactArgs(2),
+	ValidArgsFunction: completeRunLines,
+	RunE:              runRunsLogs,
 }
 
 var runsGetCmd = &cobra.Command{
@@ -46,22 +49,25 @@ var runsGetCmd = &cobra.Command{
 	Short: "Download the files kept from a run",
 	Long: `Downloads every file kept from a run's containers, and their logs, into
 <dir>/<run>/<line>/ (dir defaults to the current directory).`,
-	Args: cobra.RangeArgs(1, 2),
-	RunE: runRunsGet,
+	Args:              cobra.RangeArgs(1, 2),
+	ValidArgsFunction: completeRunThenDir,
+	RunE:              runRunsGet,
 }
 
 var runsCancelCmd = &cobra.Command{
-	Use:   "cancel <run>",
-	Short: "Cancel a run: drop what hasn't started and stop what has",
-	Args:  cobra.ExactArgs(1),
-	RunE:  runRunsCancel,
+	Use:               "cancel <run>",
+	Short:             "Cancel a run: drop what hasn't started and stop what has",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeRuns,
+	RunE:              runRunsCancel,
 }
 
 var runsRmCmd = &cobra.Command{
-	Use:   "rm <run>",
-	Short: "Delete a finished run and the files kept from it",
-	Args:  cobra.ExactArgs(1),
-	RunE:  runRunsRm,
+	Use:               "rm <run>",
+	Short:             "Delete a finished run and the files kept from it",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeRuns,
+	RunE:              runRunsRm,
 }
 
 func init() {

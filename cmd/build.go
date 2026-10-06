@@ -280,9 +280,6 @@ func completeRepos(cmd *cobra.Command, args []string, toComplete string) ([]stri
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	// Tabs separate a completion from its description; newlines end it.
-	clean := strings.NewReplacer("\t", " ", "\n", " ", "\r", " ")
-
 	// Every forge is asked at once; one that fails just offers nothing.
 	perForge := make([][]string, len(forges))
 	var wg sync.WaitGroup
@@ -294,7 +291,7 @@ func completeRepos(cmd *cobra.Command, args []string, toComplete string) ([]stri
 			}
 			for _, r := range repos {
 				c := r.FullName
-				description := clean.Replace(r.Description)
+				description := descriptionCleaner.Replace(r.Description)
 				if len(forges) > 1 {
 					// Say where it lives, since `maestro build` finds that out itself.
 					description = strings.TrimSuffix(active.Name+": "+description, ": ")

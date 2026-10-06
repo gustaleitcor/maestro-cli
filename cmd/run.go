@@ -23,8 +23,9 @@ Containers start as machines have room; follow them with ` + "`maestro runs show
   maestro run 12
   maestro runs show <run>
   maestro runs get <run>`,
-	Args: cobra.ExactArgs(1),
-	RunE: runRun,
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeBuilds,
+	RunE:              runRun,
 }
 
 func init() {
