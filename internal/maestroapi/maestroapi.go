@@ -461,7 +461,7 @@ func doWithKey(ctx context.Context, maestroKey, method, path string, body any, w
 		var errResp errorResponse
 		json.NewDecoder(resp.Body).Decode(&errResp)
 		if resp.StatusCode == http.StatusNotFound && errResp.Error == "" {
-			return fmt.Errorf("this Maestro server can't run images yet")
+			return fmt.Errorf("this Maestro server is too old for that; update it")
 		}
 		if errResp.Error == "" {
 			return fmt.Errorf("maestro-orq responded with %s", resp.Status)

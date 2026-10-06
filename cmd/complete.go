@@ -115,3 +115,23 @@ func runOffers(ctx context.Context, key, toComplete string) []string {
 	}
 	return offers
 }
+
+// completeMachines offers the machines, by name.
+func completeMachines(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	return withKey(func(ctx context.Context, key string) []string {
+		machines, err := maestroapi.ListMachines(ctx, key)
+		if err != nil {
+			return nil
+		}
+		var offers []string
+		for _, machine := range machines {
+			if strings.HasPrefix(strings.ToLower(machine.Name), strings.ToLower(toComplete)) {
+				offers = append(offers, completion(machine.Name, machine.Description))
+			}
+		}
+		return offers
+	})
+}
