@@ -80,7 +80,6 @@ type ContainerMetrics struct {
 	MemLimit uint64  `json:"memory_limit"`
 }
 
-// GetMetrics reads every machine, or only the named one.
 func GetMetrics(ctx context.Context, maestroKey, machine string) ([]MachineMetrics, error) {
 	path := "/api/metrics"
 	if machine != "" {

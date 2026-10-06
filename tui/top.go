@@ -13,8 +13,7 @@ import (
 	"maestro-cli/internal/maestroapi"
 )
 
-// Fetch reads how loaded the machines are; only is one machine's name, or
-// empty for all of them.
+// Fetch reads the machines; only is one machine's name, or empty for all.
 type Fetch func(ctx context.Context, only string) ([]maestroapi.MachineMetrics, error)
 
 type topModel struct {
@@ -181,7 +180,6 @@ func (m topModel) move(by int) topModel {
 	return m
 }
 
-// merge replaces the machines of old that are in fresh, and keeps the rest.
 func merge(old, fresh []maestroapi.MachineMetrics) []maestroapi.MachineMetrics {
 	merged := append([]maestroapi.MachineMetrics(nil), old...)
 	for _, f := range fresh {
@@ -208,7 +206,6 @@ var (
 	topGood     = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
 )
 
-// level colors a load: calm, busy, or about to run out.
 func level(percent float64) lipgloss.Color {
 	switch {
 	case percent >= 85:
@@ -219,7 +216,6 @@ func level(percent float64) lipgloss.Color {
 	return lipgloss.Color("42")
 }
 
-// gauge draws percent as a bar width cells wide.
 func gauge(width int, percent float64) string {
 	width = max(width, 3)
 	filled := int(percent/100*float64(width) + 0.5)
@@ -228,7 +224,6 @@ func gauge(width int, percent float64) string {
 		topDim.Render(strings.Repeat("░", width-filled))
 }
 
-// meter is a labelled bar with its figure after it: "CPU ████░░░░  42%".
 func meter(label string, width int, percent float64, figure string) string {
 	return topLabel.Render(fmt.Sprintf("%-5s", label)) + gauge(width, percent) + " " + figure
 }
@@ -293,8 +288,6 @@ func (m topModel) footer() string {
 	return lipgloss.NewStyle().MaxWidth(m.width).Render(topDim.Render(keys))
 }
 
-// barWidth is how wide each of n bars sits on a line, next to what else is
-// there taking taken columns.
 func (m topModel) barWidth(n, taken int) int {
 	return max(6, min(30, (m.width-taken)/max(n, 1)))
 }
@@ -314,7 +307,6 @@ func (m topModel) overviewLines() []string {
 	return lines
 }
 
-// machineSummary is the two lines the overview gives a machine.
 func machineSummary(machine maestroapi.MachineMetrics, barWidth int) (string, string) {
 	dot, name := topGood.Render("●"), topBold.Render(machine.Name)
 	if machine.Kind == "host" {

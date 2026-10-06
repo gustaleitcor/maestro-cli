@@ -18,7 +18,6 @@ const completionTimeout = 10 * time.Second
 // Tabs separate a completion from its description; newlines end it.
 var descriptionCleaner = strings.NewReplacer("\t", " ", "\n", " ", "\r", " ")
 
-// completion is one suggestion: the value, and what it is.
 func completion(value any, description string) string {
 	return fmt.Sprintf("%v\t%s", value, descriptionCleaner.Replace(description))
 }
@@ -36,7 +35,6 @@ func withKey(offer func(ctx context.Context, key string) []string) ([]string, co
 	return offer(ctx, key), cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveKeepOrder
 }
 
-// completeBuilds offers the builds that still have an image, newest first.
 func completeBuilds(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
@@ -57,7 +55,6 @@ func completeBuilds(cmd *cobra.Command, args []string, toComplete string) ([]str
 	})
 }
 
-// completeRuns offers the user's runs as the first argument, newest first.
 func completeRuns(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
@@ -65,7 +62,6 @@ func completeRuns(cmd *cobra.Command, args []string, toComplete string) ([]strin
 	return withKey(func(ctx context.Context, key string) []string { return runOffers(ctx, key, toComplete) })
 }
 
-// completeRunLines offers a run, then one of its lines.
 func completeRunLines(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	switch len(args) {
 	case 0:
@@ -93,7 +89,6 @@ func completeRunLines(cmd *cobra.Command, args []string, toComplete string) ([]s
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }
 
-// completeRunThenDir offers a run, then a directory to download into.
 func completeRunThenDir(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) == 1 {
 		return nil, cobra.ShellCompDirectiveFilterDirs
@@ -116,7 +111,6 @@ func runOffers(ctx context.Context, key, toComplete string) []string {
 	return offers
 }
 
-// completeMachines offers the machines, by name.
 func completeMachines(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp

@@ -23,7 +23,6 @@ func Bytes(n uint64) string {
 	return fmt.Sprintf("%.0f%c", value, units[unit])
 }
 
-// Rate writes bytes per second.
 func Rate(bytesPerSecond float64) string {
 	if bytesPerSecond < 0 {
 		bytesPerSecond = 0
@@ -31,7 +30,6 @@ func Rate(bytesPerSecond float64) string {
 	return Bytes(uint64(bytesPerSecond)) + "/s"
 }
 
-// Uptime writes how long something has been up: 12m, 5h12m, 3d4h.
 func Uptime(seconds float64) string {
 	d := time.Duration(seconds) * time.Second
 	switch {
@@ -43,7 +41,6 @@ func Uptime(seconds float64) string {
 	return fmt.Sprintf("%dd%dh", int(d.Hours())/24, int(d.Hours())%24)
 }
 
-// Percent writes a percentage without decimals.
 func Percent(p float64) string {
 	return fmt.Sprintf("%.0f%%", p)
 }
