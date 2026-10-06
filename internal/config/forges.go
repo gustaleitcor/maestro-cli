@@ -14,7 +14,6 @@ var forgeNamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]*$`)
 
 var ErrNoForgeToken = errors.New("no token stored for this forge")
 
-// legacyForgeName is what a github_token saved by an older CLI becomes.
 const legacyForgeName = "github"
 
 // Forges returns the configured forges. The first call after upgrading from
@@ -42,7 +41,6 @@ func Forges() ([]Forge, error) {
 	return []Forge{{Name: legacyForgeName, Kind: "github"}}, nil
 }
 
-// AddForge stores a forge and its token, replacing any forge of the same name.
 func AddForge(f Forge, token string) error {
 	if !forgeNamePattern.MatchString(f.Name) {
 		return fmt.Errorf("invalid forge name %q: use lowercase letters, digits, '.', '_' or '-'", f.Name)
@@ -66,7 +64,6 @@ func AddForge(f Forge, token string) error {
 	return writeConfigFile(cfg)
 }
 
-// RemoveForge forgets a forge and its token. It reports whether it existed.
 func RemoveForge(name string) (bool, error) {
 	cfg, err := readConfigFile()
 	if err != nil {

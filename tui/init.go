@@ -15,11 +15,17 @@ type reposLoadedMsg struct {
 	forge int
 	repos []forge.Repo
 }
+
 type reposErrMsg struct {
 	forge int
 	err   error
 }
-type imagesLoadedMsg struct{ images []maestroapi.Image }
+
+type imagesLoadedMsg struct {
+	images []maestroapi.Image
+	limit  int
+}
+
 type fetchErrMsg struct{ err error }
 
 func (m model) Init() tea.Cmd {
@@ -48,6 +54,11 @@ func fetchImages(ctx context.Context, maestroKey string) tea.Cmd {
 		if err != nil {
 			return fetchErrMsg{err}
 		}
-		return imagesLoadedMsg{images}
+		// Best effort: a server from before the limit has no settings.
+		settings, err := maestroapi.GetSettings(ctx, maestroKey)
+		if err != nil {
+			return imagesLoadedMsg{images: images}
+		}
+		return imagesLoadedMsg{images: images, limit: settings.ImagesPerUser}
 	}
 }

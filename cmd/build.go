@@ -41,6 +41,8 @@ which must be at the root of the repo.
 	ValidArgsFunction: completeRepos,
 }
 
+var buildFiles = []string{"Dockerfile", "Containerfile"}
+
 func init() {
 	buildCmd.Flags().StringVar(&buildRef, "ref", "", "branch, tag or commit to build (default: the default branch)")
 	addForgeFlag(buildCmd, &buildForge)
@@ -85,9 +87,6 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	fmt.Printf("\n%s %s\n", successStyle.Render("Build succeeded:"), final.ImageID)
 	return nil
 }
-
-// buildFiles are what the build looks for at the root of the repo.
-var buildFiles = []string{"Dockerfile", "Containerfile"}
 
 // checkBuildFile stops a build that has nothing to build from before it
 // reaches the server. Only a clear "not there" stops it: when the forge
@@ -196,7 +195,6 @@ func allUnreachable(errs []error) bool {
 	return true
 }
 
-// forgesToSearch is the forge --forge names, or every configured one.
 func forgesToSearch(name string) ([]*activeForge, error) {
 	if name != "" {
 		active, err := selectForge(name)
@@ -224,8 +222,6 @@ func forgesToSearch(name string) ([]*activeForge, error) {
 	return all, nil
 }
 
-// splitRepoArg reads "name" or "owner/name" as a repo on one forge; a bare
-// name belongs to the token's own user.
 func splitRepoArg(ctx context.Context, active *activeForge, arg string) (owner, repo string, err error) {
 	if !strings.Contains(arg, "/") {
 		user, err := active.Client.CurrentUser(ctx)
@@ -240,7 +236,6 @@ func splitRepoArg(ctx context.Context, active *activeForge, arg string) (owner, 
 	return owner, repo, nil
 }
 
-// splitRepoURL returns the host and the repo path of a browser or clone URL.
 func splitRepoURL(raw string) (host, path string, err error) {
 	parsed, err := url.Parse(raw)
 	if err != nil || parsed.Host == "" || (parsed.Scheme != "https" && parsed.Scheme != "http") {
@@ -272,8 +267,6 @@ func splitRepoPath(kind, path string) (owner, repo string, err error) {
 	return owner, repo, nil
 }
 
-// completeRepos offers "owner/name" for every repo the user can see, most
-// recently updated first.
 func completeRepos(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp

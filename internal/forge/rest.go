@@ -12,16 +12,12 @@ import (
 	"maestro-cli/internal/netfail"
 )
 
-// restAPI is the plain JSON-over-HTTP client the Forgejo and GitLab
-// implementations share; they differ only in paths and the auth header.
 type restAPI struct {
 	base   *url.URL
 	header string
 	value  string
 }
 
-// get decodes the JSON at path (which must already be escaped) into out and
-// returns the response headers, which carry the pagination.
 func (a restAPI) get(ctx context.Context, path string, query url.Values, out any) (http.Header, error) {
 	target := a.base.String() + path
 	if len(query) > 0 {

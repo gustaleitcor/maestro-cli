@@ -92,6 +92,74 @@ var forgeRemoveCmd = &cobra.Command{
 	ValidArgsFunction: completeForgeNames,
 }
 
+type activeForge struct {
+	config.Forge
+	Token  string
+	Client forge.Forge
+}
+
+func openForge(f config.Forge) (*activeForge, error) {
+	token, err := config.ForgeToken(f.Name)
+	if err != nil {
+		return nil, fmt.Errorf("%w\n\nRun `maestro forge add %s --kind %s` to store one", err, f.Name, f.Kind)
+	}
+	client, err := forge.New(f.Kind, f.BaseURL, token)
+	if err != nil {
+		return nil, err
+	}
+	return &activeForge{Forge: f, Token: token, Client: client}, nil
+}
+
+// selectForge resolves --forge. Without it, the only configured forge is
+// used; with several, the caller has to say which.
+func selectForge(name string) (*activeForge, error) {
+	forges, err := config.Forges()
+	if err != nil {
+		return nil, err
+	}
+	if len(forges) == 0 {
+		return nil, fmt.Errorf("no forge configured\n\nRun `maestro forge add` to add GitHub, a Forgejo instance, or GitLab")
+	}
+
+	if name == "" {
+		if len(forges) > 1 {
+			return nil, fmt.Errorf("several forges are configured (%s); pick one with --forge", forgeNames(forges))
+		}
+		return openForge(forges[0])
+	}
+	for _, f := range forges {
+		if f.Name == name {
+			return openForge(f)
+		}
+	}
+	return nil, fmt.Errorf("no forge named %q (configured: %s)", name, forgeNames(forges))
+}
+
+// selectForgeByHost finds the forge a repo URL belongs to. name, when set,
+// narrows the search to that forge, which must then serve the host.
+func selectForgeByHost(host, name string) (*activeForge, error) {
+	forges, err := config.Forges()
+	if err != nil {
+		return nil, err
+	}
+	for _, f := range forges {
+		if name != "" && f.Name != name {
+			continue
+		}
+		baseURL := f.BaseURL
+		if baseURL == "" {
+			baseURL = forge.DefaultBaseURL(f.Kind)
+		}
+		if parsed, err := url.Parse(baseURL); err == nil && strings.EqualFold(parsed.Host, host) {
+			return openForge(f)
+		}
+	}
+	if name != "" {
+		return nil, fmt.Errorf("forge %q does not serve %s", name, host)
+	}
+	return nil, fmt.Errorf("no configured forge serves %s\n\nRun `maestro forge add --kind forgejo --url https://%s` to add it", host, host)
+}
+
 func init() {
 	forgeAddCmd.Flags().StringVar(&forgeAddKind, "kind", "", "forge kind: "+strings.Join(forge.Kinds, ", "))
 	forgeAddCmd.Flags().StringVar(&forgeAddURL, "url", "", "Forgejo instance URL (default: https://codeberg.org)")
@@ -115,8 +183,6 @@ func completeForgeNames(cmd *cobra.Command, args []string, toComplete string) ([
 	return names, cobra.ShellCompDirectiveNoFileComp
 }
 
-// addForgeFlag gives a command the --forge flag every forge-reading
-// command shares.
 func addForgeFlag(cmd *cobra.Command, target *string) {
 	cmd.Flags().StringVar(target, "forge", "", "which forge to use (see 'maestro forge list')")
 	cmd.RegisterFlagCompletionFunc("forge", completeForgeNames)
@@ -217,76 +283,6 @@ func readLine(stdin *bufio.Reader, label, fallback string) (string, error) {
 		return "", fmt.Errorf("no value provided")
 	}
 	return fallback, nil
-}
-
-// activeForge is a configured forge ready to use: its client, plus the
-// token maestro-orq needs to clone from it.
-type activeForge struct {
-	config.Forge
-	Token  string
-	Client forge.Forge
-}
-
-func openForge(f config.Forge) (*activeForge, error) {
-	token, err := config.ForgeToken(f.Name)
-	if err != nil {
-		return nil, fmt.Errorf("%w\n\nRun `maestro forge add %s --kind %s` to store one", err, f.Name, f.Kind)
-	}
-	client, err := forge.New(f.Kind, f.BaseURL, token)
-	if err != nil {
-		return nil, err
-	}
-	return &activeForge{Forge: f, Token: token, Client: client}, nil
-}
-
-// selectForge resolves --forge. Without it, the only configured forge is
-// used; with several, the caller has to say which.
-func selectForge(name string) (*activeForge, error) {
-	forges, err := config.Forges()
-	if err != nil {
-		return nil, err
-	}
-	if len(forges) == 0 {
-		return nil, fmt.Errorf("no forge configured\n\nRun `maestro forge add` to add GitHub, a Forgejo instance, or GitLab")
-	}
-
-	if name == "" {
-		if len(forges) > 1 {
-			return nil, fmt.Errorf("several forges are configured (%s); pick one with --forge", forgeNames(forges))
-		}
-		return openForge(forges[0])
-	}
-	for _, f := range forges {
-		if f.Name == name {
-			return openForge(f)
-		}
-	}
-	return nil, fmt.Errorf("no forge named %q (configured: %s)", name, forgeNames(forges))
-}
-
-// selectForgeByHost finds the forge a repo URL belongs to. name, when set,
-// narrows the search to that forge, which must then serve the host.
-func selectForgeByHost(host, name string) (*activeForge, error) {
-	forges, err := config.Forges()
-	if err != nil {
-		return nil, err
-	}
-	for _, f := range forges {
-		if name != "" && f.Name != name {
-			continue
-		}
-		baseURL := f.BaseURL
-		if baseURL == "" {
-			baseURL = forge.DefaultBaseURL(f.Kind)
-		}
-		if parsed, err := url.Parse(baseURL); err == nil && strings.EqualFold(parsed.Host, host) {
-			return openForge(f)
-		}
-	}
-	if name != "" {
-		return nil, fmt.Errorf("forge %q does not serve %s", name, host)
-	}
-	return nil, fmt.Errorf("no configured forge serves %s\n\nRun `maestro forge add --kind forgejo --url https://%s` to add it", host, host)
 }
 
 func forgeNames(forges []config.Forge) string {

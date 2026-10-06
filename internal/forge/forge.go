@@ -18,7 +18,6 @@ const (
 	GitLab  = "gitlab"
 )
 
-// Kinds lists the supported forge kinds, in the order they are offered.
 var Kinds = []string{GitHub, Forgejo, GitLab}
 
 type Forge interface {
@@ -35,16 +34,7 @@ type Forge interface {
 	HasFile(ctx context.Context, owner, repo, ref, path string) (bool, error)
 }
 
-// ErrNotFound is what a forge's 404 unwraps to.
 var ErrNotFound = errors.New("not found")
-
-// missing turns a lookup's ErrNotFound into a plain "no".
-func missing(err error) (bool, error) {
-	if errors.Is(err, ErrNotFound) {
-		return false, nil
-	}
-	return err == nil, err
-}
 
 // User is the token's owner. The counters are -1 where a forge's API
 // doesn't report them.
@@ -73,7 +63,33 @@ type Repo struct {
 	DefaultBranch string
 }
 
-// DefaultBaseURL is where each kind is hosted when it isn't self-hosted.
+// New builds the client for one configured forge. An empty baseURL means
+// the kind's public instance; an empty token means anonymous access, which
+// only sees what the forge shows to everyone.
+func New(kind, baseURL, token string) (Forge, error) {
+	if baseURL == "" {
+		baseURL = DefaultBaseURL(kind)
+	}
+	base, err := url.Parse(strings.TrimRight(baseURL, "/"))
+	if err != nil || base.Host == "" || (base.Scheme != "https" && base.Scheme != "http") {
+		return nil, fmt.Errorf("invalid forge URL %q: expected something like https://git.example.com", baseURL)
+	}
+
+	switch kind {
+	case GitHub:
+		return newGitHub(base, token)
+	case Forgejo:
+		api := restAPI{base: base}
+		if token != "" {
+			api.header, api.value = "Authorization", "token "+token
+		}
+		return &forgejo{api: api}, nil
+	case GitLab:
+		return &gitlab{api: restAPI{base: base, header: "PRIVATE-TOKEN", value: token}}, nil
+	}
+	return nil, fmt.Errorf("unknown forge kind %q: use %s", kind, strings.Join(Kinds, ", "))
+}
+
 func DefaultBaseURL(kind string) string {
 	switch kind {
 	case GitHub:
@@ -115,33 +131,6 @@ func TokenHint(kind, baseURL string) (hint, warning string) {
 	return "", ""
 }
 
-// New builds the client for one configured forge. An empty baseURL means
-// the kind's public instance; an empty token means anonymous access, which
-// only sees what the forge shows to everyone.
-func New(kind, baseURL, token string) (Forge, error) {
-	if baseURL == "" {
-		baseURL = DefaultBaseURL(kind)
-	}
-	base, err := url.Parse(strings.TrimRight(baseURL, "/"))
-	if err != nil || base.Host == "" || (base.Scheme != "https" && base.Scheme != "http") {
-		return nil, fmt.Errorf("invalid forge URL %q: expected something like https://git.example.com", baseURL)
-	}
-
-	switch kind {
-	case GitHub:
-		return newGitHub(base, token)
-	case Forgejo:
-		api := restAPI{base: base}
-		if token != "" {
-			api.header, api.value = "Authorization", "token "+token
-		}
-		return &forgejo{api: api}, nil
-	case GitLab:
-		return &gitlab{api: restAPI{base: base, header: "PRIVATE-TOKEN", value: token}}, nil
-	}
-	return nil, fmt.Errorf("unknown forge kind %q: use %s", kind, strings.Join(Kinds, ", "))
-}
-
 // SplitFullName splits "owner/name" at the last slash, so a nested GitLab
 // group stays whole in the owner.
 func SplitFullName(fullName string) (owner, name string, ok bool) {
@@ -150,4 +139,12 @@ func SplitFullName(fullName string) (owner, name string, ok bool) {
 		return "", "", false
 	}
 	return fullName[:i], fullName[i+1:], true
+}
+
+// missing turns a lookup's ErrNotFound into a plain "no".
+func missing(err error) (bool, error) {
+	if errors.Is(err, ErrNotFound) {
+		return false, nil
+	}
+	return err == nil, err
 }

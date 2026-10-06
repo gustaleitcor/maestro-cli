@@ -18,7 +18,6 @@ const (
 	imageListScreen
 )
 
-// RepoForge is one forge the repo list can show, under its configured name.
 type RepoForge struct {
 	Name   string
 	Client forge.Forge
@@ -39,9 +38,10 @@ type model struct {
 
 	maestroKey string
 
-	repos  []forge.Repo
-	images []maestroapi.Image
-	table  table.Model
+	repos      []forge.Repo
+	images     []maestroapi.Image
+	imageLimit int // 0: unknown
+	table      table.Model
 
 	width, height int
 }
@@ -58,8 +58,6 @@ func newModel(ctx context.Context, s screen) model {
 	}
 }
 
-// RunRepoList shows the repos of forges[start]; the left and right arrows
-// move to the other forges.
 func RunRepoList(ctx context.Context, forges []RepoForge, start int) error {
 	m := newModel(ctx, repoListScreen)
 	m.forges = forges

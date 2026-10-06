@@ -15,23 +15,8 @@ type github struct {
 	host   string
 }
 
-// newGitHub talks to github.com, or to a GitHub Enterprise Server when base
-// points anywhere else.
-func newGitHub(base *url.URL, token string) (Forge, error) {
-	client := gh.NewClient(nil)
-	if token != "" {
-		client = client.WithAuthToken(token)
-	}
-	if base.Host != "github.com" {
-		var err error
-		if client, err = client.WithEnterpriseURLs(base.String(), base.String()); err != nil {
-			return nil, err
-		}
-	}
-	return &github{client: client, host: base.Host}, nil
-}
-
 func (g *github) Kind() string { return GitHub }
+
 func (g *github) Host() string { return g.host }
 
 func (g *github) CurrentUser(ctx context.Context) (*User, error) {
@@ -91,22 +76,6 @@ func (g *github) HasFile(ctx context.Context, owner, repo, ref, path string) (bo
 	return missing(err)
 }
 
-func githubRepo(r *gh.Repository) Repo {
-	return Repo{
-		Name:          r.GetName(),
-		FullName:      r.GetFullName(),
-		Description:   r.GetDescription(),
-		Private:       r.GetPrivate(),
-		Fork:          r.GetFork(),
-		Language:      r.GetLanguage(),
-		Stars:         r.GetStargazersCount(),
-		UpdatedAt:     r.GetUpdatedAt().Time,
-		HTMLURL:       r.GetHTMLURL(),
-		CloneURL:      r.GetCloneURL(),
-		DefaultBranch: r.GetDefaultBranch(),
-	}
-}
-
 // explain replaces go-github's "GET <url>: 401 Bad credentials []" with the
 // same wording the other forges' errors get.
 func (g *github) explain(err error) error {
@@ -123,4 +92,34 @@ func (g *github) explain(err error) error {
 		return statusError(g.host, response.Response.StatusCode, response.Message)
 	}
 	return unreachableError(g.host, err)
+}
+
+func newGitHub(base *url.URL, token string) (Forge, error) {
+	client := gh.NewClient(nil)
+	if token != "" {
+		client = client.WithAuthToken(token)
+	}
+	if base.Host != "github.com" {
+		var err error
+		if client, err = client.WithEnterpriseURLs(base.String(), base.String()); err != nil {
+			return nil, err
+		}
+	}
+	return &github{client: client, host: base.Host}, nil
+}
+
+func githubRepo(r *gh.Repository) Repo {
+	return Repo{
+		Name:          r.GetName(),
+		FullName:      r.GetFullName(),
+		Description:   r.GetDescription(),
+		Private:       r.GetPrivate(),
+		Fork:          r.GetFork(),
+		Language:      r.GetLanguage(),
+		Stars:         r.GetStargazersCount(),
+		UpdatedAt:     r.GetUpdatedAt().Time,
+		HTMLURL:       r.GetHTMLURL(),
+		CloneURL:      r.GetCloneURL(),
+		DefaultBranch: r.GetDefaultBranch(),
+	}
 }

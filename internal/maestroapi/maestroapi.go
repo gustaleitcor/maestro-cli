@@ -6,9 +6,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,53 +19,11 @@ import (
 
 const defaultBaseURL = "https://maestro.logsad.com"
 
-func BaseURL() string {
-	if u := os.Getenv("MAESTRO_ORQ_URL"); u != "" {
-		return strings.TrimRight(u, "/")
-	}
-	return defaultBaseURL
-}
-
-// unreachable words a request that got no answer from the Maestro server.
-func unreachable(err error) error {
-	host := BaseURL()
-	if parsed, parseErr := url.Parse(host); parseErr == nil && parsed.Host != "" {
-		host = parsed.Host
-	}
-	return netfail.Explain(host, err)
-}
-
 type verifyKeyResponse struct {
 	Valid bool   `json:"valid"`
 	Email string `json:"email"`
 }
 
-func VerifyKey(ctx context.Context, key string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, BaseURL()+"/api/keys/verify", nil)
-	if err != nil {
-		return "", fmt.Errorf("building request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+key)
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", unreachable(err)
-	}
-	defer resp.Body.Close()
-
-	var result verifyKeyResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("decoding response: %w", err)
-	}
-	if !result.Valid {
-		return "", fmt.Errorf("invalid maestro key")
-	}
-	return result.Email, nil
-}
-
-// CLILogin is a browser-approval login in progress: the user approves
-// UserCode at VerificationURL while the CLI polls with DeviceCode.
 type CLILogin struct {
 	DeviceCode      string `json:"device_code"`
 	UserCode        string `json:"user_code"`
@@ -78,6 +38,87 @@ type CLILoginResult struct {
 	Status string `json:"status"`
 	Key    string `json:"key"`
 	Email  string `json:"email"`
+}
+
+type BuildRequest struct {
+	Forge, Host, Owner, Repo, Ref, Server string
+}
+
+// StreamEvent is one line of the /api/builds NDJSON response: either a
+// stream chunk, or (only on the final line) a status.
+type StreamEvent struct {
+	Stream  string `json:"stream,omitempty"`
+	Status  string `json:"status,omitempty"`
+	ImageID string `json:"image_id,omitempty"`
+	Error   string `json:"error,omitempty"`
+}
+
+type errorResponse struct {
+	Error string `json:"error"`
+}
+
+type Image struct {
+	ID        string    `json:"id"`
+	Tag       string    `json:"tag"`
+	BuildID   int64     `json:"build_id"`
+	Repo      string    `json:"repo"`
+	Ref       string    `json:"ref"`
+	Size      int64     `json:"size"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// Run is one `maestro run`: a container per line of parameters, spread
+// over the machines. Status is queued, running, succeeded, failed or
+// cancelled.
+type Run struct {
+	ID   int64 `json:"id"`
+	User struct {
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	} `json:"user"`
+	BuildID   int64          `json:"build_id"`
+	Repo      string         `json:"repo"`
+	Ref       string         `json:"ref"`
+	Status    string         `json:"status"`
+	Machines  []string       `json:"machines"`
+	Outputs   []string       `json:"outputs"`
+	Lines     map[string]int `json:"lines"`
+	CreatedAt time.Time      `json:"created_at"`
+	Detail    []RunLine      `json:"line_detail"`
+}
+
+// RunLine is one container of a run. Status is queued, starting, running,
+// succeeded, failed (non-zero exit), error (it couldn't run) or cancelled.
+type RunLine struct {
+	Line       int64     `json:"line"`
+	Args       []string  `json:"args"`
+	Status     string    `json:"status"`
+	Machine    string    `json:"machine"`
+	ExitCode   *int      `json:"exit_code"`
+	Error      string    `json:"error"`
+	StartedAt  time.Time `json:"started_at"`
+	FinishedAt time.Time `json:"finished_at"`
+	Files      []RunFile `json:"files"`
+}
+
+type RunFile struct {
+	Path    string `json:"path"`
+	Size    int64  `json:"size"`
+	Missing bool   `json:"missing"`
+}
+
+type Settings struct {
+	ImagesPerUser int `json:"images_per_user"`
+}
+
+// Machine is a host containers can run on. Status is ready when
+// maestro-orq could reach its Podman just now, unreachable otherwise.
+type Machine struct {
+	Name          string `json:"name"`
+	Description   string `json:"description"`
+	Slots         int    `json:"slots"`
+	Status        string `json:"status"`
+	PodmanVersion string `json:"podman_version"`
 }
 
 func StartCLILogin(ctx context.Context) (*CLILogin, error) {
@@ -100,64 +141,6 @@ func PollCLILogin(ctx context.Context, deviceCode string) (*CLILoginResult, erro
 		return nil, err
 	}
 	return &result, nil
-}
-
-func postJSON(ctx context.Context, path string, body any, wantStatus int, out any) error {
-	var encoded []byte
-	if body != nil {
-		var err error
-		if encoded, err = json.Marshal(body); err != nil {
-			return fmt.Errorf("encoding request: %w", err)
-		}
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, BaseURL()+path, bytes.NewReader(encoded))
-	if err != nil {
-		return fmt.Errorf("building request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return unreachable(err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != wantStatus {
-		var errResp errorResponse
-		json.NewDecoder(resp.Body).Decode(&errResp)
-		if resp.StatusCode == http.StatusNotFound && errResp.Error == "" {
-			return fmt.Errorf("this Maestro server does not support browser login; use `maestro login --with-key`")
-		}
-		if errResp.Error == "" {
-			return fmt.Errorf("maestro-orq responded with %s", resp.Status)
-		}
-		return fmt.Errorf("maestro-orq: %s", errResp.Error)
-	}
-	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
-		return fmt.Errorf("decoding response: %w", err)
-	}
-	return nil
-}
-
-// BuildRequest describes what to build. Forge is the forge kind and Host
-// its host[:port]; Server is optional, empty means let maestro-orq pick.
-type BuildRequest struct {
-	Forge, Host, Owner, Repo, Ref, Server string
-}
-
-// StreamEvent is one line of the /api/builds NDJSON response: either a
-// stream chunk, or (only on the final line) a status.
-type StreamEvent struct {
-	Stream  string `json:"stream,omitempty"`
-	Status  string `json:"status,omitempty"`
-	ImageID string `json:"image_id,omitempty"`
-	Error   string `json:"error,omitempty"`
-}
-
-type errorResponse struct {
-	Error string `json:"error"`
 }
 
 // TriggerBuild POSTs to /api/builds and invokes onLine for each streamed
@@ -231,17 +214,64 @@ func TriggerBuild(ctx context.Context, maestroKey, forgeToken string, req BuildR
 	return &final, nil
 }
 
-type Image struct {
-	ID        string    `json:"id"`
-	Tag       string    `json:"tag"`
-	BuildID   int64     `json:"build_id"`
-	Repo      string    `json:"repo"`
-	Ref       string    `json:"ref"`
-	Size      int64     `json:"size"`
-	CreatedAt time.Time `json:"created_at"`
+func StartRun(ctx context.Context, maestroKey string, buildID int64) (*Run, error) {
+	var run Run
+	body := struct {
+		BuildID int64 `json:"build_id"`
+	}{buildID}
+	if err := doWithKey(ctx, maestroKey, http.MethodPost, "/api/runs", body, http.StatusCreated, &run); err != nil {
+		return nil, err
+	}
+	return &run, nil
 }
 
-// ListImages returns the images built for the key's owner, newest first.
+func GetRun(ctx context.Context, maestroKey string, id int64) (*Run, error) {
+	var run Run
+	if err := doWithKey(ctx, maestroKey, http.MethodGet, runPath(id), nil, http.StatusOK, &run); err != nil {
+		return nil, err
+	}
+	return &run, nil
+}
+
+func GetSettings(ctx context.Context, maestroKey string) (*Settings, error) {
+	var settings Settings
+	if err := doWithKey(ctx, maestroKey, http.MethodGet, "/api/settings", nil, http.StatusOK, &settings); err != nil {
+		return nil, err
+	}
+	return &settings, nil
+}
+
+func BaseURL() string {
+	if u := os.Getenv("MAESTRO_ORQ_URL"); u != "" {
+		return strings.TrimRight(u, "/")
+	}
+	return defaultBaseURL
+}
+
+func VerifyKey(ctx context.Context, key string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, BaseURL()+"/api/keys/verify", nil)
+	if err != nil {
+		return "", fmt.Errorf("building request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+key)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", unreachable(err)
+	}
+	defer resp.Body.Close()
+
+	var result verifyKeyResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("decoding response: %w", err)
+	}
+	if !result.Valid {
+		return "", fmt.Errorf("invalid maestro key")
+	}
+	return result.Email, nil
+}
+
 func ListImages(ctx context.Context, maestroKey string) ([]Image, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, BaseURL()+"/api/images", nil)
 	if err != nil {
@@ -270,4 +300,179 @@ func ListImages(ctx context.Context, maestroKey string) ([]Image, error) {
 		return nil, fmt.Errorf("decoding response: %w", err)
 	}
 	return images, nil
+}
+
+func ListRuns(ctx context.Context, maestroKey string) ([]Run, error) {
+	var runs []Run
+	if err := doWithKey(ctx, maestroKey, http.MethodGet, "/api/runs", nil, http.StatusOK, &runs); err != nil {
+		return nil, err
+	}
+	return runs, nil
+}
+
+func CancelRun(ctx context.Context, maestroKey string, id int64) error {
+	return doWithKey(ctx, maestroKey, http.MethodPost, runPath(id)+"/cancel", nil, http.StatusNoContent, nil)
+}
+
+func DeleteRun(ctx context.Context, maestroKey string, id int64) error {
+	return doWithKey(ctx, maestroKey, http.MethodDelete, runPath(id), nil, http.StatusNoContent, nil)
+}
+
+// RunLogs writes what a line's container printed to w: live while it runs
+// (the last tail lines, or all of them when tail is negative), and the copy
+// kept once it finished.
+func RunLogs(ctx context.Context, maestroKey string, id, line int64, tail int, w io.Writer) error {
+	path := runPath(id) + "/lines/" + strconv.FormatInt(line, 10) + "/logs"
+	if tail >= 0 {
+		path += "?tail=" + strconv.Itoa(tail)
+	}
+	return download(ctx, maestroKey, path, w)
+}
+
+func DownloadRunFile(ctx context.Context, maestroKey string, id, line int64, file string, w io.Writer) error {
+	segments := strings.Split(file, "/")
+	for i, s := range segments {
+		segments[i] = url.PathEscape(s)
+	}
+	path := runPath(id) + "/lines/" + strconv.FormatInt(line, 10) + "/files/" + strings.Join(segments, "/")
+	return download(ctx, maestroKey, path, w)
+}
+
+func RemoveImage(ctx context.Context, maestroKey string, buildID int64) error {
+	return doWithKey(ctx, maestroKey, http.MethodDelete, "/api/images/"+strconv.FormatInt(buildID, 10), nil, http.StatusNoContent, nil)
+}
+
+func ListMachines(ctx context.Context, maestroKey string) ([]Machine, error) {
+	var machines []Machine
+	if err := doWithKey(ctx, maestroKey, http.MethodGet, "/api/machines", nil, http.StatusOK, &machines); err != nil {
+		return nil, err
+	}
+	return machines, nil
+}
+
+// unreachable words a request that got no answer from the Maestro server.
+func unreachable(err error) error {
+	host := BaseURL()
+	if parsed, parseErr := url.Parse(host); parseErr == nil && parsed.Host != "" {
+		host = parsed.Host
+	}
+	return netfail.Explain(host, err)
+}
+
+func postJSON(ctx context.Context, path string, body any, wantStatus int, out any) error {
+	var encoded []byte
+	if body != nil {
+		var err error
+		if encoded, err = json.Marshal(body); err != nil {
+			return fmt.Errorf("encoding request: %w", err)
+		}
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, BaseURL()+path, bytes.NewReader(encoded))
+	if err != nil {
+		return fmt.Errorf("building request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return unreachable(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != wantStatus {
+		var errResp errorResponse
+		json.NewDecoder(resp.Body).Decode(&errResp)
+		if resp.StatusCode == http.StatusNotFound && errResp.Error == "" {
+			return fmt.Errorf("this Maestro server does not support `maestro login`")
+		}
+		if errResp.Error == "" {
+			return fmt.Errorf("maestro-orq responded with %s", resp.Status)
+		}
+		return fmt.Errorf("maestro-orq: %s", errResp.Error)
+	}
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return fmt.Errorf("decoding response: %w", err)
+	}
+	return nil
+}
+
+func runPath(id int64) string {
+	return "/api/runs/" + strconv.FormatInt(id, 10)
+}
+
+// download copies a response body to w. There is no overall timeout: files
+// can be large. Cancel through ctx.
+func download(ctx context.Context, maestroKey, path string, w io.Writer) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, BaseURL()+path, nil)
+	if err != nil {
+		return fmt.Errorf("building request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+maestroKey)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return unreachable(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		var errResp errorResponse
+		json.NewDecoder(resp.Body).Decode(&errResp)
+		if errResp.Error == "" {
+			return fmt.Errorf("maestro-orq responded with %s", resp.Status)
+		}
+		return fmt.Errorf("maestro-orq: %s", errResp.Error)
+	}
+	if _, err := io.Copy(w, resp.Body); err != nil {
+		return fmt.Errorf("downloading: %w", err)
+	}
+	return nil
+}
+
+// doWithKey sends body (if any) as JSON, authenticated with the Maestro key,
+// and decodes the response into out unless out is nil.
+func doWithKey(ctx context.Context, maestroKey, method, path string, body any, wantStatus int, out any) error {
+	var reader io.Reader
+	if body != nil {
+		encoded, err := json.Marshal(body)
+		if err != nil {
+			return fmt.Errorf("encoding request: %w", err)
+		}
+		reader = bytes.NewReader(encoded)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, BaseURL()+path, reader)
+	if err != nil {
+		return fmt.Errorf("building request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+maestroKey)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return unreachable(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != wantStatus {
+		var errResp errorResponse
+		json.NewDecoder(resp.Body).Decode(&errResp)
+		if resp.StatusCode == http.StatusNotFound && errResp.Error == "" {
+			return fmt.Errorf("this Maestro server can't run images yet")
+		}
+		if errResp.Error == "" {
+			return fmt.Errorf("maestro-orq responded with %s", resp.Status)
+		}
+		return fmt.Errorf("maestro-orq: %s", errResp.Error)
+	}
+	if out == nil {
+		return nil
+	}
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return fmt.Errorf("decoding response: %w", err)
+	}
+	return nil
 }

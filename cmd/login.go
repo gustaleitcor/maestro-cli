@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
-	"runtime"
 	"strings"
 	"time"
 
@@ -18,35 +16,22 @@ import (
 	"maestro-cli/internal/maestroapi"
 )
 
-var (
-	loginWithKey   bool
-	loginNoBrowser bool
-)
-
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Sign the CLI in to Maestro",
-	Long: `Signs in by approving a short code on the Maestro page in your browser.
-Without a browser, use --with-key to paste a key generated on that page.`,
+	Long: `Prints a link to the Maestro page and a short code to approve there.
+The link can be opened in any browser, on this machine or another.`,
 	RunE: runLogin,
 }
 
 func init() {
-	loginCmd.Flags().BoolVar(&loginWithKey, "with-key", false, "paste a Maestro key instead of using the browser")
-	loginCmd.Flags().BoolVar(&loginNoBrowser, "no-browser", false, "print the approval URL without opening a browser")
 	rootCmd.AddCommand(loginCmd)
 }
 
 func runLogin(cmd *cobra.Command, args []string) error {
 	stdin := bufio.NewReader(os.Stdin)
 
-	var err error
-	if loginWithKey {
-		err = loginMaestroWithKey(cmd.Context(), stdin)
-	} else {
-		err = loginMaestroInBrowser(cmd.Context())
-	}
-	if err != nil {
+	if err := loginMaestroInBrowser(cmd.Context()); err != nil {
 		return err
 	}
 	return offerForge(cmd.Context(), stdin)
@@ -85,9 +70,6 @@ func loginMaestroInBrowser(ctx context.Context) error {
 	}
 
 	fmt.Printf("\nTo sign in to Maestro, open:\n\n  %s\n\nand approve this code:\n\n  %s\n\n", accentStyle.Render(login.VerificationURL), accentStyle.Render(login.UserCode))
-	if !loginNoBrowser {
-		openBrowser(login.VerificationURL)
-	}
 	fmt.Println(dimStyle.Render("Waiting for approval..."))
 
 	interval := time.Duration(login.Interval) * time.Second
@@ -126,49 +108,6 @@ func loginMaestroInBrowser(ctx context.Context) error {
 	return fmt.Errorf("the login expired; run `maestro login` again")
 }
 
-// openBrowser is best effort: the URL is already on screen for when there
-// is no browser to open.
-func openBrowser(target string) {
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", target)
-	case "windows":
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", target)
-	default:
-		cmd = exec.Command("xdg-open", target)
-	}
-	if err := cmd.Start(); err == nil {
-		go cmd.Wait()
-	}
-}
-
-func loginMaestroWithKey(ctx context.Context, stdin *bufio.Reader) error {
-	_, err := config.LoadMaestroKey()
-	hasExisting := err == nil
-
-	key, err := readSecret(stdin, "Maestro key", hasExisting)
-	if err != nil {
-		return err
-	}
-	if key == "" {
-		fmt.Println(dimStyle.Render("Maestro: keeping existing key."))
-		return nil
-	}
-
-	fmt.Println(dimStyle.Render("Validating Maestro key..."))
-	email, err := maestroapi.VerifyKey(ctx, key)
-	if err != nil {
-		return fmt.Errorf("Maestro key validation failed: %w", err)
-	}
-
-	if err := config.SaveMaestroKey(key); err != nil {
-		return fmt.Errorf("saving Maestro key: %w", err)
-	}
-	fmt.Println(successStyle.Render("Maestro: logged in as " + email + "."))
-	return nil
-}
-
 // If hasExisting, a blank answer returns "" instead of erroring.
 func readSecret(stdin *bufio.Reader, label string, hasExisting bool) (string, error) {
 	if hasExisting {
@@ -198,8 +137,6 @@ func readSecret(stdin *bufio.Reader, label string, hasExisting bool) (string, er
 	return value, nil
 }
 
-// readMasked reads a line from the terminal, echoing a * for each character
-// typed or pasted instead of the character itself.
 func readMasked() (string, error) {
 	fd := int(os.Stdin.Fd())
 	state, err := term.MakeRaw(fd)

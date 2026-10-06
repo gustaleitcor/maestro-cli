@@ -19,7 +19,6 @@ const logo = `███╗   ███╗ █████╗ ██████�
 
 const logoGap = 3 // columns between the logo and the text beside it
 
-// Welcome is what a bare `maestro` shows next to the logo.
 type Welcome struct {
 	Server string
 	// SignedIn is whether a Maestro key is stored. Email is who it belongs
@@ -30,7 +29,6 @@ type Welcome struct {
 	Forges     []ForgeIdentity
 }
 
-// ForgeIdentity is who a configured forge's token belongs to.
 type ForgeIdentity struct {
 	Name  string
 	Host  string
@@ -106,7 +104,6 @@ func renderWelcomeInfo(w Welcome) string {
 	return b.String()
 }
 
-// firstLine keeps an error to one row; the advice after it has no room here.
 func firstLine(err error) string {
 	line, _, _ := strings.Cut(err.Error(), "\n")
 	return line

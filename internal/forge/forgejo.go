@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-// forgejo speaks the /api/v1 API that Forgejo, Codeberg and Gitea share.
 type forgejo struct {
 	api restAPI
 }
@@ -27,23 +26,8 @@ type forgejoRepo struct {
 	DefaultBranch string    `json:"default_branch"`
 }
 
-func (r forgejoRepo) repo() Repo {
-	return Repo{
-		Name:          r.Name,
-		FullName:      r.FullName,
-		Description:   r.Description,
-		Private:       r.Private,
-		Fork:          r.Fork,
-		Language:      r.Language,
-		Stars:         r.Stars,
-		UpdatedAt:     r.UpdatedAt,
-		HTMLURL:       r.HTMLURL,
-		CloneURL:      r.CloneURL,
-		DefaultBranch: r.DefaultBranch,
-	}
-}
-
 func (f *forgejo) Kind() string { return Forgejo }
+
 func (f *forgejo) Host() string { return f.api.base.Host }
 
 func (f *forgejo) CurrentUser(ctx context.Context) (*User, error) {
@@ -109,4 +93,20 @@ func (f *forgejo) HasFile(ctx context.Context, owner, repo, ref, path string) (b
 	var file struct{}
 	_, err := f.api.get(ctx, "/api/v1/repos/"+url.PathEscape(owner)+"/"+url.PathEscape(repo)+"/contents/"+url.PathEscape(path), url.Values{"ref": {ref}}, &file)
 	return missing(err)
+}
+
+func (r forgejoRepo) repo() Repo {
+	return Repo{
+		Name:          r.Name,
+		FullName:      r.FullName,
+		Description:   r.Description,
+		Private:       r.Private,
+		Fork:          r.Fork,
+		Language:      r.Language,
+		Stars:         r.Stars,
+		UpdatedAt:     r.UpdatedAt,
+		HTMLURL:       r.HTMLURL,
+		CloneURL:      r.CloneURL,
+		DefaultBranch: r.DefaultBranch,
+	}
 }

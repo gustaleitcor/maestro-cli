@@ -15,7 +15,8 @@ var ErrUnreachable = errors.New("unreachable")
 
 type unreachable struct{ host, reason string }
 
-func (u unreachable) Error() string        { return "could not reach " + u.host + ": " + u.reason }
+func (u unreachable) Error() string { return "could not reach " + u.host + ": " + u.reason }
+
 func (u unreachable) Is(target error) bool { return target == ErrUnreachable }
 
 // Explain says in a few words why host could not be reached.

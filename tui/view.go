@@ -27,6 +27,12 @@ var (
 			BorderStyle(lipgloss.NormalBorder()).BorderTop(true).BorderForeground(lipgloss.Color("240"))
 )
 
+const cellPad = 2 // bubbles/table's Cell/Header padding on each side of every column
+
+const tableChromeLines = 6 // page header + footer bars, plus their joining newlines
+
+const tableHeaderLines = 2 // the table's own column-header row plus its border
+
 func (m model) View() string {
 	if m.screen == repoListScreen {
 		return m.repoListView()
@@ -42,7 +48,11 @@ func (m model) View() string {
 
 	switch m.screen {
 	case imageListScreen:
-		header := bar(headerStyle, m.width, fmt.Sprintf("Images (%d)", len(m.images)))
+		title := fmt.Sprintf("Images (%d)", len(m.images))
+		if m.imageLimit > 0 {
+			title = fmt.Sprintf("Images (%d of %d allowed; the oldest goes when a new build needs room)", len(m.images), m.imageLimit)
+		}
+		header := bar(headerStyle, m.width, title)
 		if len(m.images) == 0 {
 			footer := bar(footerStyle, m.width, "q to quit")
 			return header + "\n\n  No images yet. Build one with: maestro build <repo>\n\n" + footer
@@ -91,11 +101,6 @@ func bar(s lipgloss.Style, width int, text string) string {
 	}
 	return s.Render(text)
 }
-
-const cellPad = 2 // bubbles/table's Cell/Header padding on each side of every column
-
-const tableChromeLines = 6 // page header + footer bars, plus their joining newlines
-const tableHeaderLines = 2 // the table's own column-header row plus its border
 
 func buildRepoTable(repos []forge.Repo, width, height int) table.Model {
 	columns := []table.Column{
@@ -208,7 +213,6 @@ func shortID(id string) string {
 	return id
 }
 
-// humanSize formats bytes in decimal units, matching `podman images`.
 func humanSize(b int64) string {
 	const unit = 1000
 	if b < unit {

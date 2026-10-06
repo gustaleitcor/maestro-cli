@@ -7,22 +7,6 @@ import (
 	"maestro-cli/internal/forge"
 )
 
-// showForge moves the repo list to another forge, fetching its repos the
-// first time it is shown.
-func (m model) showForge(index int) (tea.Model, tea.Cmd) {
-	m.current = index
-	m.err = nil
-	if repos, ok := m.repoCache[index]; ok {
-		m.loading = false
-		m.repos = repos
-		m.table = buildRepoTable(m.repos, m.width, m.height)
-		return m, nil
-	}
-	m.loading = true
-	m.repos = nil
-	return m, tea.Batch(m.spinner.Tick, fetchRepos(m.ctx, index, m.forges[index].Client))
-}
-
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -72,6 +56,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case imagesLoadedMsg:
 		m.loading = false
 		m.images = msg.images
+		m.imageLimit = msg.limit
 		m.table = buildImageTable(m.images, m.width, m.height)
 		return m, nil
 
@@ -96,4 +81,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m model) showForge(index int) (tea.Model, tea.Cmd) {
+	m.current = index
+	m.err = nil
+	if repos, ok := m.repoCache[index]; ok {
+		m.loading = false
+		m.repos = repos
+		m.table = buildRepoTable(m.repos, m.width, m.height)
+		return m, nil
+	}
+	m.loading = true
+	m.repos = nil
+	return m, tea.Batch(m.spinner.Tick, fetchRepos(m.ctx, index, m.forges[index].Client))
 }

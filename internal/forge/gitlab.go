@@ -23,24 +23,8 @@ type gitlabProject struct {
 	DefaultBranch     string    `json:"default_branch"`
 }
 
-func (p gitlabProject) repo() Repo {
-	return Repo{
-		Name:        p.Path,
-		FullName:    p.PathWithNamespace,
-		Description: p.Description,
-		// "internal" is visible to every signed-in user but not to the
-		// world, so it is not public either.
-		Private:       p.Visibility != "public",
-		Fork:          p.ForkedFrom != nil,
-		Stars:         p.Stars,
-		UpdatedAt:     p.LastActivityAt,
-		HTMLURL:       p.WebURL,
-		CloneURL:      p.HTTPURLToRepo,
-		DefaultBranch: p.DefaultBranch,
-	}
-}
-
 func (g *gitlab) Kind() string { return GitLab }
+
 func (g *gitlab) Host() string { return g.api.base.Host }
 
 func (g *gitlab) CurrentUser(ctx context.Context) (*User, error) {
@@ -104,4 +88,21 @@ func (g *gitlab) HasFile(ctx context.Context, owner, repo, ref, path string) (bo
 	var file struct{}
 	_, err := g.api.get(ctx, "/api/v4/projects/"+url.PathEscape(owner+"/"+repo)+"/repository/files/"+url.PathEscape(path), url.Values{"ref": {ref}}, &file)
 	return missing(err)
+}
+
+func (p gitlabProject) repo() Repo {
+	return Repo{
+		Name:        p.Path,
+		FullName:    p.PathWithNamespace,
+		Description: p.Description,
+		// "internal" is visible to every signed-in user but not to the
+		// world, so it is not public either.
+		Private:       p.Visibility != "public",
+		Fork:          p.ForkedFrom != nil,
+		Stars:         p.Stars,
+		UpdatedAt:     p.LastActivityAt,
+		HTMLURL:       p.WebURL,
+		CloneURL:      p.HTTPURLToRepo,
+		DefaultBranch: p.DefaultBranch,
+	}
 }

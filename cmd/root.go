@@ -18,7 +18,6 @@ import (
 
 var maestroKey string
 
-// Version is set via -ldflags at release build time (see .goreleaser.yaml).
 var Version = "dev"
 
 var rootCmd = &cobra.Command{
@@ -48,6 +47,17 @@ var rootCmd = &cobra.Command{
 		maestroKey = mk
 		return nil
 	},
+}
+
+func Execute() {
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, errorStyle.Render("Error:"), err)
+		// A mistyped command or flag, not a command that failed.
+		if strings.HasPrefix(err.Error(), "unknown ") {
+			fmt.Fprintln(os.Stderr, "Run 'maestro --help' for usage.")
+		}
+		os.Exit(1)
+	}
 }
 
 // runWelcome asks Maestro and every configured forge who the stored
@@ -95,15 +105,4 @@ func runWelcome(cmd *cobra.Command, args []string) error {
 	width, _, _ := term.GetSize(int(os.Stdout.Fd()))
 	fmt.Print(tui.RenderWelcome(w, width))
 	return nil
-}
-
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, errorStyle.Render("Error:"), err)
-		// A mistyped command or flag, not a command that failed.
-		if strings.HasPrefix(err.Error(), "unknown ") {
-			fmt.Fprintln(os.Stderr, "Run 'maestro --help' for usage.")
-		}
-		os.Exit(1)
-	}
 }

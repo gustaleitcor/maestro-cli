@@ -22,6 +22,10 @@ const (
 	fileEnvFlag = "MAESTRO_FORCE_FILE_STORE" // set to "1" to skip keyring and force file storage
 )
 
+var ErrNoGitHubToken = errors.New("no github token found; run `maestro login` first")
+
+var ErrNoMaestroKey = errors.New("no maestro key found; run `maestro login` first")
+
 type Config struct {
 	GitHubToken string `json:"github_token,omitempty"`
 	MaestroKey  string `json:"maestro_key,omitempty"`
@@ -31,12 +35,80 @@ type Config struct {
 	ForgeTokens map[string]string `json:"forge_tokens,omitempty"`
 }
 
-// Forge is one configured git forge. Its token is stored apart from it, in
-// the keyring under "forge:<name>".
 type Forge struct {
 	Name    string `json:"name"`
 	Kind    string `json:"kind"`
 	BaseURL string `json:"base_url,omitempty"` // empty: the kind's public instance
+}
+
+// A missing file isn't an error here — returns a zero-value Config instead.
+func readConfigFile() (Config, error) {
+	p, err := path()
+	if err != nil {
+		return Config{}, err
+	}
+
+	data, err := os.ReadFile(p)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return Config{}, nil
+		}
+		return Config{}, fmt.Errorf("reading config file %s: %w", p, err)
+	}
+
+	var cfg Config
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return Config{}, fmt.Errorf("parsing config file %s: %w", p, err)
+	}
+	return cfg, nil
+}
+
+func SaveGitHubToken(token string) error {
+	return saveSecret(githubKeyringUser, token, func(c *Config) *string { return &c.GitHubToken })
+}
+
+func LoadGitHubToken() (string, error) {
+	return loadSecret(githubKeyringUser, ErrNoGitHubToken, func(c *Config) string { return c.GitHubToken })
+}
+
+func DeleteGitHubToken() error {
+	return deleteSecret(githubKeyringUser, func(c *Config) *string { return &c.GitHubToken })
+}
+
+func SaveMaestroKey(key string) error {
+	return saveSecret(maestroKeyringUser, key, func(c *Config) *string { return &c.MaestroKey })
+}
+
+func LoadMaestroKey() (string, error) {
+	return loadSecret(maestroKeyringUser, ErrNoMaestroKey, func(c *Config) string { return c.MaestroKey })
+}
+
+func DeleteMaestroKey() error {
+	return deleteSecret(maestroKeyringUser, func(c *Config) *string { return &c.MaestroKey })
+}
+
+func Reset() error {
+	cfg, err := readConfigFile()
+	if err != nil {
+		return err
+	}
+
+	if os.Getenv(fileEnvFlag) != "1" {
+		_ = keyring.Delete(service, maestroKeyringUser)
+		_ = keyring.Delete(service, githubKeyringUser)
+		for _, f := range cfg.Forges {
+			_ = keyring.Delete(service, forgeKeyringPrefix+f.Name)
+		}
+	}
+
+	p, err := path()
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("removing config file %s: %w", p, err)
+	}
+	return nil
 }
 
 func dir() (string, error) {
@@ -64,33 +136,6 @@ func ensureDir() (string, error) {
 		return "", fmt.Errorf("creating config dir %s: %w", d, err)
 	}
 	return d, nil
-}
-
-var ErrNoGitHubToken = errors.New("no github token found; run `maestro login` first")
-var ErrNoMaestroKey = errors.New("no maestro key found; run `maestro login` first")
-
-func SaveGitHubToken(token string) error {
-	return saveSecret(githubKeyringUser, token, func(c *Config) *string { return &c.GitHubToken })
-}
-
-func LoadGitHubToken() (string, error) {
-	return loadSecret(githubKeyringUser, ErrNoGitHubToken, func(c *Config) string { return c.GitHubToken })
-}
-
-func DeleteGitHubToken() error {
-	return deleteSecret(githubKeyringUser, func(c *Config) *string { return &c.GitHubToken })
-}
-
-func SaveMaestroKey(key string) error {
-	return saveSecret(maestroKeyringUser, key, func(c *Config) *string { return &c.MaestroKey })
-}
-
-func LoadMaestroKey() (string, error) {
-	return loadSecret(maestroKeyringUser, ErrNoMaestroKey, func(c *Config) string { return c.MaestroKey })
-}
-
-func DeleteMaestroKey() error {
-	return deleteSecret(maestroKeyringUser, func(c *Config) *string { return &c.MaestroKey })
 }
 
 func saveSecret(keyringUser, value string, field func(*Config) *string) error {
@@ -157,28 +202,6 @@ func loadFieldFromFile(notFoundErr error, field func(*Config) string) (string, e
 	return "", notFoundErr
 }
 
-// A missing file isn't an error here — returns a zero-value Config instead.
-func readConfigFile() (Config, error) {
-	p, err := path()
-	if err != nil {
-		return Config{}, err
-	}
-
-	data, err := os.ReadFile(p)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return Config{}, nil
-		}
-		return Config{}, fmt.Errorf("reading config file %s: %w", p, err)
-	}
-
-	var cfg Config
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return Config{}, fmt.Errorf("parsing config file %s: %w", p, err)
-	}
-	return cfg, nil
-}
-
 func writeConfigFile(cfg Config) error {
 	p, err := path()
 	if err != nil {
@@ -196,32 +219,6 @@ func writeConfigFile(cfg Config) error {
 	}
 	if err := os.Chmod(p, 0o600); err != nil {
 		return fmt.Errorf("setting permissions on %s: %w", p, err)
-	}
-	return nil
-}
-
-// Reset forgets everything the CLI has stored: the Maestro key, every forge
-// and its token, and the config file itself.
-func Reset() error {
-	cfg, err := readConfigFile()
-	if err != nil {
-		return err
-	}
-
-	if os.Getenv(fileEnvFlag) != "1" {
-		_ = keyring.Delete(service, maestroKeyringUser)
-		_ = keyring.Delete(service, githubKeyringUser)
-		for _, f := range cfg.Forges {
-			_ = keyring.Delete(service, forgeKeyringPrefix+f.Name)
-		}
-	}
-
-	p, err := path()
-	if err != nil {
-		return err
-	}
-	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("removing config file %s: %w", p, err)
 	}
 	return nil
 }
