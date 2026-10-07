@@ -21,6 +21,7 @@ import (
 var (
 	buildRef   string
 	buildForge string
+	buildRun   bool
 )
 
 var buildCmd = &cobra.Command{
@@ -34,7 +35,14 @@ which must be at the root of the repo.
 
   maestro build my-app
   maestro build some-org/my-app --ref v1.2.0
-  maestro build https://codeberg.org/some-org/my-app`,
+  maestro build https://codeberg.org/some-org/my-app
+
+The build gets a number: ` + "`maestro run <build>`" + ` runs its image, and
+` + "`maestro builds list`" + ` shows the ones you have. With --run, the image is
+run as soon as it is built; --watch does that and follows the run until it
+is over.
+
+  maestro build my-app --watch`,
 	Args: cobra.ExactArgs(1),
 	RunE: runBuild,
 
@@ -45,11 +53,17 @@ var buildFiles = []string{"Dockerfile", "Containerfile"}
 
 func init() {
 	buildCmd.Flags().StringVar(&buildRef, "ref", "", "branch, tag or commit to build (default: the default branch)")
+	buildCmd.Flags().BoolVar(&buildRun, "run", false, "run the image once it is built")
+	addWatchFlags(buildCmd, "run the image once it is built, and follow the run until it is over")
 	addForgeFlag(buildCmd, &buildForge)
 	rootCmd.AddCommand(buildCmd)
 }
 
 func runBuild(cmd *cobra.Command, args []string) error {
+	// Before the build, not after it.
+	if err := checkWatch(); err != nil {
+		return err
+	}
 	active, owner, repo, err := parseRepoArg(cmd.Context(), args[0], buildForge)
 	if err != nil {
 		return err
@@ -84,8 +98,23 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("build failed: %s", final.Error)
 	}
 
-	fmt.Printf("\n%s %s\n", successStyle.Render("Build succeeded:"), final.ImageID)
-	return nil
+	succeeded := "Build succeeded:"
+	if final.BuildID > 0 {
+		succeeded = fmt.Sprintf("Build #%d succeeded:", final.BuildID)
+	}
+	fmt.Printf("\n%s %s\n", successStyle.Render(succeeded), final.ImageID)
+
+	if !buildRun && !runsWatch {
+		return nil
+	}
+	if final.BuildID == 0 {
+		return fmt.Errorf("this server doesn't say the build's number; run it with `maestro run <build>`")
+	}
+	run, err := startRun(cmd.Context(), final.BuildID)
+	if err != nil || !runsWatch {
+		return err
+	}
+	return showRun(cmd.Context(), run.ID, true)
 }
 
 // checkBuildFile stops a build that has nothing to build from before it
@@ -209,7 +238,7 @@ func forgesToSearch(name string) ([]*activeForge, error) {
 		return nil, err
 	}
 	if len(configured) == 0 {
-		return nil, fmt.Errorf("no forge configured\n\nRun `maestro forge add` to add GitHub, a Forgejo instance, or GitLab")
+		return nil, fmt.Errorf("no forge configured\n\nRun `maestro forges add` to add GitHub, a Forgejo instance, or GitLab")
 	}
 	all := make([]*activeForge, 0, len(configured))
 	for _, f := range configured {

@@ -20,24 +20,29 @@ import (
 var (
 	forgeAddKind string
 	forgeAddURL  string
+	forgesAsJSON bool
 )
 
-var forgeCmd = &cobra.Command{
-	Use:   "forge",
-	Short: "Manage the git forges Maestro reads repositories from",
+// forges was `forge` once, which still works. On its own it lists.
+var forgesCmd = &cobra.Command{
+	Use:     "forges",
+	Aliases: []string{"forge"},
+	Short:   "Manage the git forges Maestro reads repositories from",
 	Long: `A forge is where your repositories live: GitHub, Forgejo (Codeberg,
 Gitea) or GitLab. Maestro only reads from it, with a read-only token.`,
+	Args: cobra.NoArgs,
+	RunE: runForgesList,
 }
 
-var forgeAddCmd = &cobra.Command{
+var forgesAddCmd = &cobra.Command{
 	Use:   "add [name]",
 	Short: "Add a forge and its read-only token",
 	Long: `Adds a forge, or replaces the one with the same name. The token is
 checked before it is stored. Only Forgejo takes a --url.
 
-  maestro forge add
-  maestro forge add --kind gitlab
-  maestro forge add work --kind forgejo --url https://git.example.com`,
+  maestro forges add
+  maestro forges add --kind gitlab
+  maestro forges add work --kind forgejo --url https://git.example.com`,
 	Args:              cobra.MaximumNArgs(1),
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -49,49 +54,68 @@ checked before it is stored. Only Forgejo takes a --url.
 	},
 }
 
-var forgeListCmd = &cobra.Command{
+var forgesListCmd = &cobra.Command{
 	Use:               "list",
 	Short:             "List the configured forges",
 	Args:              cobra.NoArgs,
 	ValidArgsFunction: cobra.NoFileCompletions,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		forges, err := config.Forges()
-		if err != nil {
-			return err
-		}
-		if len(forges) == 0 {
-			fmt.Println(dimStyle.Render("No forges configured. Add one with: maestro forge add"))
-			return nil
-		}
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "NAME\tKIND\tURL")
-		for _, f := range forges {
-			baseURL := f.BaseURL
-			if baseURL == "" {
-				baseURL = forge.DefaultBaseURL(f.Kind)
-			}
-			fmt.Fprintf(w, "%s\t%s\t%s\n", f.Name, f.Kind, baseURL)
-		}
-		return w.Flush()
-	},
+	RunE:              runForgesList,
 }
 
-var forgeRemoveCmd = &cobra.Command{
-	Use:   "remove <name>",
-	Short: "Remove a forge and forget its token",
-	Args:  cobra.ExactArgs(1),
+var forgesRmCmd = &cobra.Command{
+	Use:     "rm <name>",
+	Aliases: []string{"remove"},
+	Short:   "Remove a forge and forget its token",
+	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		removed, err := config.RemoveForge(args[0])
 		if err != nil {
 			return err
 		}
 		if !removed {
-			return fmt.Errorf("no forge named %q; see `maestro forge list`", args[0])
+			return fmt.Errorf("no forge named %q; see `maestro forges list`", args[0])
 		}
 		fmt.Println(successStyle.Render("Removed forge " + args[0] + "."))
 		return nil
 	},
 	ValidArgsFunction: completeForgeNames,
+}
+
+func runForgesList(cmd *cobra.Command, args []string) error {
+	configured, err := config.Forges()
+	if err != nil {
+		return err
+	}
+	// Each with the URL it is read at, which isn't stored for a public instance.
+	forges := make([]config.Forge, 0, len(configured))
+	for _, f := range configured {
+		f.BaseURL = forgeBaseURL(f)
+		forges = append(forges, f)
+	}
+	if forgesAsJSON {
+		return writeJSON(os.Stdout, forges)
+	}
+	return writeForgesList(os.Stdout, forges)
+}
+
+func writeForgesList(out io.Writer, forges []config.Forge) error {
+	if len(forges) == 0 {
+		_, err := fmt.Fprintln(out, dimStyle.Render("No forges configured. Add one with: maestro forges add"))
+		return err
+	}
+	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "NAME\tKIND\tURL")
+	for _, f := range forges {
+		fmt.Fprintf(w, "%s\t%s\t%s\n", f.Name, f.Kind, forgeBaseURL(f))
+	}
+	return w.Flush()
+}
+
+func forgeBaseURL(f config.Forge) string {
+	if f.BaseURL == "" {
+		return forge.DefaultBaseURL(f.Kind)
+	}
+	return f.BaseURL
 }
 
 type activeForge struct {
@@ -103,7 +127,7 @@ type activeForge struct {
 func openForge(f config.Forge) (*activeForge, error) {
 	token, err := config.ForgeToken(f.Name)
 	if err != nil {
-		return nil, fmt.Errorf("%w\n\nRun `maestro forge add %s --kind %s` to store one", err, f.Name, f.Kind)
+		return nil, fmt.Errorf("%w\n\nRun `maestro forges add %s --kind %s` to store one", err, f.Name, f.Kind)
 	}
 	client, err := forge.New(f.Kind, f.BaseURL, token)
 	if err != nil {
@@ -120,7 +144,7 @@ func selectForge(name string) (*activeForge, error) {
 		return nil, err
 	}
 	if len(forges) == 0 {
-		return nil, fmt.Errorf("no forge configured\n\nRun `maestro forge add` to add GitHub, a Forgejo instance, or GitLab")
+		return nil, fmt.Errorf("no forge configured\n\nRun `maestro forges add` to add GitHub, a Forgejo instance, or GitLab")
 	}
 
 	if name == "" {
@@ -148,29 +172,28 @@ func selectForgeByHost(host, name string) (*activeForge, error) {
 		if name != "" && f.Name != name {
 			continue
 		}
-		baseURL := f.BaseURL
-		if baseURL == "" {
-			baseURL = forge.DefaultBaseURL(f.Kind)
-		}
-		if parsed, err := url.Parse(baseURL); err == nil && strings.EqualFold(parsed.Host, host) {
+		if parsed, err := url.Parse(forgeBaseURL(f)); err == nil && strings.EqualFold(parsed.Host, host) {
 			return openForge(f)
 		}
 	}
 	if name != "" {
 		return nil, fmt.Errorf("forge %q does not serve %s", name, host)
 	}
-	return nil, fmt.Errorf("no configured forge serves %s\n\nRun `maestro forge add --kind forgejo --url https://%s` to add it", host, host)
+	return nil, fmt.Errorf("no configured forge serves %s\n\nRun `maestro forges add --kind forgejo --url https://%s` to add it", host, host)
 }
 
 func init() {
-	forgeAddCmd.Flags().StringVar(&forgeAddKind, "kind", "", "forge kind: "+strings.Join(forge.Kinds, ", "))
-	forgeAddCmd.Flags().StringVar(&forgeAddURL, "url", "", "Forgejo instance URL (default: https://codeberg.org)")
-	forgeAddCmd.RegisterFlagCompletionFunc("kind", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	forgesAddCmd.Flags().StringVar(&forgeAddKind, "kind", "", "forge kind: "+strings.Join(forge.Kinds, ", "))
+	forgesAddCmd.Flags().StringVar(&forgeAddURL, "url", "", "Forgejo instance URL (default: https://codeberg.org)")
+	forgesAddCmd.RegisterFlagCompletionFunc("kind", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 		return forge.Kinds, cobra.ShellCompDirectiveNoFileComp
 	})
+	for _, c := range []*cobra.Command{forgesCmd, forgesListCmd} {
+		c.Flags().BoolVar(&forgesAsJSON, "json", false, "print the forges as JSON")
+	}
 
-	rootCmd.AddCommand(forgeCmd)
-	forgeCmd.AddCommand(forgeAddCmd, forgeListCmd, forgeRemoveCmd)
+	rootCmd.AddCommand(forgesCmd)
+	forgesCmd.AddCommand(forgesAddCmd, forgesListCmd, forgesRmCmd)
 }
 
 func completeForgeNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -186,7 +209,7 @@ func completeForgeNames(cmd *cobra.Command, args []string, toComplete string) ([
 }
 
 func addForgeFlag(cmd *cobra.Command, target *string) {
-	cmd.Flags().StringVar(target, "forge", "", "which forge to use (see 'maestro forge list')")
+	cmd.Flags().StringVar(target, "forge", "", "which forge to use (see 'maestro forges list')")
 	cmd.RegisterFlagCompletionFunc("forge", completeForgeNames)
 }
 

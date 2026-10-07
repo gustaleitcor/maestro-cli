@@ -55,7 +55,7 @@ func offerForge(ctx context.Context, stdin *bufio.Reader) error {
 		return err
 	}
 	if !strings.HasPrefix(strings.ToLower(answer), "y") {
-		fmt.Println(dimStyle.Render("Skipped. Add one later with: maestro forge add"))
+		fmt.Println(dimStyle.Render("Skipped. Add one later with: maestro forges add"))
 		return nil
 	}
 	return addForge(ctx, stdin, "", "", "")

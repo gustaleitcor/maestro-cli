@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"maestro-cli/internal/forge"
-	"maestro-cli/internal/maestroapi"
 )
 
 var (
@@ -34,33 +33,7 @@ const tableChromeLines = 6 // page header + footer bars, plus their joining newl
 const tableHeaderLines = 2 // the table's own column-header row plus its border
 
 func (m model) View() string {
-	if m.screen == repoListScreen {
-		return m.repoListView()
-	}
-
-	if m.err != nil {
-		return errorStyle.Render(fmt.Sprintf("Error: %v", m.err)) + "\n" + helpStyle.Render("press q to quit") + "\n"
-	}
-
-	if m.loading {
-		return fmt.Sprintf("\n  %s Loading...\n", m.spinner.View())
-	}
-
-	switch m.screen {
-	case imageListScreen:
-		title := fmt.Sprintf("Images (%d)", len(m.images))
-		if m.imageLimit > 0 {
-			title = fmt.Sprintf("Images (%d of %d allowed; the oldest goes when a new build needs room)", len(m.images), m.imageLimit)
-		}
-		header := bar(headerStyle, m.width, title)
-		if len(m.images) == 0 {
-			footer := bar(footerStyle, m.width, "q to quit")
-			return header + "\n\n  No images yet. Build one with: maestro build <repo>\n\n" + footer
-		}
-		footer := bar(footerStyle, m.width, "↑/↓ navigate · q to quit")
-		return header + "\n" + m.table.View() + "\n" + footer
-	}
-	return ""
+	return m.repoListView()
 }
 
 // repoListView keeps the header and footer up while loading or failing, so
@@ -133,43 +106,6 @@ func buildRepoTable(repos []forge.Repo, width, height int) table.Model {
 	return newListTable(columns, rows, width, height)
 }
 
-func buildImageTable(images []maestroapi.Image, width, height int) table.Model {
-	columns := []table.Column{
-		{Title: "REPO"},
-		{Title: "REF", Width: 14},
-		{Title: "BUILD", Width: 7},
-		{Title: "IMAGE ID", Width: 12},
-		{Title: "SIZE", Width: 9},
-		{Title: "CREATED", Width: 16},
-	}
-
-	rows := make([]table.Row, 0, len(images))
-	for _, img := range images {
-		repo := img.Repo
-		if repo == "" {
-			repo = img.Tag // no build record left for it; the tag still says what it is
-		}
-		ref := img.Ref
-		if ref == "" {
-			ref = "-"
-		}
-		build := "-"
-		if img.BuildID != 0 {
-			build = "#" + strconv.FormatInt(img.BuildID, 10)
-		}
-		rows = append(rows, table.Row{
-			repo,
-			ref,
-			build,
-			shortID(img.ID),
-			humanSize(img.Size),
-			img.CreatedAt.Local().Format("2006-01-02 15:04"),
-		})
-	}
-
-	return newListTable(columns, rows, width, height)
-}
-
 // newListTable gives the first column whatever width the others leave over,
 // and caps the height so the header and footer bars always stay on screen.
 func newListTable(columns []table.Column, rows []table.Row, width, height int) table.Model {
@@ -204,24 +140,4 @@ func newListTable(columns []table.Column, rows []table.Row, width, height int) t
 	t.SetStyles(s)
 
 	return t
-}
-
-func shortID(id string) string {
-	if len(id) > 12 {
-		return id[:12]
-	}
-	return id
-}
-
-func humanSize(b int64) string {
-	const unit = 1000
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
-	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "kMGTPE"[exp])
 }

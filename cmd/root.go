@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -29,7 +31,7 @@ var rootCmd = &cobra.Command{
 	SilenceUsage:  true,
 	// Bare invocation shows who is signed in instead of the usual help text.
 	RunE: runWelcome,
-	// maestro (bare), login, logout, forge, help, and completion shouldn't require a
+	// maestro (bare), login, logout, forges, help, and completion shouldn't require a
 	// Maestro key to run. Commands that read a forge load it themselves, and
 	// completions that need the key load it themselves too.
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -37,7 +39,7 @@ var rootCmd = &cobra.Command{
 		case "maestro", "login", "logout", "help", "completion", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd:
 			return nil
 		}
-		if cmd == forgeCmd || cmd.Parent() == forgeCmd {
+		if cmd == forgesCmd || cmd.Parent() == forgesCmd {
 			return nil
 		}
 
@@ -48,6 +50,14 @@ var rootCmd = &cobra.Command{
 		maestroKey = mk
 		return nil
 	},
+}
+
+// writeJSON is what --json prints: the same things a table shows, as the
+// server names them, for scripts.
+func writeJSON(w io.Writer, v any) error {
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(v)
 }
 
 func Execute() {

@@ -253,7 +253,7 @@ func TestErrorsSayWhatToDo(t *testing.T) {
 
 		status = http.StatusUnauthorized
 		_, err = f.ListRepos(context.Background())
-		want := host + " rejected the token: it is wrong, expired or revoked (Bad credentials)\n\nRun `maestro forge add` to store a new one"
+		want := host + " rejected the token: it is wrong, expired or revoked (Bad credentials)\n\nRun `maestro forges add` to store a new one"
 		if err == nil || err.Error() != want {
 			t.Errorf("%s 401 = %v", kind, err)
 		}

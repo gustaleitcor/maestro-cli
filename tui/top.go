@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"maestro-cli/internal/humanize"
 	"maestro-cli/internal/maestroapi"
@@ -202,6 +203,7 @@ var (
 	topBold     = lipgloss.NewStyle().Bold(true)
 	topSelected = lipgloss.NewStyle().Bold(true).Background(lipgloss.Color("236"))
 	topLabel    = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Bold(true)
+	topWarn     = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
 	topBad      = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
 	topGood     = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
 )
@@ -288,58 +290,175 @@ func (m topModel) footer() string {
 	return lipgloss.NewStyle().MaxWidth(m.width).Render(topDim.Render(keys))
 }
 
-func (m topModel) barWidth(n, taken int) int {
-	return max(6, min(30, (m.width-taken)/max(n, 1)))
+// cell fits text into exactly width columns, cutting what doesn't fit.
+func cell(text string, width int) string {
+	if lipgloss.Width(text) > width {
+		text = ansi.Truncate(text, width, "…")
+	}
+	return text + strings.Repeat(" ", max(0, width-lipgloss.Width(text)))
+}
+
+// The overview's columns that are as wide whatever the window: what each
+// shows next to its bar, and those without one.
+const (
+	statusWidth = 11 // unreachable
+	cpuWidth    = 4  // 100%
+	memWidth    = 9  // 8.0G/128G
+	gpuWidth    = 7  // 100% ×8
+	loadWidth   = 6
+	slotsWidth  = 9 // 12/16 +99
+	ctrsWidth   = 4
+	maxBarWidth = 20
+)
+
+// overviewLayout is how wide the overview's columns that depend on the
+// window and on the machines are.
+type overviewLayout struct {
+	name int
+	bar  int // 0: no room for bars, only figures
+}
+
+func machineLabel(machine maestroapi.MachineMetrics) string {
+	if machine.Kind == "host" {
+		return machine.Name + " (server)"
+	}
+	return machine.Name
+}
+
+func (m topModel) layout() overviewLayout {
+	l := overviewLayout{name: len("NAME")}
+	for _, machine := range m.machines {
+		l.name = max(l.name, lipgloss.Width(machineLabel(machine)))
+	}
+	l.name = min(l.name, 24)
+	// Three columns, the dot, and two spaces between each pair of the eight.
+	fixed := 3 + l.name + statusWidth + cpuWidth + memWidth + gpuWidth + loadWidth + slotsWidth + ctrsWidth + 7*2
+	// Each of the three bars takes its width and a space.
+	if l.bar = min(maxBarWidth, (m.width-fixed)/3-1); l.bar < 4 {
+		l.bar = 0
+	}
+	return l
+}
+
+// measure is a bar, when there is room for one, and a figure after it.
+func (l overviewLayout) measure(percent float64, figure string, figureWidth int) string {
+	figure = lipgloss.NewStyle().Foreground(level(percent)).Render(figure)
+	if l.bar == 0 {
+		return cell(figure, figureWidth)
+	}
+	return gauge(l.bar, percent) + " " + cell(figure, figureWidth)
+}
+
+func (l overviewLayout) measureWidth(figureWidth int) int {
+	if l.bar == 0 {
+		return figureWidth
+	}
+	return l.bar + 1 + figureWidth
+}
+
+func (l overviewLayout) row(dot, name, status, cpu, mem, gpu, load, slots, ctrs string) string {
+	return strings.Join([]string{
+		" " + dot + " " + cell(name, l.name), cell(status, statusWidth),
+		cell(cpu, l.measureWidth(cpuWidth)), cell(mem, l.measureWidth(memWidth)), cell(gpu, l.measureWidth(gpuWidth)),
+		cell(load, loadWidth), cell(slots, slotsWidth), ctrs,
+	}, "  ")
+}
+
+// rowWithReason is a row for a machine with nothing to measure: why takes
+// the place of the measures.
+func (l overviewLayout) rowWithReason(dot, name, status, reason, slots, ctrs string) string {
+	span := l.measureWidth(cpuWidth) + l.measureWidth(memWidth) + l.measureWidth(gpuWidth) + loadWidth + 3*2
+	return strings.Join([]string{
+		" " + dot + " " + cell(name, l.name), cell(status, statusWidth),
+		cell(topDim.Render(strings.Join(strings.Fields(reason), " ")), span),
+		cell(slots, slotsWidth), ctrs,
+	}, "  ")
 }
 
 func (m topModel) overviewLines() []string {
 	if len(m.machines) == 0 {
 		return []string{"", "  No machines yet. An administrator can add them on the Maestro page."}
 	}
-	var lines []string
+	l := m.layout()
+	lines := []string{"", topDim.Render(l.row(" ", "NAME", "STATUS", "CPU", "MEM", "GPU", "LOAD", "SLOTS", "CTRS"))}
 	for _, machine := range m.machines {
-		first, second := machineSummary(machine, m.barWidth(3, 72))
+		row := machineRow(machine, l)
 		if machine.Name == m.selected {
-			first = topSelected.Width(m.width).Render(first)
+			row = topSelected.Width(m.width).MaxWidth(m.width).Render(row)
 		}
-		lines = append(lines, first, second, "")
+		lines = append(lines, row)
 	}
 	return lines
 }
 
-func machineSummary(machine maestroapi.MachineMetrics, barWidth int) (string, string) {
-	dot, name := topGood.Render("●"), topBold.Render(machine.Name)
+func machineRow(machine maestroapi.MachineMetrics, l overviewLayout) string {
+	name := topBold.Render(machine.Name)
 	if machine.Kind == "host" {
-		name += topDim.Render(" (the server)")
+		name += topDim.Render(" (server)")
 	}
+	slots := SlotsInUse(machine)
 	if machine.Status != "ready" {
-		return " " + topBad.Render("●") + " " + name + "  " + topBad.Render("unreachable"),
-			"    " + topDim.Render(machine.Error)
+		return l.rowWithReason(topBad.Render("●"), name, topBad.Render("unreachable"), machine.Error, slots, "-")
 	}
-	first := " " + dot + " " + name
+	ctrs := fmt.Sprintf("%d", len(machine.Containers))
 	sys := machine.System
 	if sys == nil {
-		return first + "  " + topDim.Render("ready, but no system information"), "    " + topDim.Render(machine.SystemError)
+		return l.rowWithReason(topGood.Render("●"), name, "ready", "no system information: "+machine.SystemError, slots, ctrs)
 	}
-	first += topDim.Render(fmt.Sprintf("  %s · up %s · load %.2f %.2f %.2f · %d container(s)",
-		sys.Kernel, humanize.Uptime(sys.UptimeSeconds), sys.CPU.Load[0], sys.CPU.Load[1], sys.CPU.Load[2], len(machine.Containers)))
 
 	memPercent := humanize.Fraction(sys.Memory.Used, sys.Memory.Total)
-	parts := []string{
-		meter("CPU", barWidth, sys.CPU.Percent, fmt.Sprintf("%4s", humanize.Percent(sys.CPU.Percent))),
-		meter("MEM", barWidth, memPercent, fmt.Sprintf("%4s %s/%s", humanize.Percent(memPercent), humanize.Bytes(sys.Memory.Used), humanize.Bytes(sys.Memory.Total))),
-	}
+	gpu := "-"
 	if len(sys.GPUs) > 0 {
-		var busy, used, total float64
+		var busy float64
 		for _, g := range sys.GPUs {
 			busy += g.Percent
-			used += float64(g.MemoryUsed)
-			total += float64(g.MemoryTotal)
 		}
 		busy /= float64(len(sys.GPUs))
-		parts = append(parts, meter("GPU", barWidth, busy, fmt.Sprintf("%4s %s/%s ×%d", humanize.Percent(busy), humanize.Bytes(uint64(used)), humanize.Bytes(uint64(total)), len(sys.GPUs))))
+		gpu = l.measure(busy, fmt.Sprintf("%4s ×%d", humanize.Percent(busy), len(sys.GPUs)), gpuWidth)
 	}
-	return first, "    " + strings.Join(parts, "  ")
+	return l.row(topGood.Render("●"), name, "ready",
+		l.measure(sys.CPU.Percent, fmt.Sprintf("%4s", humanize.Percent(sys.CPU.Percent)), cpuWidth),
+		l.measure(memPercent, humanize.Bytes(sys.Memory.Used)+"/"+humanize.Bytes(sys.Memory.Total), memWidth),
+		gpu, fmt.Sprintf("%.2f", sys.CPU.Load[0]), slots, ctrs)
+}
+
+// SlotsInUse reads "2/4 +3": two of four slots taken and three lines
+// waiting. A machine without slots, the host, has "-".
+func SlotsInUse(m maestroapi.MachineMetrics) string {
+	if m.Slots == 0 {
+		return "-"
+	}
+	if m.Queued == 0 {
+		return fmt.Sprintf("%d/%d", m.Busy, m.Slots)
+	}
+	return fmt.Sprintf("%d/%d +%d", m.Busy, m.Slots, m.Queued)
+}
+
+// owner is the name of whoever a container belongs to, else their email.
+func owner(c maestroapi.ContainerMetrics) string {
+	switch {
+	case c.UserName != "":
+		return c.UserName
+	case c.UserEmail != "":
+		return c.UserEmail
+	}
+	return fmt.Sprintf("user %d", c.UserID)
+}
+
+// source is the repo and ref a container was built from.
+func source(c maestroapi.ContainerMetrics) string {
+	if c.Repo == "" {
+		return "-"
+	}
+	return c.Repo + "@" + c.Ref
+}
+
+// slotsLine says in words what the overview's SLOTS column says in figures.
+func slotsLine(machine maestroapi.MachineMetrics) string {
+	if machine.Slots == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%d of %d slot(s) in use · %d line(s) queued", machine.Busy, machine.Slots, machine.Queued)
 }
 
 func (m topModel) detailLines() []string {
@@ -354,17 +473,26 @@ func (m topModel) detailLines() []string {
 
 	if machine.Status != "ready" {
 		add("", " "+topBad.Render("unreachable")+"  "+machine.Error)
+		if slots := slotsLine(machine); slots != "" {
+			add(" " + topDim.Render(slots))
+		}
 		return lines
 	}
 	sys := machine.System
 	if sys == nil {
 		add("", " "+topDim.Render("Maestro reaches this machine's Podman, but can't run commands on it, so there is nothing to show but its containers."), " "+topDim.Render(machine.SystemError))
+		if slots := slotsLine(machine); slots != "" {
+			add(" " + topDim.Render(slots))
+		}
 		return append(lines, m.containerLines(machine)...)
 	}
 
 	add("", " "+topBold.Render(firstNonEmpty(sys.Hostname, machine.Name))+topDim.Render(fmt.Sprintf("  %s · up %s", sys.Kernel, humanize.Uptime(sys.UptimeSeconds))))
 	if sys.CPUModel != "" {
 		add(" " + topDim.Render(fmt.Sprintf("%s · %d cores · load %.2f %.2f %.2f", sys.CPUModel, sys.CPU.Cores, sys.CPU.Load[0], sys.CPU.Load[1], sys.CPU.Load[2])))
+	}
+	if slots := slotsLine(machine); slots != "" {
+		add(" " + topDim.Render(slots))
 	}
 
 	section("cpu")
@@ -452,14 +580,19 @@ func (m topModel) containerLines(machine maestroapi.MachineMetrics) []string {
 	if len(machine.Containers) == 0 {
 		return append(lines, " "+topDim.Render("none running"))
 	}
-	lines = append(lines, topDim.Render(fmt.Sprintf(" %-9s %-6s %8s %12s  %s", "RUN/LINE", "USER", "CPU", "MEMORY", "NAME")))
+	ownerWidth, sourceWidth := len("OWNER"), len("REPO@REF")
+	for _, c := range machine.Containers {
+		ownerWidth, sourceWidth = max(ownerWidth, lipgloss.Width(owner(c))), max(sourceWidth, lipgloss.Width(source(c)))
+	}
+	ownerWidth, sourceWidth = min(ownerWidth, 24), min(sourceWidth, 32)
+	lines = append(lines, topDim.Render(fmt.Sprintf(" %-9s %s %8s %12s  %s  %s", "RUN/LINE", cell("OWNER", ownerWidth), "CPU", "MEMORY", cell("REPO@REF", sourceWidth), "NAME")))
 	for _, c := range machine.Containers {
 		memory := humanize.Bytes(c.MemUsed)
 		if c.MemLimit > 0 {
 			memory += "/" + humanize.Bytes(c.MemLimit)
 		}
 		cpu := lipgloss.NewStyle().Foreground(level(c.Percent)).Render(fmt.Sprintf("%7.0f%%", c.Percent))
-		lines = append(lines, fmt.Sprintf(" %-9s %-6d %s %12s  %s", fmt.Sprintf("%d/%d", c.Run, c.Line), c.UserID, cpu, memory, c.Name))
+		lines = append(lines, fmt.Sprintf(" %-9s %s %s %12s  %s  %s", fmt.Sprintf("%d/%d", c.Run, c.Line), cell(owner(c), ownerWidth), cpu, memory, cell(source(c), sourceWidth), c.Name))
 	}
 	return lines
 }

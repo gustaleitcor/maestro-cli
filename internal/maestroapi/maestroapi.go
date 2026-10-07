@@ -49,12 +49,28 @@ type BuildRequest struct {
 type StreamEvent struct {
 	Stream  string `json:"stream,omitempty"`
 	Status  string `json:"status,omitempty"`
+	BuildID int64  `json:"build_id,omitempty"` // 0 from a server that doesn't say
 	ImageID string `json:"image_id,omitempty"`
 	Error   string `json:"error,omitempty"`
 }
 
 type errorResponse struct {
 	Error string `json:"error"`
+}
+
+// Build is one `maestro build`, whether or not it still has its image.
+// Status is running, success or error.
+type Build struct {
+	ID         int64     `json:"id"`
+	Forge      string    `json:"forge"`
+	Host       string    `json:"host"`
+	Repo       string    `json:"repo"`
+	Ref        string    `json:"ref"`
+	Status     string    `json:"status"`
+	ImageID    string    `json:"image_id,omitempty"`
+	Error      string    `json:"error,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
+	FinishedAt time.Time `json:"finished_at"`
 }
 
 type Image struct {
@@ -98,8 +114,19 @@ type RunLine struct {
 	Error      string    `json:"error"`
 	StartedAt  time.Time `json:"started_at"`
 	FinishedAt time.Time `json:"finished_at"`
-	Files      []RunFile `json:"files"`
+	// Logs names the streams there are logs of: stdout and stderr, or
+	// combined for a line kept before the two were kept apart. Nil from a
+	// server that only knows them together.
+	Logs  []string  `json:"logs"`
+	Files []RunFile `json:"files"`
 }
+
+// The streams of a line's logs, as RunLine.Logs names them.
+const (
+	LogStdout   = "stdout"
+	LogStderr   = "stderr"
+	LogCombined = "combined"
+)
 
 type RunFile struct {
 	Path    string `json:"path"`
@@ -302,9 +329,24 @@ func ListImages(ctx context.Context, maestroKey string) ([]Image, error) {
 	return images, nil
 }
 
-func ListRuns(ctx context.Context, maestroKey string) ([]Run, error) {
+// ListBuilds returns every build of the caller's, newest first.
+func ListBuilds(ctx context.Context, maestroKey string) ([]Build, error) {
+	var builds []Build
+	if err := doWithKey(ctx, maestroKey, http.MethodGet, "/api/builds", nil, http.StatusOK, &builds); err != nil {
+		return nil, err
+	}
+	return builds, nil
+}
+
+// ListRuns returns the caller's runs, newest first; with all, everyone's,
+// which only an administrator is given.
+func ListRuns(ctx context.Context, maestroKey string, all bool) ([]Run, error) {
+	path := "/api/runs"
+	if all {
+		path += "?all=true"
+	}
 	var runs []Run
-	if err := doWithKey(ctx, maestroKey, http.MethodGet, "/api/runs", nil, http.StatusOK, &runs); err != nil {
+	if err := doWithKey(ctx, maestroKey, http.MethodGet, path, nil, http.StatusOK, &runs); err != nil {
 		return nil, err
 	}
 	return runs, nil
@@ -318,13 +360,13 @@ func DeleteRun(ctx context.Context, maestroKey string, id int64) error {
 	return doWithKey(ctx, maestroKey, http.MethodDelete, runPath(id), nil, http.StatusNoContent, nil)
 }
 
-// RunLogs writes what a line's container printed to w: live while it runs
-// (the last tail lines, or all of them when tail is negative), and the copy
-// kept once it finished.
-func RunLogs(ctx context.Context, maestroKey string, id, line int64, tail int, w io.Writer) error {
-	path := runPath(id) + "/lines/" + strconv.FormatInt(line, 10) + "/logs"
+// RunLogs writes one stream of what a line's container printed to w: live
+// while it runs (the last tail lines, or all of them when tail is negative),
+// and the copy kept once it finished.
+func RunLogs(ctx context.Context, maestroKey string, id, line int64, stream string, tail int, w io.Writer) error {
+	path := runPath(id) + "/lines/" + strconv.FormatInt(line, 10) + "/logs?stream=" + url.QueryEscape(stream)
 	if tail >= 0 {
-		path += "?tail=" + strconv.Itoa(tail)
+		path += "&tail=" + strconv.Itoa(tail)
 	}
 	return download(ctx, maestroKey, path, w)
 }

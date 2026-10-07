@@ -6,7 +6,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"maestro-cli/internal/forge"
-	"maestro-cli/internal/maestroapi"
 )
 
 // forge is the index of the forge that answered: by the time it does, the
@@ -21,21 +20,8 @@ type reposErrMsg struct {
 	err   error
 }
 
-type imagesLoadedMsg struct {
-	images []maestroapi.Image
-	limit  int
-}
-
-type fetchErrMsg struct{ err error }
-
 func (m model) Init() tea.Cmd {
-	switch m.screen {
-	case repoListScreen:
-		return tea.Batch(m.spinner.Tick, fetchRepos(m.ctx, m.current, m.forges[m.current].Client))
-	case imageListScreen:
-		return tea.Batch(m.spinner.Tick, fetchImages(m.ctx, m.maestroKey))
-	}
-	return nil
+	return tea.Batch(m.spinner.Tick, fetchRepos(m.ctx, m.current, m.forges[m.current].Client))
 }
 
 func fetchRepos(ctx context.Context, index int, client forge.Forge) tea.Cmd {
@@ -45,20 +31,5 @@ func fetchRepos(ctx context.Context, index int, client forge.Forge) tea.Cmd {
 			return reposErrMsg{index, err}
 		}
 		return reposLoadedMsg{index, repos}
-	}
-}
-
-func fetchImages(ctx context.Context, maestroKey string) tea.Cmd {
-	return func() tea.Msg {
-		images, err := maestroapi.ListImages(ctx, maestroKey)
-		if err != nil {
-			return fetchErrMsg{err}
-		}
-		// Best effort: a server from before the limit has no settings.
-		settings, err := maestroapi.GetSettings(ctx, maestroKey)
-		if err != nil {
-			return imagesLoadedMsg{images: images}
-		}
-		return imagesLoadedMsg{images: images, limit: settings.ImagesPerUser}
 	}
 }

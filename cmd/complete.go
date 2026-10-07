@@ -97,7 +97,7 @@ func completeRunThenDir(cmd *cobra.Command, args []string, toComplete string) ([
 }
 
 func runOffers(ctx context.Context, key, toComplete string) []string {
-	runs, err := maestroapi.ListRuns(ctx, key)
+	runs, err := maestroapi.ListRuns(ctx, key, false)
 	if err != nil {
 		return nil
 	}

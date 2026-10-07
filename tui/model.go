@@ -8,14 +8,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"maestro-cli/internal/forge"
-	"maestro-cli/internal/maestroapi"
-)
-
-type screen int
-
-const (
-	repoListScreen screen = iota
-	imageListScreen
 )
 
 type RepoForge struct {
@@ -24,7 +16,6 @@ type RepoForge struct {
 }
 
 type model struct {
-	screen  screen
 	ctx     context.Context
 	spinner spinner.Model
 	loading bool
@@ -36,22 +27,17 @@ type model struct {
 	current   int
 	repoCache map[int][]forge.Repo
 
-	maestroKey string
-
-	repos      []forge.Repo
-	images     []maestroapi.Image
-	imageLimit int // 0: unknown
-	table      table.Model
+	repos []forge.Repo
+	table table.Model
 
 	width, height int
 }
 
-func newModel(ctx context.Context, s screen) model {
+func newModel(ctx context.Context) model {
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 
 	return model{
-		screen:  s,
 		ctx:     ctx,
 		spinner: sp,
 		loading: true,
@@ -59,17 +45,10 @@ func newModel(ctx context.Context, s screen) model {
 }
 
 func RunRepoList(ctx context.Context, forges []RepoForge, start int) error {
-	m := newModel(ctx, repoListScreen)
+	m := newModel(ctx)
 	m.forges = forges
 	m.current = start
 	m.repoCache = map[int][]forge.Repo{}
-	_, err := tea.NewProgram(m, tea.WithAltScreen()).Run()
-	return err
-}
-
-func RunImageList(ctx context.Context, maestroKey string) error {
-	m := newModel(ctx, imageListScreen)
-	m.maestroKey = maestroKey
 	_, err := tea.NewProgram(m, tea.WithAltScreen()).Run()
 	return err
 }

@@ -69,9 +69,9 @@ func statusError(host string, status int, detail string) error {
 	}
 	switch status {
 	case http.StatusUnauthorized:
-		return fmt.Errorf("%s rejected the token: it is wrong, expired or revoked%s\n\nRun `maestro forge add` to store a new one", host, said)
+		return fmt.Errorf("%s rejected the token: it is wrong, expired or revoked%s\n\nRun `maestro forges add` to store a new one", host, said)
 	case http.StatusForbidden:
-		return fmt.Errorf("%s does not let this token do that%s\n\nCheck the token's permissions, or run `maestro forge add` to store another", host, said)
+		return fmt.Errorf("%s does not let this token do that%s\n\nCheck the token's permissions, or run `maestro forges add` to store another", host, said)
 	case http.StatusNotFound:
 		return fmt.Errorf("%w on %s: it doesn't exist, or the token can't see it%s", ErrNotFound, host, said)
 	case http.StatusTooManyRequests:

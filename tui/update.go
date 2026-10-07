@@ -14,7 +14,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "esc", "ctrl+c":
 			return m, tea.Quit
 		case "left", "right":
-			if m.screen == repoListScreen && len(m.forges) > 1 {
+			if len(m.forges) > 1 {
 				step := 1
 				if msg.String() == "left" {
 					step = len(m.forges) - 1
@@ -25,11 +25,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		switch {
-		case m.screen == repoListScreen && m.repos != nil:
+		if m.repos != nil {
 			m.table = buildRepoTable(m.repos, m.width, m.height)
-		case m.screen == imageListScreen && m.images != nil:
-			m.table = buildImageTable(m.images, m.width, m.height)
 		}
 		return m, nil
 
@@ -53,18 +50,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case imagesLoadedMsg:
-		m.loading = false
-		m.images = msg.images
-		m.imageLimit = msg.limit
-		m.table = buildImageTable(m.images, m.width, m.height)
-		return m, nil
-
-	case fetchErrMsg:
-		m.loading = false
-		m.err = msg.err
-		return m, nil
-
 	case spinner.TickMsg:
 		if !m.loading {
 			return m, nil
@@ -74,7 +59,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	if (m.screen == repoListScreen || m.screen == imageListScreen) && !m.loading {
+	if !m.loading {
 		var cmd tea.Cmd
 		m.table, cmd = m.table.Update(msg)
 		return m, cmd

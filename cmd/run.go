@@ -1,8 +1,8 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -17,11 +17,12 @@ var runCmd = &cobra.Command{
 parameters in the repo's maestro.toml, spread over the machines it names.
 Without a maestro.toml, a single container runs the image's own command.
 
-<build> is the build number shown by ` + "`maestro image list`" + `, with or without #.
-Containers start as machines have room; follow them with ` + "`maestro runs show`" + `.
+<build> is the build number shown by ` + "`maestro builds list`" + `, with or without #.
+Containers start as machines have room; --watch follows them until the run
+is over, as ` + "`maestro runs show <run> --watch`" + ` does later.
 
-  maestro run 12
-  maestro runs show <run>
+  maestro run 12 --watch
+  maestro runs show <run> --watch
   maestro runs get <run>`,
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: completeBuilds,
@@ -29,18 +30,30 @@ Containers start as machines have room; follow them with ` + "`maestro runs show
 }
 
 func init() {
+	addWatchFlags(runCmd, "follow the run until it is over")
 	rootCmd.AddCommand(runCmd)
 }
 
 func runRun(cmd *cobra.Command, args []string) error {
-	buildID, err := strconv.ParseInt(strings.TrimPrefix(args[0], "#"), 10, 64)
-	if err != nil || buildID <= 0 {
-		return fmt.Errorf("invalid build %q: expected a build number such as 12 (see `maestro image list`)", args[0])
-	}
-
-	run, err := maestroapi.StartRun(cmd.Context(), maestroKey, buildID)
+	buildID, err := parseID(args[0], "build")
 	if err != nil {
+		return fmt.Errorf("%w such as 12 (see `maestro builds list`)", err)
+	}
+	if err := checkWatch(); err != nil {
 		return err
+	}
+	run, err := startRun(cmd.Context(), buildID)
+	if err != nil || !runsWatch {
+		return err
+	}
+	return showRun(cmd.Context(), run.ID, true)
+}
+
+// startRun queues a run of a build and says what was queued.
+func startRun(ctx context.Context, buildID int64) (*maestroapi.Run, error) {
+	run, err := maestroapi.StartRun(ctx, maestroKey, buildID)
+	if err != nil {
+		return nil, err
 	}
 
 	where := "any machine"
@@ -51,6 +64,6 @@ func runRun(cmd *cobra.Command, args []string) error {
 	if len(run.Outputs) > 0 {
 		fmt.Printf("Keeping %s from each container.\n", strings.Join(run.Outputs, ", "))
 	}
-	fmt.Println(dimStyle.Render(fmt.Sprintf("Follow it with `maestro runs show %d`.", run.ID)))
-	return nil
+	fmt.Println(dimStyle.Render(fmt.Sprintf("Follow it with `maestro runs show %d --watch`.", run.ID)))
+	return run, nil
 }

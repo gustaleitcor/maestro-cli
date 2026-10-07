@@ -74,7 +74,7 @@ func renderWelcomeInfo(w Welcome) string {
 	fmt.Fprintln(&b, labelStyle.Render("Server:")+" "+w.Server)
 
 	if len(w.Forges) == 0 {
-		fmt.Fprintln(&b, labelStyle.Render("Forges:")+" none; run `maestro forge add`")
+		fmt.Fprintln(&b, labelStyle.Render("Forges:")+" none; run `maestro forges add`")
 	}
 	for i, f := range w.Forges {
 		label := ""

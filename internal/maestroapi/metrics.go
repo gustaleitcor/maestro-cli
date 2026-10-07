@@ -21,6 +21,12 @@ type MachineMetrics struct {
 	System      *SystemMetrics     `json:"system"`
 	SystemError string             `json:"system_error"`
 	Containers  []ContainerMetrics `json:"containers"`
+
+	// Busy of the machine's Slots hold a line that is starting or running,
+	// and Queued lines wait for one. The host has no slots.
+	Slots  int64 `json:"slots"`
+	Busy   int64 `json:"busy"`
+	Queued int64 `json:"queued"`
 }
 
 type SystemMetrics struct {
@@ -78,6 +84,12 @@ type ContainerMetrics struct {
 	Percent  float64 `json:"cpu_percent"` // 100 is one whole core
 	MemUsed  uint64  `json:"memory_used"`
 	MemLimit uint64  `json:"memory_limit"`
+
+	// Whose it is and what it runs; empty when the server no longer knows.
+	UserName  string `json:"user_name"`
+	UserEmail string `json:"user_email"`
+	Repo      string `json:"repo"`
+	Ref       string `json:"ref"`
 }
 
 func GetMetrics(ctx context.Context, maestroKey, machine string) ([]MachineMetrics, error) {

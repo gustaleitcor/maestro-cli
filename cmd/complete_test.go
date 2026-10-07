@@ -90,7 +90,7 @@ func TestCompletionsWithoutAKey(t *testing.T) {
 	}
 }
 
-// Completing must not demand a key: `maestro forge remove <TAB>` works
+// Completing must not demand a key: `maestro forges rm <TAB>` works
 // without one, and a completion that needs the key finds out by itself.
 func TestCompletionRequestsSkipTheKeyCheck(t *testing.T) {
 	signedIn(t, "")

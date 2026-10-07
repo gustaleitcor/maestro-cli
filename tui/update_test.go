@@ -46,7 +46,7 @@ func press(t *testing.T, m model, key tea.KeyType) model {
 
 func TestArrowsSwitchForge(t *testing.T) {
 	var calls [3]int
-	m := newModel(context.Background(), repoListScreen)
+	m := newModel(context.Background())
 	m.forges = []RepoForge{
 		{"github", fakeForge{"github.com", []forge.Repo{{FullName: "me/a"}}, &calls[0]}},
 		{"codeberg", fakeForge{"codeberg.org", []forge.Repo{{FullName: "me/b"}, {FullName: "me/c"}}, &calls[1]}},
