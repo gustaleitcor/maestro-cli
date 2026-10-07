@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"os"
 	"regexp"
 	"slices"
 
@@ -81,7 +80,7 @@ func RemoveForge(name string) (bool, error) {
 }
 
 func ForgeToken(name string) (string, error) {
-	if os.Getenv(fileEnvFlag) != "1" {
+	if useKeyring() {
 		if token, err := keyring.Get(service, forgeKeyringPrefix+name); err == nil {
 			return token, nil
 		}
@@ -100,7 +99,7 @@ func ForgeToken(name string) (string, error) {
 // like the Maestro key does, keeping only one copy of the token.
 func saveForgeToken(name, token string) error {
 	inKeyring := false
-	if os.Getenv(fileEnvFlag) != "1" {
+	if useKeyring() {
 		inKeyring = keyring.Set(service, forgeKeyringPrefix+name, token) == nil
 	}
 

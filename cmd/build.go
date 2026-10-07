@@ -31,11 +31,13 @@ var buildCmd = &cobra.Command{
 which must be at the root of the repo.
 
 <repo> is a name, owner/name, or URL. The forge that has it is used; pass
---forge when several do.
+--forge when several do. A public repo on GitHub, GitLab or Codeberg needs no
+forge and no token: pass its full URL.
 
   maestro build my-app
   maestro build some-org/my-app --ref v1.2.0
   maestro build https://codeberg.org/some-org/my-app
+  maestro build https://github.com/some-org/public-app
 
 The build gets a number: ` + "`maestro run <build>`" + ` runs its image, and
 ` + "`maestro builds list`" + ` shows the ones you have. With --run, the image is
@@ -284,10 +286,8 @@ func splitRepoPath(kind, path string) (owner, repo string, err error) {
 	if len(parts) < 2 {
 		return "", "", fmt.Errorf("expected owner/name")
 	}
-	for _, part := range parts {
-		if part == "" {
-			return "", "", fmt.Errorf("expected owner/name")
-		}
+	if slices.Contains(parts, "") {
+		return "", "", fmt.Errorf("expected owner/name")
 	}
 	if kind != forge.GitLab {
 		return parts[0], parts[1], nil

@@ -40,12 +40,18 @@ var forgesAddCmd = &cobra.Command{
 	Long: `Adds a forge, or replaces the one with the same name. The token is
 checked before it is stored. Only Forgejo takes a --url.
 
+The token is kept in the system keyring. Without --store-in-file, adding a
+forge goes back to the keyring; with it, secrets are kept in the config file.
+
   maestro forges add
   maestro forges add --kind gitlab
   maestro forges add work --kind forgejo --url https://git.example.com`,
 	Args:              cobra.MaximumNArgs(1),
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := applyStoreFlag(); err != nil {
+			return err
+		}
 		name := ""
 		if len(args) == 1 {
 			name = args[0]
@@ -179,7 +185,28 @@ func selectForgeByHost(host, name string) (*activeForge, error) {
 	if name != "" {
 		return nil, fmt.Errorf("forge %q does not serve %s", name, host)
 	}
+	if active, err := anonymousForge(host); active != nil || err != nil {
+		return active, err
+	}
 	return nil, fmt.Errorf("no configured forge serves %s\n\nRun `maestro forges add --kind forgejo --url https://%s` to add it", host, host)
+}
+
+// anonymousForge is how a public repo on GitHub, GitLab or Codeberg is built
+// without any forge configured: no token, so only what the forge shows to
+// everyone. It returns nil for any other host, which needs a forge added.
+func anonymousForge(host string) (*activeForge, error) {
+	for _, kind := range forge.Kinds {
+		base, err := url.Parse(forge.DefaultBaseURL(kind))
+		if err != nil || !strings.EqualFold(base.Host, host) {
+			continue
+		}
+		client, err := forge.New(kind, "", "")
+		if err != nil {
+			return nil, err
+		}
+		return &activeForge{Forge: config.Forge{Name: kind, Kind: kind}, Client: client}, nil
+	}
+	return nil, nil
 }
 
 func init() {
@@ -188,6 +215,7 @@ func init() {
 	forgesAddCmd.RegisterFlagCompletionFunc("kind", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 		return forge.Kinds, cobra.ShellCompDirectiveNoFileComp
 	})
+	addStoreFlag(forgesAddCmd)
 	for _, c := range []*cobra.Command{forgesCmd, forgesListCmd} {
 		c.Flags().BoolVar(&forgesAsJSON, "json", false, "print the forges as JSON")
 	}

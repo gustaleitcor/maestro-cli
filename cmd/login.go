@@ -20,15 +20,38 @@ var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Sign the CLI in to Maestro",
 	Long: `Prints a link to the Maestro page and a short code to approve there.
-The link can be opened in any browser, on this machine or another.`,
+The link can be opened in any browser, on this machine or another.
+
+The key is kept in the system keyring, and a login without --store-in-file goes
+back to it. If yours asks for a password, or has none,
+pass --store-in-file to keep secrets in the config file (readable only by you)
+instead.`,
 	RunE: runLogin,
 }
 
+var storeInFile bool
+
+// addStoreFlag adds --store-in-file to the commands that save a secret.
+func addStoreFlag(cmd *cobra.Command) {
+	cmd.Flags().BoolVar(&storeInFile, "store-in-file", false, "keep secrets in the config file instead of the system keyring, for good")
+}
+
+// applyStoreFlag must run before anything is saved. Logging in and adding a
+// forge are what choose where secrets live, so without the flag they go back
+// to the keyring.
+func applyStoreFlag() error {
+	return config.UseFileStore(storeInFile)
+}
+
 func init() {
+	addStoreFlag(loginCmd)
 	rootCmd.AddCommand(loginCmd)
 }
 
 func runLogin(cmd *cobra.Command, args []string) error {
+	if err := applyStoreFlag(); err != nil {
+		return err
+	}
 	stdin := bufio.NewReader(os.Stdin)
 
 	if err := loginMaestroInBrowser(cmd.Context()); err != nil {

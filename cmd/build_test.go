@@ -131,3 +131,30 @@ func TestBuildFindsTheForge(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildPublicRepoNeedsNoForge(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	t.Setenv("HOME", dir)
+	t.Setenv("MAESTRO_FORCE_FILE_STORE", "1")
+	ctx := context.Background()
+
+	for arg, want := range map[string]string{
+		"https://github.com/ana/app":    "github ana/app",
+		"https://gitlab.com/team/sub/x": "gitlab team/sub/x",
+		"https://codeberg.org/ana/app":  "forgejo ana/app",
+	} {
+		active, owner, repo, err := parseRepoArg(ctx, arg, "")
+		if err != nil || active.Token != "" || active.Name+" "+owner+"/"+repo != want {
+			t.Errorf("parseRepoArg(%q) = %v %s/%s, %v; want %s", arg, active, owner, repo, err, want)
+		}
+	}
+	// Anonymous means a full URL: a name or owner/name needs a forge.
+	if _, _, _, err := parseRepoArg(ctx, "ana/app", ""); err == nil {
+		t.Error("owner/name was served without a forge")
+	}
+	// A host that isn't one of the three public ones still needs a forge.
+	if _, _, _, err := parseRepoArg(ctx, "https://git.example.com/ana/app", ""); err == nil {
+		t.Error("an unknown host was served without a forge")
+	}
+}

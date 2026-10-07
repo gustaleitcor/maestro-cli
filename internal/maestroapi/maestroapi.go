@@ -174,7 +174,8 @@ func PollCLILogin(ctx context.Context, deviceCode string) (*CLILoginResult, erro
 // output chunk as it arrives. It blocks until the build finishes or ctx is
 // cancelled, returning the final status event.
 //
-// forgeToken is the read-only token maestro-orq clones with.
+// forgeToken is the read-only token maestro-orq clones with. It is empty for
+// a public repo, which needs none.
 func TriggerBuild(ctx context.Context, maestroKey, forgeToken string, req BuildRequest, onLine func(string)) (*StreamEvent, error) {
 	body, err := json.Marshal(struct {
 		Forge  string `json:"forge"`
@@ -193,8 +194,10 @@ func TriggerBuild(ctx context.Context, maestroKey, forgeToken string, req BuildR
 		return nil, fmt.Errorf("building request: %w", err)
 	}
 	httpReq.Header.Set("Authorization", "Bearer "+maestroKey)
-	httpReq.Header.Set("X-Forge-Token", forgeToken)
-	if req.Forge == "github" {
+	if forgeToken != "" {
+		httpReq.Header.Set("X-Forge-Token", forgeToken)
+	}
+	if forgeToken != "" && req.Forge == "github" {
 		// What a maestro-orq older than multi-forge support reads.
 		httpReq.Header.Set("X-GitHub-Token", forgeToken)
 	}

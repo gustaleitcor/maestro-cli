@@ -129,3 +129,38 @@ func TestReset(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestUseFileStoreSticks(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	t.Setenv("HOME", dir)
+
+	if err := UseFileStore(true); err != nil {
+		t.Fatal(err)
+	}
+	if useKeyring() {
+		t.Error("the keyring is still used after UseFileStore")
+	}
+	if err := AddForge(Forge{Name: "work", Kind: "forgejo"}, "tok"); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := readConfigFile()
+	if err != nil || cfg.ForgeTokens["work"] != "tok" {
+		t.Errorf("token in file = %q, %v", cfg.ForgeTokens["work"], err)
+	}
+	if err := SaveMaestroKey("mk"); err != nil {
+		t.Fatal(err)
+	}
+	if key, err := LoadMaestroKey(); err != nil || key != "mk" {
+		t.Errorf("LoadMaestroKey = %q, %v", key, err)
+	}
+	if err := UseFileStore(false); err != nil {
+		t.Fatal(err)
+	}
+	if !useKeyring() {
+		t.Error("the keyring is not used again after UseFileStore(false)")
+	}
+	if token, err := ForgeToken("work"); err != nil || token != "tok" {
+		t.Errorf("a token saved in the file is lost: %q, %v", token, err)
+	}
+}

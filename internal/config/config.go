@@ -17,6 +17,8 @@ const (
 	maestroKeyringUser = "maestro_key"
 	forgeKeyringPrefix = "forge:"
 
+	storeFile = "file"
+
 	appDirName  = "maestro"
 	configFile  = "config.json"
 	fileEnvFlag = "MAESTRO_FORCE_FILE_STORE" // set to "1" to skip keyring and force file storage
@@ -29,6 +31,10 @@ var ErrNoMaestroKey = errors.New("no maestro key found; run `maestro login` firs
 type Config struct {
 	GitHubToken string `json:"github_token,omitempty"`
 	MaestroKey  string `json:"maestro_key,omitempty"`
+
+	// Store is "file" once the user chose to keep secrets in this file and
+	// not in the system keyring; see UseFileStore.
+	Store string `json:"store,omitempty"`
 
 	Forges []Forge `json:"forges,omitempty"`
 	// ForgeTokens is only used when the keyring isn't; see saveForgeToken.
@@ -63,6 +69,38 @@ func readConfigFile() (Config, error) {
 	return cfg, nil
 }
 
+// useKeyring is whether secrets go to, and are looked for in, the system
+// keyring. Some keyrings ask for a password every time they are touched, so
+// a user can opt out of them for good with UseFileStore, or for one run with
+// MAESTRO_FORCE_FILE_STORE=1.
+func useKeyring() bool {
+	if os.Getenv(fileEnvFlag) == "1" {
+		return false
+	}
+	cfg, err := readConfigFile()
+	return err != nil || cfg.Store != storeFile
+}
+
+// UseFileStore(true) makes the CLI keep its secrets in the config file
+// (readable by this user only) from now on, and never touch the keyring;
+// UseFileStore(false) goes back to the keyring. Secrets already stored are
+// not moved, but a secret missing from the keyring is still looked for in
+// the file.
+func UseFileStore(on bool) error {
+	if _, err := ensureDir(); err != nil {
+		return err
+	}
+	cfg, err := readConfigFile()
+	if err != nil {
+		return err
+	}
+	cfg.Store = ""
+	if on {
+		cfg.Store = storeFile
+	}
+	return writeConfigFile(cfg)
+}
+
 func SaveGitHubToken(token string) error {
 	return saveSecret(githubKeyringUser, token, func(c *Config) *string { return &c.GitHubToken })
 }
@@ -93,7 +131,7 @@ func Reset() error {
 		return err
 	}
 
-	if os.Getenv(fileEnvFlag) != "1" {
+	if useKeyring() {
 		_ = keyring.Delete(service, maestroKeyringUser)
 		_ = keyring.Delete(service, githubKeyringUser)
 		for _, f := range cfg.Forges {
@@ -139,7 +177,7 @@ func ensureDir() (string, error) {
 }
 
 func saveSecret(keyringUser, value string, field func(*Config) *string) error {
-	if os.Getenv(fileEnvFlag) != "1" {
+	if useKeyring() {
 		if err := keyring.Set(service, keyringUser, value); err == nil {
 			return clearFileField(field)
 		}
@@ -148,7 +186,7 @@ func saveSecret(keyringUser, value string, field func(*Config) *string) error {
 }
 
 func loadSecret(keyringUser string, notFoundErr error, field func(*Config) string) (string, error) {
-	if os.Getenv(fileEnvFlag) != "1" {
+	if useKeyring() {
 		value, err := keyring.Get(service, keyringUser)
 		if err == nil {
 			return value, nil
