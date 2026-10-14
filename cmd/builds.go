@@ -153,7 +153,7 @@ func writeBuildsList(out io.Writer, rows []buildRow, limit int) error {
 		}
 	}
 	if limit > 0 {
-		fmt.Fprintf(out, "\n%s", dimStyle.Render(fmt.Sprintf("%d of the %d images allowed; the oldest goes when a new build needs room.", kept, limit)))
+		fmt.Fprintf(out, "\n%s", dimStyle.Render(fmt.Sprintf("%d of the %d images allowed; the one run least recently goes when a new build needs room.", kept, limit)))
 	}
 	_, err := fmt.Fprintln(out)
 	return err

@@ -14,7 +14,8 @@ var runCmd = &cobra.Command{
 	Use:   "run <build>",
 	Short: "Run the image of one of your builds on the machines",
 	Long: `Queues a run of the image a build produced: one container per line of
-parameters in the repo's maestro.toml, spread over the machines it names.
+parameters in the repo's maestro.toml, and per line its generator yielded
+when the image was built, spread over the machines it names.
 Without a maestro.toml, a single container runs the image's own command.
 
 <build> is the build number shown by ` + "`maestro builds list`" + `, with or without #.

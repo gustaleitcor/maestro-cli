@@ -57,7 +57,7 @@ func TestWriteBuildsList(t *testing.T) {
 		{"#10", "lab/fit", "v1", "error", "-"},
 	})
 	// Only the last line of why it failed, and only the images still there.
-	if want := "#10: no such image\n1 of the 5 images allowed; the oldest goes when a new build needs room.\n"; under != want {
+	if want := "#10: no such image\n1 of the 5 images allowed; the one run least recently goes when a new build needs room.\n"; under != want {
 		t.Errorf("under the table: %q, want %q", under, want)
 	}
 
