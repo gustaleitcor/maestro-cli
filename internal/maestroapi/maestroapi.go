@@ -138,8 +138,39 @@ type RunFile struct {
 	Missing bool   `json:"missing"`
 }
 
+// Settings are maestro-orq's server-wide settings. Scheduler is nil from
+// a server from before it had one.
 type Settings struct {
-	ImagesPerUser int `json:"images_per_user"`
+	ImagesPerUser int        `json:"images_per_user"`
+	Scheduler     *Scheduler `json:"scheduler"`
+}
+
+// Scheduler is how waiting lines are chosen and placed: each level's policy
+// and their parameters.
+type Scheduler struct {
+	User           string       `json:"user"`
+	Select         string       `json:"select"`
+	Allocate       string       `json:"allocate"`
+	Place          string       `json:"place"`
+	Machine        string       `json:"machine"`
+	StagedCapacity int          `json:"staged_capacity"`
+	Depth          int          `json:"depth"`
+	CPUWeight      float64      `json:"cpu_weight"`
+	MemoryWeight   float64      `json:"memory_weight"`
+	AgingWeight    float64      `json:"aging_weight"`
+	ShareWeight    float64      `json:"share_weight"`
+	HorizonMinutes float64      `json:"horizon_minutes"`
+	Share          string       `json:"share"`
+	HalfLifeHours  float64      `json:"half_life_hours"`
+	Seed           uint64       `json:"seed"`
+	Fairness       float64      `json:"fairness"`
+	Weights        []UserWeight `json:"weights"`
+}
+
+type UserWeight struct {
+	User   int64   `json:"user_id"`
+	CPUs   float64 `json:"cpus"`
+	Memory float64 `json:"memory"`
 }
 
 // Machine is a host containers can run on. Status is ready when
