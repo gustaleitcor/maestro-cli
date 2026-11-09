@@ -2,6 +2,7 @@ package maestroapi
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -55,4 +56,19 @@ func GetUsage(ctx context.Context, maestroKey string, days int, user int64) ([]U
 		return nil, err
 	}
 	return usage, nil
+}
+
+// ExportLines writes to w, as CSV, what happened to each line of the runs
+// queued from since until before until (both a day, 2026-11-01, or an RFC
+// 3339 time; until may be empty for now): the caller's, or with all
+// everyone's, for an administrator.
+func ExportLines(ctx context.Context, maestroKey, since, until string, all bool, w io.Writer) error {
+	query := url.Values{"since": {since}}
+	if until != "" {
+		query.Set("until", until)
+	}
+	if all {
+		query.Set("all", "true")
+	}
+	return download(ctx, maestroKey, "/api/lines/export?"+query.Encode(), w)
 }
