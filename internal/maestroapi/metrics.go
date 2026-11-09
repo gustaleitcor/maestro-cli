@@ -24,9 +24,10 @@ type MachineMetrics struct {
 
 	// What the machine has for lines: CPUs cores and MemoryMB MB, as Podman
 	// reports them, less ReserveCPUs and ReserveMemoryMB. Busy lines,
-	// starting or running, take UsedCPUs and UsedMemoryMB of it, and Queued
-	// lines wait. CPUs is 0 for the host, and for a machine maestro-orq has
-	// never reached.
+	// starting or running, take UsedCPUs and UsedMemoryMB of it. Queued
+	// lines wait that may run there, Assigned of them given to it already
+	// and waiting for room on it. CPUs is 0 for the host, and for a machine
+	// maestro-orq has never reached.
 	CPUs            int64 `json:"cpus"`
 	MemoryMB        int64 `json:"memory"`
 	ReserveCPUs     int64 `json:"reserve_cpus"`
@@ -35,6 +36,7 @@ type MachineMetrics struct {
 	UsedMemoryMB    int64 `json:"used_memory"`
 	Busy            int64 `json:"busy"`
 	Queued          int64 `json:"queued"`
+	Assigned        int64 `json:"assigned"`
 }
 
 type SystemMetrics struct {

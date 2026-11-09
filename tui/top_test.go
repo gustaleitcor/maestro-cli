@@ -30,7 +30,7 @@ func sample(t *testing.T) []maestroapi.MachineMetrics {
 	  "gpus":[{"index":0,"name":"NVIDIA A100-SXM4-40GB","percent":87,"memory_used":21474836480,"memory_total":42949672960,"temperature_c":61,"power_w":250.5,"power_limit_w":400},
 	          {"index":1,"name":"NVIDIA A100-SXM4-40GB","percent":3,"memory_used":0,"memory_total":42949672960,"temperature_c":35,"power_w":55,"power_limit_w":400}],
 	  "temperatures":[]},
-	  "cpus":8,"memory":65536,"reserve_cpus":1,"reserve_memory":4096,"used_cpus":6,"used_memory":20480,"busy":2,"queued":3,
+	  "cpus":8,"memory":65536,"reserve_cpus":1,"reserve_memory":4096,"used_cpus":6,"used_memory":20480,"busy":2,"queued":3,"assigned":2,
 	  "containers":[{"name":"maestro-run-31-line-1","user_id":7,"user_name":"Ada Lovelace","user_email":"ada@example.com","repo":"lab/sim","ref":"main","run":31,"line":1,"cpu_percent":640,"memory_used":8589934592,"memory_limit":17179869184},
 	                {"name":"maestro-run-31-line-2","user_id":7,"user_email":"ada@example.com","repo":"lab/sim","ref":"main","run":31,"line":2,"cpu_percent":12.5,"memory_used":104857600,"memory_limit":0}]},
 	 {"name":"Q2","kind":"machine","status":"unreachable","error":"connecting to 10.0.0.2:22: i/o timeout","cpus":4,"memory":8192,"busy":0,"queued":5,"containers":[]},
@@ -151,7 +151,7 @@ func TestTopDetail(t *testing.T) {
 
 	for _, want := range []string{"maestro top · Q1", "Intel Xeon Gold 6130", "8 cores", "load 7.50 6.90 5.10", "CPU", "MEMORY", "SWAP", "GPU",
 		"NVIDIA A100-SXM4-40GB", "61°C", "250/400W", "VRAM", "NETWORK", "eth0", "↓ 50M/s", "DISKS", "/mnt/data", "CONTAINERS", "31/1", "640%", "8.0G/16G", "maestro-run-31-line-2",
-		"2 line(s) take 6 of 7 cores and 20G of 60G (1 core(s) and 4.0G kept back) · 3 line(s) queued", "OWNER", "REPO@REF", "Ada Lovelace", "ada@example.com", "lab/sim@main"} {
+		"2 line(s) take 6 of 7 cores and 20G of 60G (1 core(s) and 4.0G kept back)", "3 line(s) queued for it, 2 of them waiting on it", "OWNER", "REPO@REF", "Ada Lovelace", "ada@example.com", "lab/sim@main"} {
 		if !strings.Contains(view, want) {
 			t.Errorf("the detail lacks %q", want)
 		}
@@ -164,7 +164,7 @@ func TestTopDetail(t *testing.T) {
 func TestTopDetailOfAMachineThatWontRunCommands(t *testing.T) {
 	m := pressTop(loadedTop(t, 110, 30), "j", "j", "j", "enter")
 	view := ansi.Strip(m.View())
-	for _, want := range []string{"can't run commands", "administratively prohibited", "maestro-run-9-line-1", "1 line(s) take 1 of 2 cores and 512M of 4.0G · 0 line(s) queued", "user 2"} {
+	for _, want := range []string{"can't run commands", "administratively prohibited", "maestro-run-9-line-1", "1 line(s) take 1 of 2 cores and 512M of 4.0G", "0 line(s) queued for it", "user 2"} {
 		if !strings.Contains(view, want) {
 			t.Errorf("lacks %q:\n%s", want, view)
 		}

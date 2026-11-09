@@ -470,17 +470,18 @@ func source(c maestroapi.ContainerMetrics) string {
 	return c.Repo + "@" + c.Ref
 }
 
-// usageLine says in words what InUse says in figures.
-func usageLine(m maestroapi.MachineMetrics) string {
+// usageLines say in words what InUse says in figures: what lines take of
+// the machine, and how many wait for it.
+func usageLines(m maestroapi.MachineMetrics) []string {
 	if m.CPUs == 0 {
-		return ""
+		return nil
 	}
-	line := fmt.Sprintf("%d line(s) take %d of %d cores and %s of %s", m.Busy,
+	taken := fmt.Sprintf("%d line(s) take %d of %d cores and %s of %s", m.Busy,
 		m.UsedCPUs, m.CPUs-m.ReserveCPUs, humanize.Megabytes(m.UsedMemoryMB), humanize.Megabytes(m.MemoryMB-m.ReserveMemoryMB))
 	if m.ReserveCPUs > 0 || m.ReserveMemoryMB > 0 {
-		line += fmt.Sprintf(" (%d core(s) and %s kept back)", m.ReserveCPUs, humanize.Megabytes(m.ReserveMemoryMB))
+		taken += fmt.Sprintf(" (%d core(s) and %s kept back)", m.ReserveCPUs, humanize.Megabytes(m.ReserveMemoryMB))
 	}
-	return line + fmt.Sprintf(" · %d line(s) queued", m.Queued)
+	return []string{taken, fmt.Sprintf("%d line(s) queued for it, %d of them waiting on it", m.Queued, m.Assigned)}
 }
 
 func (m topModel) detailLines() []string {
@@ -495,16 +496,16 @@ func (m topModel) detailLines() []string {
 
 	if machine.Status != "ready" {
 		add("", " "+topBad.Render("unreachable")+"  "+machine.Error)
-		if usage := usageLine(machine); usage != "" {
-			add(" " + topDim.Render(usage))
+		for _, l := range usageLines(machine) {
+			add(" " + topDim.Render(l))
 		}
 		return lines
 	}
 	sys := machine.System
 	if sys == nil {
 		add("", " "+topDim.Render("Maestro reaches this machine's Podman, but can't run commands on it, so there is nothing to show but its containers."), " "+topDim.Render(machine.SystemError))
-		if usage := usageLine(machine); usage != "" {
-			add(" " + topDim.Render(usage))
+		for _, l := range usageLines(machine) {
+			add(" " + topDim.Render(l))
 		}
 		return append(lines, m.containerLines(machine)...)
 	}
@@ -513,8 +514,8 @@ func (m topModel) detailLines() []string {
 	if sys.CPUModel != "" {
 		add(" " + topDim.Render(fmt.Sprintf("%s · %d cores · load %.2f %.2f %.2f", sys.CPUModel, sys.CPU.Cores, sys.CPU.Load[0], sys.CPU.Load[1], sys.CPU.Load[2])))
 	}
-	if usage := usageLine(machine); usage != "" {
-		add(" " + topDim.Render(usage))
+	for _, l := range usageLines(machine) {
+		add(" " + topDim.Render(l))
 	}
 
 	section("cpu")

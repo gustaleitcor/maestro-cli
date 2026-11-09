@@ -103,12 +103,16 @@ type Run struct {
 	Detail    []RunLine      `json:"line_detail"`
 }
 
-// RunLine is one container of a run. Status is queued, starting, running,
-// succeeded, failed (non-zero exit), error (it couldn't run) or cancelled.
+// RunLine is one container of a run. Status is queued (among its user's
+// lines), staged (chosen from them, waiting for a machine), assigned
+// (waiting for room on Machine), starting, running, succeeded, failed
+// (non-zero exit), error (it couldn't run) or cancelled. Active is whether
+// it isn't over: any of the first five.
 type RunLine struct {
 	Line       int64     `json:"line"`
 	Args       []string  `json:"args"`
 	Status     string    `json:"status"`
+	Active     bool      `json:"active"`
 	Machine    string    `json:"machine"`
 	ExitCode   *int      `json:"exit_code"`
 	Error      string    `json:"error"`

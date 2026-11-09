@@ -264,3 +264,10 @@ func TestWriteLineLogs(t *testing.T) {
 		}
 	}
 }
+
+func TestLineCountsSayEveryLevelALineWaitsAt(t *testing.T) {
+	got := lineCounts(map[string]int{"queued": 4, "staged": 2, "assigned": 3, "running": 1})
+	if want := "4 queued, 2 staged, 3 assigned, 1 running"; got != want {
+		t.Errorf("lineCounts = %q, want %q", got, want)
+	}
+}

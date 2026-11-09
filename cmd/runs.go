@@ -132,7 +132,7 @@ func parseID(arg, what string) (int64, error) {
 
 func lineCounts(counts map[string]int) string {
 	var parts []string
-	for _, status := range []string{"queued", "starting", "running", "succeeded", "failed", "error", "cancelled"} {
+	for _, status := range []string{"queued", "staged", "assigned", "starting", "running", "succeeded", "failed", "error", "cancelled"} {
 		if n := counts[status]; n > 0 {
 			parts = append(parts, fmt.Sprintf("%d %s", n, status))
 		}
