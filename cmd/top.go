@@ -24,9 +24,9 @@ var (
 var topCmd = &cobra.Command{
 	Use:   "top [machine]",
 	Short: "Watch how loaded the machines are, like top",
-	Long: `Shows every machine on a row: CPU, memory, GPUs, load, how many of its
-slots hold a container and how many lines wait for one (2/4 +3), refreshed
-as you watch. Press enter on a machine for its cores, memory, disks, network,
+	Long: `Shows every machine on a row: CPU, memory, GPUs, load, how many of the
+cores it has for lines they take and how many lines wait (6/14 +3),
+refreshed as you watch. Press enter on a machine for its cores, memory, disks, network,
 GPUs and the containers on it with whose they are, or name a machine to open
 it straight away.
 
@@ -43,8 +43,9 @@ of seconds, however many windows are open.`,
 var machinesStatsCmd = &cobra.Command{
 	Use:   "stats [machine]",
 	Short: "Print how loaded the machines are, once",
-	Long: `Prints a table of every machine's CPU, memory, GPUs, load, slots in use
-(with the lines waiting for one, as +N) and containers once. With --json, prints everything Maestro knows, for scripts.
+	Long: `Prints a table of every machine's CPU, memory, GPUs, load, the cores and
+memory lines take of what it has for them (with the lines waiting, as +N) and
+containers once. With --json, prints everything Maestro knows, for scripts.
 
 For something to watch, use ` + "`maestro top`" + `.`,
 	Args:              cobra.MaximumNArgs(1),
@@ -95,26 +96,26 @@ func runMachinesStats(cmd *cobra.Command, args []string) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tSTATUS\tCPU\tMEMORY\tGPU\tLOAD\tNET\tUP\tSLOTS\tCONTAINERS")
+	fmt.Fprintln(w, "NAME\tSTATUS\tCPU\tMEMORY\tGPU\tLOAD\tNET\tUP\tIN USE\tCONTAINERS")
 	for _, m := range machines {
 		name := m.Name
 		if m.Kind == "host" {
 			name += " (server)"
 		}
 		if m.Status != "ready" {
-			fmt.Fprintf(w, "%s\t%s\t-\t-\t-\t-\t-\t-\t%s\t-\n", name, m.Status, tui.SlotsInUse(m))
+			fmt.Fprintf(w, "%s\t%s\t-\t-\t-\t-\t-\t-\t%s\t-\n", name, m.Status, tui.InUse(m))
 			continue
 		}
 		sys := m.System
 		if sys == nil {
-			fmt.Fprintf(w, "%s\tready\t-\t-\t-\t-\t-\t-\t%s\t%d\n", name, tui.SlotsInUse(m), len(m.Containers))
+			fmt.Fprintf(w, "%s\tready\t-\t-\t-\t-\t-\t-\t%s\t%d\n", name, tui.InUse(m), len(m.Containers))
 			continue
 		}
 		fmt.Fprintf(w, "%s\tready\t%s\t%s/%s\t%s\t%.2f\t%s\t%s\t%s\t%d\n", name,
 			humanize.Percent(sys.CPU.Percent),
 			humanize.Bytes(sys.Memory.Used), humanize.Bytes(sys.Memory.Total),
 			gpuSummary(sys), sys.CPU.Load[0], netSummary(sys),
-			humanize.Uptime(sys.UptimeSeconds), tui.SlotsInUse(m), len(m.Containers))
+			humanize.Uptime(sys.UptimeSeconds), tui.InUse(m), len(m.Containers))
 	}
 	return w.Flush()
 }

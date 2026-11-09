@@ -23,6 +23,11 @@ func Bytes(n uint64) string {
 	return fmt.Sprintf("%.0f%c", value, units[unit])
 }
 
+// Megabytes writes mb megabytes as Bytes does: 512M, 16G.
+func Megabytes(mb int64) string {
+	return Bytes(uint64(max(mb, 0)) << 20)
+}
+
 func Rate(bytesPerSecond float64) string {
 	if bytesPerSecond < 0 {
 		bytesPerSecond = 0

@@ -16,15 +16,15 @@ func TestWriteMachinesList(t *testing.T) {
 
 	out.Reset()
 	err := writeMachinesList(&out, []maestroapi.Machine{
-		{Name: "Q1", Status: "ready", Slots: 4, PodmanVersion: "5.2.1", Description: "the big one"},
-		{Name: "Q2", Status: "unreachable", Slots: 2},
+		{Name: "Q1", Status: "ready", CPUs: 16, MemoryMB: 65536, ReserveCPUs: 1, PodmanVersion: "5.2.1", Description: "the big one"},
+		{Name: "Q2", Status: "unreachable"},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	wantTable(t, out.String(), [][]string{
-		{"NAME", "STATUS", "SLOTS", "PODMAN", "DESCRIPTION"},
-		{"Q1", "ready", "4", "5.2.1", "the big one"},
-		{"Q2", "unreachable", "2", "-"},
+		{"NAME", "STATUS", "CPUS", "MEMORY", "PODMAN", "DESCRIPTION"},
+		{"Q1", "ready", "16 (1 kept)", "64G", "5.2.1", "the big one"},
+		{"Q2", "unreachable", "-", "-", "-"},
 	})
 }

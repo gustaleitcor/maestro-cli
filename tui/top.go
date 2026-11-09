@@ -306,7 +306,7 @@ const (
 	memWidth    = 9  // 8.0G/128G
 	gpuWidth    = 7  // 100% ×8
 	loadWidth   = 6
-	slotsWidth  = 9 // 12/16 +99
+	coresWidth  = 9 // 12/16 +99
 	ctrsWidth   = 4
 	maxBarWidth = 20
 )
@@ -332,7 +332,7 @@ func (m topModel) layout() overviewLayout {
 	}
 	l.name = min(l.name, 24)
 	// Three columns, the dot, and two spaces between each pair of the eight.
-	fixed := 3 + l.name + statusWidth + cpuWidth + memWidth + gpuWidth + loadWidth + slotsWidth + ctrsWidth + 7*2
+	fixed := 3 + l.name + statusWidth + cpuWidth + memWidth + gpuWidth + loadWidth + coresWidth + ctrsWidth + 7*2
 	// Each of the three bars takes its width and a space.
 	if l.bar = min(maxBarWidth, (m.width-fixed)/3-1); l.bar < 4 {
 		l.bar = 0
@@ -356,22 +356,22 @@ func (l overviewLayout) measureWidth(figureWidth int) int {
 	return l.bar + 1 + figureWidth
 }
 
-func (l overviewLayout) row(dot, name, status, cpu, mem, gpu, load, slots, ctrs string) string {
+func (l overviewLayout) row(dot, name, status, cpu, mem, gpu, load, cores, ctrs string) string {
 	return strings.Join([]string{
 		" " + dot + " " + cell(name, l.name), cell(status, statusWidth),
 		cell(cpu, l.measureWidth(cpuWidth)), cell(mem, l.measureWidth(memWidth)), cell(gpu, l.measureWidth(gpuWidth)),
-		cell(load, loadWidth), cell(slots, slotsWidth), ctrs,
+		cell(load, loadWidth), cell(cores, coresWidth), ctrs,
 	}, "  ")
 }
 
 // rowWithReason is a row for a machine with nothing to measure: why takes
 // the place of the measures.
-func (l overviewLayout) rowWithReason(dot, name, status, reason, slots, ctrs string) string {
+func (l overviewLayout) rowWithReason(dot, name, status, reason, cores, ctrs string) string {
 	span := l.measureWidth(cpuWidth) + l.measureWidth(memWidth) + l.measureWidth(gpuWidth) + loadWidth + 3*2
 	return strings.Join([]string{
 		" " + dot + " " + cell(name, l.name), cell(status, statusWidth),
 		cell(topDim.Render(strings.Join(strings.Fields(reason), " ")), span),
-		cell(slots, slotsWidth), ctrs,
+		cell(cores, coresWidth), ctrs,
 	}, "  ")
 }
 
@@ -380,7 +380,7 @@ func (m topModel) overviewLines() []string {
 		return []string{"", "  No machines yet. An administrator can add them on the Maestro page."}
 	}
 	l := m.layout()
-	lines := []string{"", topDim.Render(l.row(" ", "NAME", "STATUS", "CPU", "MEM", "GPU", "LOAD", "SLOTS", "CTRS"))}
+	lines := []string{"", topDim.Render(l.row(" ", "NAME", "STATUS", "CPU", "MEM", "GPU", "LOAD", "CORES", "CTRS"))}
 	for _, machine := range m.machines {
 		row := machineRow(machine, l)
 		if machine.Name == m.selected {
@@ -396,14 +396,14 @@ func machineRow(machine maestroapi.MachineMetrics, l overviewLayout) string {
 	if machine.Kind == "host" {
 		name += topDim.Render(" (server)")
 	}
-	slots := SlotsInUse(machine)
+	cores := coresInUse(machine)
 	if machine.Status != "ready" {
-		return l.rowWithReason(topBad.Render("●"), name, topBad.Render("unreachable"), machine.Error, slots, "-")
+		return l.rowWithReason(topBad.Render("●"), name, topBad.Render("unreachable"), machine.Error, cores, "-")
 	}
 	ctrs := fmt.Sprintf("%d", len(machine.Containers))
 	sys := machine.System
 	if sys == nil {
-		return l.rowWithReason(topGood.Render("●"), name, "ready", "no system information: "+machine.SystemError, slots, ctrs)
+		return l.rowWithReason(topGood.Render("●"), name, "ready", "no system information: "+machine.SystemError, cores, ctrs)
 	}
 
 	memPercent := humanize.Fraction(sys.Memory.Used, sys.Memory.Total)
@@ -419,19 +419,36 @@ func machineRow(machine maestroapi.MachineMetrics, l overviewLayout) string {
 	return l.row(topGood.Render("●"), name, "ready",
 		l.measure(sys.CPU.Percent, fmt.Sprintf("%4s", humanize.Percent(sys.CPU.Percent)), cpuWidth),
 		l.measure(memPercent, humanize.Bytes(sys.Memory.Used)+"/"+humanize.Bytes(sys.Memory.Total), memWidth),
-		gpu, fmt.Sprintf("%.2f", sys.CPU.Load[0]), slots, ctrs)
+		gpu, fmt.Sprintf("%.2f", sys.CPU.Load[0]), cores, ctrs)
 }
 
-// SlotsInUse reads "2/4 +3": two of four slots taken and three lines
-// waiting. A machine without slots, the host, has "-".
-func SlotsInUse(m maestroapi.MachineMetrics) string {
-	if m.Slots == 0 {
+// coresInUse is InUse with only the cores, "6/14 +3", for the overview,
+// which has no room for more; the detail says the rest.
+func coresInUse(m maestroapi.MachineMetrics) string {
+	if m.CPUs == 0 {
 		return "-"
 	}
-	if m.Queued == 0 {
-		return fmt.Sprintf("%d/%d", m.Busy, m.Slots)
+	cores := fmt.Sprintf("%d/%d", m.UsedCPUs, m.CPUs-m.ReserveCPUs)
+	if m.Queued > 0 {
+		cores += fmt.Sprintf(" +%d", m.Queued)
 	}
-	return fmt.Sprintf("%d/%d +%d", m.Busy, m.Slots, m.Queued)
+	return cores
+}
+
+// InUse reads "6/14 cpu 20G/30G +3": lines take six of the fourteen cores
+// and 20 of the 30 GiB the machine has for them, less what it keeps back,
+// and three lines wait. The host, and a machine whose size isn't known yet,
+// have "-".
+func InUse(m maestroapi.MachineMetrics) string {
+	if m.CPUs == 0 {
+		return "-"
+	}
+	usage := fmt.Sprintf("%d/%d cpu %s/%s", m.UsedCPUs, m.CPUs-m.ReserveCPUs,
+		humanize.Megabytes(m.UsedMemoryMB), humanize.Megabytes(m.MemoryMB-m.ReserveMemoryMB))
+	if m.Queued > 0 {
+		usage += fmt.Sprintf(" +%d", m.Queued)
+	}
+	return usage
 }
 
 // owner is the name of whoever a container belongs to, else their email.
@@ -453,12 +470,17 @@ func source(c maestroapi.ContainerMetrics) string {
 	return c.Repo + "@" + c.Ref
 }
 
-// slotsLine says in words what the overview's SLOTS column says in figures.
-func slotsLine(machine maestroapi.MachineMetrics) string {
-	if machine.Slots == 0 {
+// usageLine says in words what InUse says in figures.
+func usageLine(m maestroapi.MachineMetrics) string {
+	if m.CPUs == 0 {
 		return ""
 	}
-	return fmt.Sprintf("%d of %d slot(s) in use · %d line(s) queued", machine.Busy, machine.Slots, machine.Queued)
+	line := fmt.Sprintf("%d line(s) take %d of %d cores and %s of %s", m.Busy,
+		m.UsedCPUs, m.CPUs-m.ReserveCPUs, humanize.Megabytes(m.UsedMemoryMB), humanize.Megabytes(m.MemoryMB-m.ReserveMemoryMB))
+	if m.ReserveCPUs > 0 || m.ReserveMemoryMB > 0 {
+		line += fmt.Sprintf(" (%d core(s) and %s kept back)", m.ReserveCPUs, humanize.Megabytes(m.ReserveMemoryMB))
+	}
+	return line + fmt.Sprintf(" · %d line(s) queued", m.Queued)
 }
 
 func (m topModel) detailLines() []string {
@@ -473,16 +495,16 @@ func (m topModel) detailLines() []string {
 
 	if machine.Status != "ready" {
 		add("", " "+topBad.Render("unreachable")+"  "+machine.Error)
-		if slots := slotsLine(machine); slots != "" {
-			add(" " + topDim.Render(slots))
+		if usage := usageLine(machine); usage != "" {
+			add(" " + topDim.Render(usage))
 		}
 		return lines
 	}
 	sys := machine.System
 	if sys == nil {
 		add("", " "+topDim.Render("Maestro reaches this machine's Podman, but can't run commands on it, so there is nothing to show but its containers."), " "+topDim.Render(machine.SystemError))
-		if slots := slotsLine(machine); slots != "" {
-			add(" " + topDim.Render(slots))
+		if usage := usageLine(machine); usage != "" {
+			add(" " + topDim.Render(usage))
 		}
 		return append(lines, m.containerLines(machine)...)
 	}
@@ -491,8 +513,8 @@ func (m topModel) detailLines() []string {
 	if sys.CPUModel != "" {
 		add(" " + topDim.Render(fmt.Sprintf("%s · %d cores · load %.2f %.2f %.2f", sys.CPUModel, sys.CPU.Cores, sys.CPU.Load[0], sys.CPU.Load[1], sys.CPU.Load[2])))
 	}
-	if slots := slotsLine(machine); slots != "" {
-		add(" " + topDim.Render(slots))
+	if usage := usageLine(machine); usage != "" {
+		add(" " + topDim.Render(usage))
 	}
 
 	section("cpu")

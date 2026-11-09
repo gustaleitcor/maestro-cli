@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"maestro-cli/internal/humanize"
 	"maestro-cli/internal/maestroapi"
 )
 
@@ -57,13 +58,28 @@ func writeMachinesList(out io.Writer, machines []maestroapi.Machine) error {
 		return err
 	}
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tSTATUS\tSLOTS\tPODMAN\tDESCRIPTION")
+	fmt.Fprintln(w, "NAME\tSTATUS\tCPUS\tMEMORY\tPODMAN\tDESCRIPTION")
 	for _, m := range machines {
 		version := m.PodmanVersion
 		if version == "" {
 			version = "-"
 		}
-		fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\n", m.Name, m.Status, m.Slots, version, m.Description)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", m.Name, m.Status,
+			reserved(m.CPUs, m.ReserveCPUs, func(n int64) string { return fmt.Sprint(n) }),
+			reserved(m.MemoryMB, m.ReserveMemoryMB, humanize.Megabytes),
+			version, m.Description)
 	}
 	return w.Flush()
+}
+
+// reserved is what a machine has and what of it is kept back from lines,
+// "16 (1 kept)", each written by unit; "-" while its size isn't known.
+func reserved(total, reserve int64, unit func(int64) string) string {
+	switch {
+	case total == 0:
+		return "-"
+	case reserve == 0:
+		return unit(total)
+	}
+	return fmt.Sprintf("%s (%s kept)", unit(total), unit(reserve))
 }

@@ -22,11 +22,19 @@ type MachineMetrics struct {
 	SystemError string             `json:"system_error"`
 	Containers  []ContainerMetrics `json:"containers"`
 
-	// Busy of the machine's Slots hold a line that is starting or running,
-	// and Queued lines wait for one. The host has no slots.
-	Slots  int64 `json:"slots"`
-	Busy   int64 `json:"busy"`
-	Queued int64 `json:"queued"`
+	// What the machine has for lines: CPUs cores and MemoryMB MB, as Podman
+	// reports them, less ReserveCPUs and ReserveMemoryMB. Busy lines,
+	// starting or running, take UsedCPUs and UsedMemoryMB of it, and Queued
+	// lines wait. CPUs is 0 for the host, and for a machine maestro-orq has
+	// never reached.
+	CPUs            int64 `json:"cpus"`
+	MemoryMB        int64 `json:"memory"`
+	ReserveCPUs     int64 `json:"reserve_cpus"`
+	ReserveMemoryMB int64 `json:"reserve_memory"`
+	UsedCPUs        int64 `json:"used_cpus"`
+	UsedMemoryMB    int64 `json:"used_memory"`
+	Busy            int64 `json:"busy"`
+	Queued          int64 `json:"queued"`
 }
 
 type SystemMetrics struct {

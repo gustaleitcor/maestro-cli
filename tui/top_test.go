@@ -30,11 +30,11 @@ func sample(t *testing.T) []maestroapi.MachineMetrics {
 	  "gpus":[{"index":0,"name":"NVIDIA A100-SXM4-40GB","percent":87,"memory_used":21474836480,"memory_total":42949672960,"temperature_c":61,"power_w":250.5,"power_limit_w":400},
 	          {"index":1,"name":"NVIDIA A100-SXM4-40GB","percent":3,"memory_used":0,"memory_total":42949672960,"temperature_c":35,"power_w":55,"power_limit_w":400}],
 	  "temperatures":[]},
-	  "slots":4,"busy":2,"queued":3,
+	  "cpus":8,"memory":65536,"reserve_cpus":1,"reserve_memory":4096,"used_cpus":6,"used_memory":20480,"busy":2,"queued":3,
 	  "containers":[{"name":"maestro-run-31-line-1","user_id":7,"user_name":"Ada Lovelace","user_email":"ada@example.com","repo":"lab/sim","ref":"main","run":31,"line":1,"cpu_percent":640,"memory_used":8589934592,"memory_limit":17179869184},
 	                {"name":"maestro-run-31-line-2","user_id":7,"user_email":"ada@example.com","repo":"lab/sim","ref":"main","run":31,"line":2,"cpu_percent":12.5,"memory_used":104857600,"memory_limit":0}]},
-	 {"name":"Q2","kind":"machine","status":"unreachable","error":"connecting to 10.0.0.2:22: i/o timeout","slots":2,"busy":0,"queued":5,"containers":[]},
-	 {"name":"Q3","kind":"machine","status":"ready","system_error":"opening a shell: ssh: rejected: administratively prohibited","slots":1,"busy":1,"queued":0,"containers":[{"name":"maestro-run-9-line-1","user_id":2,"run":9,"line":1,"cpu_percent":50,"memory_used":1048576,"memory_limit":0}]}
+	 {"name":"Q2","kind":"machine","status":"unreachable","error":"connecting to 10.0.0.2:22: i/o timeout","cpus":4,"memory":8192,"busy":0,"queued":5,"containers":[]},
+	 {"name":"Q3","kind":"machine","status":"ready","system_error":"opening a shell: ssh: rejected: administratively prohibited","cpus":2,"memory":4096,"used_cpus":1,"used_memory":512,"busy":1,"queued":0,"containers":[{"name":"maestro-run-9-line-1","user_id":2,"run":9,"line":1,"cpu_percent":50,"memory_used":1048576,"memory_limit":0}]}
 	]`
 	var machines []maestroapi.MachineMetrics
 	if err := json.Unmarshal([]byte(data), &machines); err != nil {
@@ -76,9 +76,9 @@ func TestTopOverview(t *testing.T) {
 	view := ansi.Strip(m.View())
 	t.Logf("\n%s", view)
 
-	for _, want := range []string{"maestro top", "NAME", "STATUS", "CPU", "MEM", "GPU", "LOAD", "SLOTS", "CTRS",
+	for _, want := range []string{"maestro top", "NAME", "STATUS", "CPU", "MEM", "GPU", "LOAD", "CORES", "CTRS",
 		"orq (server)", "Q1", "Q2", "unreachable", "i/o timeout", "Q3", "no system information",
-		"92%", "54G/64G", "×2", "7.50", "2/4 +3", "0/2 +5", "1/1"} {
+		"92%", "54G/64G", "×2", "7.50", "6/7 +3", "0/4 +5", "1/2"} {
 		if !strings.Contains(view, want) {
 			t.Errorf("the overview lacks %q", want)
 		}
@@ -95,9 +95,9 @@ func TestTopOverview(t *testing.T) {
 	}
 	for name, has := range map[string][]string{
 		"orq": {"ready", "12%", "4.0G/16G", "0.40"},
-		"Q1":  {"ready", "92%", "54G/64G", "45% ×2", "7.50", "2/4 +3"},
-		"Q2":  {"unreachable", "i/o timeout", "0/2 +5"},
-		"Q3":  {"ready", "no system information", "1/1"},
+		"Q1":  {"ready", "92%", "54G/64G", "45% ×2", "7.50", "6/7 +3"},
+		"Q2":  {"unreachable", "i/o timeout", "0/4 +5"},
+		"Q3":  {"ready", "no system information", "1/2"},
 	} {
 		for _, want := range has {
 			if !strings.Contains(rows[name], want) {
@@ -151,7 +151,7 @@ func TestTopDetail(t *testing.T) {
 
 	for _, want := range []string{"maestro top · Q1", "Intel Xeon Gold 6130", "8 cores", "load 7.50 6.90 5.10", "CPU", "MEMORY", "SWAP", "GPU",
 		"NVIDIA A100-SXM4-40GB", "61°C", "250/400W", "VRAM", "NETWORK", "eth0", "↓ 50M/s", "DISKS", "/mnt/data", "CONTAINERS", "31/1", "640%", "8.0G/16G", "maestro-run-31-line-2",
-		"2 of 4 slot(s) in use · 3 line(s) queued", "OWNER", "REPO@REF", "Ada Lovelace", "ada@example.com", "lab/sim@main"} {
+		"2 line(s) take 6 of 7 cores and 20G of 60G (1 core(s) and 4.0G kept back) · 3 line(s) queued", "OWNER", "REPO@REF", "Ada Lovelace", "ada@example.com", "lab/sim@main"} {
 		if !strings.Contains(view, want) {
 			t.Errorf("the detail lacks %q", want)
 		}
@@ -164,7 +164,7 @@ func TestTopDetail(t *testing.T) {
 func TestTopDetailOfAMachineThatWontRunCommands(t *testing.T) {
 	m := pressTop(loadedTop(t, 110, 30), "j", "j", "j", "enter")
 	view := ansi.Strip(m.View())
-	for _, want := range []string{"can't run commands", "administratively prohibited", "maestro-run-9-line-1", "1 of 1 slot(s) in use", "user 2"} {
+	for _, want := range []string{"can't run commands", "administratively prohibited", "maestro-run-9-line-1", "1 line(s) take 1 of 2 cores and 512M of 4.0G · 0 line(s) queued", "user 2"} {
 		if !strings.Contains(view, want) {
 			t.Errorf("lacks %q:\n%s", want, view)
 		}
@@ -267,10 +267,19 @@ func TestTopOverviewAt80And140Columns(t *testing.T) {
 		t.Error("140 columns has no bars, or no room for why a machine has no system")
 	}
 	for _, view := range []string{narrow, wide} {
-		for _, want := range []string{"92%", "54G/64G", "45% ×2", "7.50", "2/4 +3", "CTRS"} {
+		for _, want := range []string{"92%", "54G/64G", "45% ×2", "7.50", "6/7 +3", "CTRS"} {
 			if !strings.Contains(view, want) {
 				t.Errorf("lacks %q", want)
 			}
+		}
+	}
+}
+
+func TestInUse(t *testing.T) {
+	machines := sample(t)
+	for i, want := range []string{"-", "6/7 cpu 20G/60G +3", "0/4 cpu 0B/8.0G +5", "1/2 cpu 512M/4.0G"} {
+		if got := InUse(machines[i]); got != want {
+			t.Errorf("InUse(%s) = %q, want %q", machines[i].Name, got, want)
 		}
 	}
 }

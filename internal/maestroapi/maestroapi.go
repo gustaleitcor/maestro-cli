@@ -141,11 +141,17 @@ type Settings struct {
 // Machine is a host containers can run on. Status is ready when
 // maestro-orq could reach its Podman just now, unreachable otherwise.
 type Machine struct {
-	Name          string `json:"name"`
-	Description   string `json:"description"`
-	Slots         int    `json:"slots"`
-	Status        string `json:"status"`
-	PodmanVersion string `json:"podman_version"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	// CPUs and MemoryMB are what Podman reports the machine has (0 until
+	// maestro-orq reaches it), of which ReserveCPUs and ReserveMemoryMB are
+	// kept back from lines.
+	CPUs            int64  `json:"cpus"`
+	MemoryMB        int64  `json:"memory"`
+	ReserveCPUs     int64  `json:"reserve_cpus"`
+	ReserveMemoryMB int64  `json:"reserve_memory"`
+	Status          string `json:"status"`
+	PodmanVersion   string `json:"podman_version"`
 }
 
 func StartCLILogin(ctx context.Context) (*CLILogin, error) {
