@@ -13,8 +13,9 @@ func TestWriteQueue(t *testing.T) {
 	var q maestroapi.Queue
 	if err := json.Unmarshal([]byte(`{
 	  "totals": {"queued": 5, "staged": 2, "assigned": 3, "starting": 0, "running": 4},
-	  "users": [{"id": 1, "name": "Ada", "email": "ada@example.com", "lines": {"queued": 2, "running": 1}, "share": 0.25}],
-	  "scheduler": {"user": "fifo", "select": "pq", "allocate": "fifo", "place": "tetris", "machine": "fifo", "share": "drf", "share_weight": -1}
+	  "users": [{"id": 1, "name": "Ada", "email": "ada@example.com", "group_id": 2, "lines": {"queued": 2, "running": 1}, "share": 0.25}],
+	  "groups": [{"id": 2, "name": "lab", "staged": 1, "capacity": 4}],
+	  "scheduler": {"user": "fifo", "select": "pq", "allocate": "fifo", "machine": "best-fit", "share": "drf", "share_weight": -1}
 	}`), &q); err != nil {
 		t.Fatal(err)
 	}
@@ -23,12 +24,14 @@ func TestWriteQueue(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := out.String()
-	wantTable(t, strings.SplitN(got, "\n\n", 2)[0], [][]string{
-		{"USER", "QUEUED", "STAGED", "ASSIGNED", "STARTING", "RUNNING", "SHARE"},
-		{"Ada #1", "2", "0", "0", "0", "1", "25%"},
+	parts := strings.SplitN(got, "\n\n", 3)
+	wantTable(t, parts[0], [][]string{
+		{"USER", "GROUP", "QUEUED", "STAGED", "ASSIGNED", "STARTING", "RUNNING", "SHARE"},
+		{"Ada #1", "lab", "2", "0", "0", "0", "1", "25%"},
 		{"everyone", "5", "2", "3", "0", "4"},
 	})
-	if !strings.Contains(got, "chosen by pq among users") || !strings.Contains(got, "share (drf) by -1") {
+	wantTable(t, parts[1], [][]string{{"GROUP", "STAGED"}, {"lab", "1/4"}})
+	if !strings.Contains(got, "chosen by pq among each group's users") || !strings.Contains(got, "start by best-fit") || !strings.Contains(got, "share (drf) by -1") {
 		t.Errorf("no summary of the scheduler: %q", got)
 	}
 }

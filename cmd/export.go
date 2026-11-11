@@ -23,9 +23,10 @@ var exportCmd = &cobra.Command{
 	Long: `Writes a row for each line of the runs queued over a period: its run and
 line, whose it is, its cores and memory, the machine it ran on, its status,
 the scheduler settings it was chosen under, and when it was submitted,
-staged, assigned, started and finished. It is what ` + "`sim evaluate`" + `, in
-maestro-orq, measures waits, slowdowns, utilization and fairness from, the
-same as for a simulation.
+staged, assigned, started and finished, and the group its user was in when
+it was staged. It is what ` + "`sim evaluate`" + `, in maestro-orq, measures
+waits, slowdowns, utilization, fairness and the objective Z from, the same
+as for a simulation.
 
 Administrators can export everyone's lines with --all.`,
 	Example: `  maestro export --since 2026-11-01 --until 2026-11-08 > lines.csv

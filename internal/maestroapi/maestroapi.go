@@ -145,13 +145,14 @@ type Settings struct {
 	Scheduler     *Scheduler `json:"scheduler"`
 }
 
-// Scheduler is how waiting lines are chosen and placed: each level's policy
-// and their parameters.
+// Scheduler is how waiting lines are chosen and given machines: the four
+// policies and their parameters. User, Select and Allocate are fifo, lcfs,
+// siro or pq; Machine may also fit lines in what a machine has free.
+// StagedCapacity is per group.
 type Scheduler struct {
 	User           string       `json:"user"`
 	Select         string       `json:"select"`
 	Allocate       string       `json:"allocate"`
-	Place          string       `json:"place"`
 	Machine        string       `json:"machine"`
 	StagedCapacity int          `json:"staged_capacity"`
 	Depth          int          `json:"depth"`
@@ -163,7 +164,6 @@ type Scheduler struct {
 	Share          string       `json:"share"`
 	HalfLifeHours  float64      `json:"half_life_hours"`
 	Seed           uint64       `json:"seed"`
-	Fairness       float64      `json:"fairness"`
 	Weights        []UserWeight `json:"weights"`
 }
 

@@ -48,6 +48,7 @@ func writeSettings(out io.Writer, s *maestroapi.Settings) error {
 		if c.StagedCapacity == 0 {
 			staged = "twice the machines"
 		}
+		staged += ", per group"
 		var weights []string
 		for _, u := range c.Weights {
 			weights = append(weights, fmt.Sprintf("user %d: %g cpu, %g memory", u.User, u.CPUs, u.Memory))
@@ -58,8 +59,7 @@ func writeSettings(out io.Writer, s *maestroapi.Settings) error {
 		for _, row := range [][2]string{
 			{"within a user", c.User},
 			{"among users", c.Select},
-			{"staged lines", c.Allocate},
-			{"placement", c.Place},
+			{"staged lines, in turn between groups", c.Allocate},
 			{"on a machine", c.Machine},
 			{"staged at most", staged},
 			{"waiting on a machine", fmt.Sprint(c.Depth)},
@@ -67,8 +67,7 @@ func writeSettings(out io.Writer, s *maestroapi.Settings) error {
 			{"waiting horizon", fmt.Sprintf("%g min", c.HorizonMinutes)},
 			{"share measure", c.Share},
 			{"half-life", fmt.Sprintf("%g h", c.HalfLifeHours)},
-			{"fairness (tetris)", fmt.Sprint(c.Fairness)},
-			{"siro seed", fmt.Sprint(c.Seed)},
+			{"seed (siro, machine draw)", fmt.Sprint(c.Seed)},
 			{"user weights", strings.Join(weights, "; ")},
 		} {
 			fmt.Fprintf(w, "%s\t%s\n", row[0], row[1])

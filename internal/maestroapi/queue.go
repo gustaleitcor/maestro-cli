@@ -11,17 +11,28 @@ import (
 // Queue counts lines at each level, queued, staged, assigned, starting and
 // running: everyone's in Totals, and in Users the caller's, or every user's
 // for an administrator. Share is a user's share of the cluster over
-// everyone's, from 0 to 1, as the scheduler weighs it.
+// everyone's, from 0 to 1, as the scheduler weighs it. Groups are how many
+// lines each group has staged, out of its capacity: the caller's group, or
+// every group for an administrator. A server from before groups sends none.
 type Queue struct {
 	Totals map[string]int64 `json:"totals"`
 	Users  []struct {
 		ID    int64            `json:"id"`
 		Name  string           `json:"name"`
 		Email string           `json:"email"`
+		Group int64            `json:"group_id"`
 		Lines map[string]int64 `json:"lines"`
 		Share float64          `json:"share"`
 	} `json:"users"`
-	Scheduler Scheduler `json:"scheduler"`
+	Groups    []QueueGroup `json:"groups"`
+	Scheduler Scheduler    `json:"scheduler"`
+}
+
+type QueueGroup struct {
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	Staged   int64  `json:"staged"`
+	Capacity int    `json:"capacity"`
 }
 
 // Usage is what one user's lines used each day, UTC, counted as they end.
