@@ -2,3 +2,4 @@ main
 maestro-cli
 maestro
 dist/
+completions/
