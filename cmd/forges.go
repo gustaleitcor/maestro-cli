@@ -29,14 +29,14 @@ var forgesCmd = &cobra.Command{
 	Aliases: []string{"forge"},
 	Short:   "Manage the git forges Maestro reads repositories from",
 	Long: `A forge is where your repositories live: GitHub, Forgejo (Codeberg,
-Gitea) or GitLab. Maestro only reads from it, with a read-only token.`,
+Gitea) or GitLab. Maestro only reads from it.`,
 	Args: cobra.NoArgs,
 	RunE: runForgesList,
 }
 
 var forgesAddCmd = &cobra.Command{
 	Use:   "add [name]",
-	Short: "Add a forge and its read-only token",
+	Short: "Add a forge and its token",
 	Long: `Adds a forge, or replaces the one with the same name. The token is
 checked before it is stored. Only Forgejo takes a --url.
 

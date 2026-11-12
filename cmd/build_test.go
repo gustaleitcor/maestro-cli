@@ -158,3 +158,18 @@ func TestBuildPublicRepoNeedsNoForge(t *testing.T) {
 		t.Error("an unknown host was served without a forge")
 	}
 }
+
+// A repo the token can't see isn't said to lack a Dockerfile.
+func TestCheckBuildFile(t *testing.T) {
+	client, err := forge.New(forge.Forgejo, forgejoStub(t, "ana", "ana/app"), "tok")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if err := checkBuildFile(ctx, client, "ana", "app", "main"); err == nil || !strings.Contains(err.Error(), "has no Dockerfile") {
+		t.Errorf("a repo without one: %v", err)
+	}
+	if err := checkBuildFile(ctx, client, "raquel", "private", "main"); err == nil || !strings.Contains(err.Error(), "raquel/private not found") {
+		t.Errorf("a repo the token can't see: %v", err)
+	}
+}

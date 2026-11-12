@@ -123,9 +123,10 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	return showRun(cmd.Context(), run.ID, true)
 }
 
-// checkBuildFile stops a build that has nothing to build from before it
-// reaches the server. Only a clear "not there" stops it: when the forge
-// can't say, the build goes ahead and the server decides.
+// checkBuildFile stops a build that has nothing to build from, or a repo
+// the token can't see, before it reaches the server. Only a clear "not
+// there" stops it: when the forge can't say, the build goes ahead and the
+// server decides.
 func checkBuildFile(ctx context.Context, client forge.Forge, owner, repo, ref string) error {
 	for _, name := range buildFiles {
 		found, err := client.HasFile(ctx, owner, repo, ref, name)
@@ -136,6 +137,10 @@ func checkBuildFile(ctx context.Context, client forge.Forge, owner, repo, ref st
 		if found {
 			return nil
 		}
+	}
+	// A repo the token can't see has no files either: say that instead.
+	if _, err := client.GetRepo(ctx, owner, repo); errors.Is(err, forge.ErrNotFound) {
+		return fmt.Errorf("%s/%s not found, or your token can't see it\n\nIf it's private, add a token that can: maestro forges add", owner, repo)
 	}
 	return fmt.Errorf("%s/%s has no Dockerfile at %s\n\nMaestro builds the image from a Dockerfile (or Containerfile) at the root of\nthe repo, or from the one maestro.toml names with dockerfile = \"…\". Add one,\nor pick a branch that has it with --ref", owner, repo, ref)
 }

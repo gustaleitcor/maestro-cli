@@ -109,9 +109,13 @@ func TokenHint(kind, baseURL string) (hint, warning string) {
 	baseURL = strings.TrimRight(baseURL, "/")
 	switch kind {
 	case GitHub:
-		// The query string pre-fills the name and the one permission needed.
+		// A classic token, not a fine-grained one: a fine-grained token only
+		// reaches the repos of the one owner it is made for, never another
+		// user's private repo that you are a collaborator on. Its scope can't
+		// be narrower than repo, which can also write. The query string
+		// pre-fills the name and the scope.
 		return "Open the link, create the token, then copy it and paste it here:\n" +
-				"  " + baseURL + "/settings/personal-access-tokens/new?name=maestro-cli&contents=read",
+				"  " + baseURL + "/settings/tokens/new?description=maestro-cli&scopes=repo",
 			"by default the token expires in 30 days."
 	case Forgejo:
 		// Forgejo has no way to pre-fill the form, so spell it out.
