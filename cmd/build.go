@@ -27,8 +27,10 @@ var (
 var buildCmd = &cobra.Command{
 	Use:   "build <repo>",
 	Short: "Build a container image from a repo on one of your forges",
-	Long: `Builds a container image from a repo's Dockerfile (or Containerfile),
-which must be at the root of the repo.
+	Long: `Builds a container image from a repo's Dockerfile (or Containerfile)
+at the root of the repo, or from the one its maestro.toml names with
+dockerfile = "path/to/Dockerfile". The root of the repo is the build's
+context either way.
 
 <repo> is a name, owner/name, or URL. The forge that has it is used; pass
 --forge when several do. A public repo on GitHub, GitLab or Codeberg needs no
@@ -51,7 +53,9 @@ is over.
 	ValidArgsFunction: completeRepos,
 }
 
-var buildFiles = []string{"Dockerfile", "Containerfile"}
+// buildFiles are what a repo can be built from. A maestro.toml may name a
+// Dockerfile elsewhere, which only the server reads.
+var buildFiles = []string{"Dockerfile", "Containerfile", "maestro.toml"}
 
 func init() {
 	buildCmd.Flags().StringVar(&buildRef, "ref", "", "branch, tag or commit to build (default: the default branch)")
@@ -133,7 +137,7 @@ func checkBuildFile(ctx context.Context, client forge.Forge, owner, repo, ref st
 			return nil
 		}
 	}
-	return fmt.Errorf("%s/%s has no Dockerfile at %s\n\nMaestro builds the image from a Dockerfile (or Containerfile) at the root of\nthe repo. Add one, or pick a branch that has it with --ref", owner, repo, ref)
+	return fmt.Errorf("%s/%s has no Dockerfile at %s\n\nMaestro builds the image from a Dockerfile (or Containerfile) at the root of\nthe repo, or from the one maestro.toml names with dockerfile = \"…\". Add one,\nor pick a branch that has it with --ref", owner, repo, ref)
 }
 
 // parseRepoArg accepts "name", "owner/name", or a full repo URL. A URL
