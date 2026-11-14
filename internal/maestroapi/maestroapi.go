@@ -462,14 +462,27 @@ func DeleteRun(ctx context.Context, maestroKey string, id int64) error {
 	return doWithKey(ctx, maestroKey, http.MethodDelete, runPath(id), nil, http.StatusNoContent, nil)
 }
 
+// LogOptions say which of a line's logs to read, and how.
+type LogOptions struct {
+	Stream string // LogStdout, LogStderr or LogCombined
+	// Tail is the last lines of a line that runs; 0 is all of them.
+	Tail int
+	// Follow, for a line that runs, goes on until it exits. A server from
+	// before follow answers what there is so far, and ends.
+	Follow bool
+}
+
 // RunLogs writes one stream of what a line's container printed to w: live
-// while it runs (the last tail lines, or all of them when tail is negative),
-// and the copy kept once it finished.
-func RunLogs(ctx context.Context, maestroKey string, id, line int64, stream string, tail int, w io.Writer) error {
-	path := runPath(id) + "/lines/" + strconv.FormatInt(line, 10) + "/logs?stream=" + url.QueryEscape(stream)
-	if tail >= 0 {
-		path += "&tail=" + strconv.Itoa(tail)
+// while it runs, and the copy kept once it finished.
+func RunLogs(ctx context.Context, maestroKey string, id, line int64, opts LogOptions, w io.Writer) error {
+	query := url.Values{"stream": {opts.Stream}}
+	if opts.Tail > 0 {
+		query.Set("tail", strconv.Itoa(opts.Tail))
 	}
+	if opts.Follow {
+		query.Set("follow", "true")
+	}
+	path := runPath(id) + "/lines/" + strconv.FormatInt(line, 10) + "/logs?" + query.Encode()
 	return download(ctx, maestroKey, path, w)
 }
 

@@ -22,7 +22,7 @@ import (
 
 func TestWriteRunsList(t *testing.T) {
 	var out bytes.Buffer
-	if err := writeRunsList(&out, nil, false); err != nil || !strings.Contains(out.String(), "No runs yet") {
+	if err := writeRunsList(&out, nil, false, 0); err != nil || !strings.Contains(out.String(), "No runs yet") {
 		t.Errorf("no runs: %q, %v", out.String(), err)
 	}
 
@@ -31,13 +31,13 @@ func TestWriteRunsList(t *testing.T) {
 	err := writeRunsList(&out, []maestroapi.Run{
 		{ID: 31, Repo: "lab/sim", Ref: "main", BuildID: 12, Status: "running", Lines: map[string]int{"running": 2, "queued": 1, "succeeded": 4}, CreatedAt: created},
 		{ID: 4, Repo: "lab/fit", Ref: "v2", BuildID: 9, Status: "failed", Lines: map[string]int{"failed": 1}, CreatedAt: created},
-	}, false)
+	}, false, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
 	wantTable(t, out.String(), [][]string{
 		{"RUN", "REPO", "BUILD", "STATUS", "LINES", "CREATED"},
-		{"31", "lab/sim@main", "#12", "running", "1 queued, 2 running, 4 succeeded", "2026-10-07 09:30"},
+		{"31", "lab/sim@main", "#12", "running", "1 queued, 2 running, 4 succeeded", "2026-10-07"},
 		{"4", "lab/fit@v2", "#9", "failed", "1 failed"},
 	})
 	if strings.Contains(out.String(), "USER") {
@@ -54,7 +54,7 @@ func TestWriteRunsListOfEveryone(t *testing.T) {
 	bob.User.Email = "bob@example.com"
 
 	var out bytes.Buffer
-	if err := writeRunsList(&out, []maestroapi.Run{ana, bob}, true); err != nil {
+	if err := writeRunsList(&out, []maestroapi.Run{ana, bob}, true, 2); err != nil {
 		t.Fatal(err)
 	}
 	wantTable(t, out.String(), [][]string{
@@ -198,13 +198,13 @@ func TestWriteRunShow(t *testing.T) {
 			{Line: 2, Args: []string{"-t", "20"}, Status: "failed", Machine: "Q2", ExitCode: &two, Error: "logs cut at the 10 MB limit"},
 			{Line: 3, Status: "queued"},
 		},
-	})
+	}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	got := out.String()
 	for _, want := range []string{
-		"Run 31 of lab/sim@main (build #12): running, on Q1, Q2\n\n",
+		"Run 31 of lab/sim@main (build #12): running, on Q1, Q2\n3 line(s): 1 queued, 1 succeeded, 1 failed\n\n",
 		"LINE  PARAMETERS", "-t 10 'long run'", "out.txt, plot.png (missing)", "failed (exit 2)", "(image's command)",
 		"\nline 2: logs cut at the 10 MB limit\n",
 	} {
@@ -217,7 +217,7 @@ func TestWriteRunShow(t *testing.T) {
 	}
 
 	out.Reset()
-	writeRunShow(&out, &maestroapi.Run{ID: 5, Status: "queued"})
+	writeRunShow(&out, &maestroapi.Run{ID: 5, Status: "queued"}, false)
 	if !strings.Contains(out.String(), "on any machine") {
 		t.Errorf("a run that names no machine: %q", out.String())
 	}
@@ -249,7 +249,7 @@ func TestWriteLineLogs(t *testing.T) {
 	}
 	for _, c := range cases {
 		var stdout, stderr bytes.Buffer
-		if err := writeLineLogs(context.Background(), 31, c.line, 5, &stdout, &stderr); err != nil {
+		if err := writeLineLogs(context.Background(), 31, c.line, 5, false, &stdout, &stderr); err != nil {
 			t.Fatalf("%s: %v", c.name, err)
 		}
 		if stdout.String() != c.stdout || stderr.String() != c.stderr {

@@ -1,6 +1,9 @@
 package humanize
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestBytes(t *testing.T) {
 	for n, want := range map[uint64]string{
@@ -30,5 +33,17 @@ func TestRateAndFraction(t *testing.T) {
 	}
 	if Fraction(1, 0) != 0 || Fraction(1, 4) != 25 {
 		t.Error("Fraction")
+	}
+}
+
+func TestAgo(t *testing.T) {
+	now := time.Date(2026, 11, 14, 12, 0, 0, 0, time.Local)
+	for before, want := range map[time.Duration]string{
+		-time.Minute: "just now", 30 * time.Second: "just now", 5 * time.Minute: "5m ago",
+		3 * time.Hour: "3h ago", 50 * time.Hour: "2d ago", 8 * 24 * time.Hour: "2026-11-06",
+	} {
+		if got := Ago(now.Add(-before), now); got != want {
+			t.Errorf("Ago(%s before) = %q, want %q", before, got, want)
+		}
 	}
 }

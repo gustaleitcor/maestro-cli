@@ -24,8 +24,8 @@ var maestroKey string
 var Version = "dev"
 
 var rootCmd = &cobra.Command{
-	Use:     "maestro",
-	Short:   "Build images from your repos and run them across Maestro's machines",
+	Use:   "maestro",
+	Short: "Build images from your repos and run them across Maestro's machines",
 	Long: `Builds container images from your git repos and runs them across Maestro's
 machines, one container per line of parameters.
 

@@ -45,7 +45,7 @@ func fakeRunOrq(t *testing.T, status string) {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		run := map[string]any{"id": 31, "build_id": 12, "repo": "o/r", "ref": "main", "status": status,
-			"lines": map[string]int{"failed": 1, "succeeded": 2},
+			"lines":       map[string]int{"failed": 1, "succeeded": 2},
 			"line_detail": []map[string]any{{"line": 1, "status": "failed"}, {"line": 2, "status": "succeeded"}, {"line": 3, "status": "succeeded"}}}
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/api/runs":

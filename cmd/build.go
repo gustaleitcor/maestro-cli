@@ -226,7 +226,7 @@ func sayLocalFiles(flags localFlags) {
 		}
 	}
 	if len(sent) > 0 {
-		fmt.Fprintln(chatter(), dimStyle.Render("Sending " + strings.Join(sent, ", ") + " from here."))
+		fmt.Fprintln(chatter(), dimStyle.Render("Sending "+strings.Join(sent, ", ")+" from here."))
 	}
 }
 
