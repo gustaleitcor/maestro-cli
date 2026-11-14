@@ -145,6 +145,12 @@ func writeBuildsList(out io.Writer, rows []buildRow, limit int) error {
 	if err := w.Flush(); err != nil {
 		return err
 	}
+	// Which builds aren't their commit's alone.
+	for _, b := range rows {
+		if len(b.LocalFiles) > 0 {
+			fmt.Fprintf(out, "\n%s", dimStyle.Render(fmt.Sprintf("#%d: built with your %s, not the repo's.", b.ID, strings.Join(b.LocalFiles, ", "))))
+		}
+	}
 	// Why a build failed is its last word: what came before is the log.
 	for _, b := range rows {
 		if b.Status == "error" && b.Error != "" {

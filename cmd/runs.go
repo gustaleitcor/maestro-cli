@@ -254,7 +254,11 @@ func writeRunShow(out io.Writer, run *maestroapi.Run) error {
 	if len(run.Machines) > 0 {
 		where = strings.Join(run.Machines, ", ")
 	}
-	fmt.Fprintf(out, "Run %d of %s@%s (build #%d): %s, on %s\n\n", run.ID, run.Repo, run.Ref, run.BuildID, run.Status, where)
+	fmt.Fprintf(out, "Run %d of %s@%s (build #%d): %s, on %s\n", run.ID, run.Repo, run.Ref, run.BuildID, run.Status, where)
+	if len(run.LocalFiles) > 0 {
+		fmt.Fprintln(out, dimStyle.Render(fmt.Sprintf("Lines from your %s, not the build's.", strings.Join(run.LocalFiles, ", "))))
+	}
+	fmt.Fprintln(out)
 
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "LINE\tPARAMETERS\tMACHINE\tSTATUS\tFILES")

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -22,7 +24,16 @@ var (
 	buildRef   string
 	buildForge string
 	buildRun   bool
+	buildLocal localFlags
 )
+
+// localFlags name files where the CLI runs to send in place of the repo's.
+type localFlags struct {
+	config, generator, dockerfile string
+}
+
+// maxLocalFile is the largest file sent, as the server takes no larger.
+const maxLocalFile = 1 << 20
 
 var buildCmd = &cobra.Command{
 	Use:   "build <repo>",
@@ -46,7 +57,15 @@ The build gets a number: ` + "`maestro run <build>`" + ` runs its image, and
 run as soon as it is built; --watch does that and follows the run until it
 is over.
 
-  maestro build my-app --watch`,
+  maestro build my-app --watch
+
+To try a change without pushing it, send your own maestro.toml (-c), the
+generator it names (-g) or the Dockerfile (-f) from here: the server builds
+the repo with them in place of its own. Each may have any name here. A
+change to maestro.toml or the generator alone needs no new build: send them
+to ` + "`maestro run`" + ` instead, which runs the image you have.
+
+  maestro build my-app -c bench.toml -g genvrs.py -f Dockerfile`,
 	Args: cobra.ExactArgs(1),
 	RunE: runBuild,
 
@@ -62,12 +81,19 @@ func init() {
 	buildCmd.Flags().BoolVar(&buildRun, "run", false, "run the image once it is built")
 	addWatchFlags(buildCmd, "run the image once it is built, and follow the run until it is over")
 	addForgeFlag(buildCmd, &buildForge)
+	buildCmd.Flags().StringVarP(&buildLocal.config, "config", "c", "", "a maestro.toml here to build with in place of the repo's")
+	buildCmd.Flags().StringVarP(&buildLocal.generator, "generator", "g", "", "a generator script here, in place of the one maestro.toml names")
+	buildCmd.Flags().StringVarP(&buildLocal.dockerfile, "dockerfile", "f", "", "a Dockerfile here to build from in place of the repo's")
 	rootCmd.AddCommand(buildCmd)
 }
 
 func runBuild(cmd *cobra.Command, args []string) error {
 	// Before the build, not after it.
 	if err := checkWatch(); err != nil {
+		return err
+	}
+	files, err := readLocalFiles(buildLocal)
+	if err != nil {
 		return err
 	}
 	active, owner, repo, err := parseRepoArg(cmd.Context(), args[0], buildForge)
@@ -84,11 +110,14 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		ref = r.DefaultBranch
 	}
 
-	if err := checkBuildFile(cmd.Context(), active.Client, owner, repo, ref); err != nil {
-		return err
+	if files.Dockerfile == "" {
+		if err := checkBuildFile(cmd.Context(), active.Client, owner, repo, ref); err != nil {
+			return err
+		}
 	}
 
 	fmt.Printf("Building %s/%s/%s@%s...\n", active.Client.Host(), owner, repo, ref)
+	sayLocalFiles(buildLocal)
 
 	final, err := maestroapi.TriggerBuild(cmd.Context(), maestroKey, active.Token, maestroapi.BuildRequest{
 		Forge: active.Client.Kind(),
@@ -96,12 +125,16 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		Owner: owner,
 		Repo:  repo,
 		Ref:   ref,
+		Files: files,
 	}, func(line string) { fmt.Print(line) })
 	if err != nil {
 		return err
 	}
 	if final.Status != "success" {
 		return fmt.Errorf("build failed: %s", final.Error)
+	}
+	if !files.Empty() && len(final.LocalFiles) == 0 {
+		return fmt.Errorf("build #%d was built from the repo's files, not yours: this Maestro server is too old to take them; update it", final.BuildID)
 	}
 
 	succeeded := "Build succeeded:"
@@ -121,6 +154,54 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	return showRun(cmd.Context(), run.ID, true)
+}
+
+// readLocalFiles reads the files flags name, each at most maxLocalFile.
+func readLocalFiles(flags localFlags) (maestroapi.LocalFiles, error) {
+	var files maestroapi.LocalFiles
+	for _, f := range []struct {
+		path string
+		into *string
+	}{{flags.config, &files.Config}, {flags.generator, &files.Generator}, {flags.dockerfile, &files.Dockerfile}} {
+		if f.path == "" {
+			continue
+		}
+		info, err := os.Stat(f.path)
+		if err != nil {
+			return files, err
+		}
+		if !info.Mode().IsRegular() {
+			return files, fmt.Errorf("%s isn't a file", f.path)
+		}
+		if info.Size() > maxLocalFile {
+			return files, fmt.Errorf("%s is larger than %d MiB, the most that can be sent", f.path, maxLocalFile>>20)
+		}
+		raw, err := os.ReadFile(f.path)
+		if err != nil {
+			return files, err
+		}
+		if len(raw) == 0 {
+			return files, fmt.Errorf("%s is empty", f.path)
+		}
+		*f.into = string(raw)
+	}
+	if flags.generator != "" {
+		files.GeneratorName = filepath.Base(flags.generator)
+	}
+	return files, nil
+}
+
+// sayLocalFiles says which files are sent from here, if any.
+func sayLocalFiles(flags localFlags) {
+	var sent []string
+	for _, f := range []struct{ path, what string }{{flags.config, "maestro.toml"}, {flags.generator, "the generator"}, {flags.dockerfile, "the Dockerfile"}} {
+		if f.path != "" {
+			sent = append(sent, fmt.Sprintf("%s as %s", f.path, f.what))
+		}
+	}
+	if len(sent) > 0 {
+		fmt.Println(dimStyle.Render("Sending " + strings.Join(sent, ", ") + " from here."))
+	}
 }
 
 // checkBuildFile stops a build that has nothing to build from, or a repo

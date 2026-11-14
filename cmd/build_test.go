@@ -3,13 +3,17 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"maestro-cli/internal/config"
 	"maestro-cli/internal/forge"
+	"maestro-cli/internal/maestroapi"
 )
 
 func TestSplitRepoURL(t *testing.T) {
@@ -171,5 +175,57 @@ func TestCheckBuildFile(t *testing.T) {
 	}
 	if err := checkBuildFile(ctx, client, "raquel", "private", "main"); err == nil || !strings.Contains(err.Error(), "raquel/private not found") {
 		t.Errorf("a repo the token can't see: %v", err)
+	}
+}
+
+// The files -c, -g and -f name are read whatever they are called here; the
+// generator is sent with its own name, and nothing empty or too large goes.
+func TestReadLocalFiles(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, content string) string {
+		path := filepath.Join(dir, name)
+		os.WriteFile(path, []byte(content), 0o644)
+		return path
+	}
+	files, err := readLocalFiles(localFlags{config: write("bench.toml", "cpus = 2"), generator: write("lines.py", "def genvrs(): ..."), dockerfile: write("Dockerfile.dev", "FROM x")})
+	want := maestroapi.LocalFiles{Config: "cpus = 2", Generator: "def genvrs(): ...", GeneratorName: "lines.py", Dockerfile: "FROM x"}
+	if err != nil || files != want {
+		t.Fatalf("got %+v, %v", files, err)
+	}
+	if files, err := readLocalFiles(localFlags{}); err != nil || !files.Empty() {
+		t.Errorf("no flags: %+v, %v", files, err)
+	}
+	for name, flags := range map[string]localFlags{
+		"missing":   {config: filepath.Join(dir, "nope.toml")},
+		"empty":     {config: write("empty.toml", "")},
+		"too large": {generator: write("big.py", strings.Repeat("#", maxLocalFile+1))},
+		"directory": {dockerfile: dir},
+	} {
+		if _, err := readLocalFiles(flags); err == nil {
+			t.Errorf("%s: read", name)
+		}
+	}
+}
+
+// A run sent files carries them and the forge's token; one without sends
+// the request it always did.
+func TestStartRunSendsFiles(t *testing.T) {
+	var body map[string]json.RawMessage
+	var token string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, token = nil, r.Header.Get("X-Forge-Token")
+		json.NewDecoder(r.Body).Decode(&body)
+		w.WriteHeader(http.StatusCreated)
+		fmt.Fprint(w, `{"id": 7, "local_files": ["maestro.toml"]}`)
+	}))
+	defer srv.Close()
+	t.Setenv("MAESTRO_ORQ_URL", srv.URL)
+
+	run, err := maestroapi.StartRun(context.Background(), "key", 81, maestroapi.LocalFiles{Config: "cpus = 2"}, "tok")
+	if err != nil || run.ID != 7 || token != "tok" || string(body["files"]) != `{"config":"cpus = 2"}` {
+		t.Errorf("with files: %+v, %v, token %q, body %s", run, err, token, body["files"])
+	}
+	if _, err := maestroapi.StartRun(context.Background(), "key", 81, maestroapi.LocalFiles{}, "tok"); err != nil || token != "" || body["files"] != nil {
+		t.Errorf("without: %v, token %q, files %s", err, token, body["files"])
 	}
 }

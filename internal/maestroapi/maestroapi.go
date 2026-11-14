@@ -42,6 +42,23 @@ type CLILoginResult struct {
 
 type BuildRequest struct {
 	Forge, Host, Owner, Repo, Ref, Server string
+	// Files are built in place of the repo's.
+	Files LocalFiles
+}
+
+// LocalFiles are files sent from where the CLI runs in place of the repo's:
+// maestro.toml, the generator it names (GeneratorName is the script's own
+// name, for when it names none) and, for a build, the Dockerfile.
+type LocalFiles struct {
+	Config        string `json:"config,omitempty"`
+	Generator     string `json:"generator,omitempty"`
+	GeneratorName string `json:"generator_name,omitempty"`
+	Dockerfile    string `json:"dockerfile,omitempty"`
+}
+
+// Empty says whether no file is sent.
+func (l LocalFiles) Empty() bool {
+	return l.Config == "" && l.Generator == "" && l.Dockerfile == ""
 }
 
 // StreamEvent is one line of the /api/builds NDJSON response: either a
@@ -52,6 +69,9 @@ type StreamEvent struct {
 	BuildID int64  `json:"build_id,omitempty"` // 0 from a server that doesn't say
 	ImageID string `json:"image_id,omitempty"`
 	Error   string `json:"error,omitempty"`
+	// LocalFiles are the files the server built in place of the repo's;
+	// a server too old for them leaves it out.
+	LocalFiles []string `json:"local_files,omitempty"`
 }
 
 type errorResponse struct {
@@ -69,6 +89,7 @@ type Build struct {
 	Status     string    `json:"status"`
 	ImageID    string    `json:"image_id,omitempty"`
 	Error      string    `json:"error,omitempty"`
+	LocalFiles []string  `json:"local_files,omitempty"`
 	CreatedAt  time.Time `json:"created_at"`
 	FinishedAt time.Time `json:"finished_at"`
 }
@@ -92,15 +113,17 @@ type Run struct {
 		Name  string `json:"name"`
 		Email string `json:"email"`
 	} `json:"user"`
-	BuildID   int64          `json:"build_id"`
-	Repo      string         `json:"repo"`
-	Ref       string         `json:"ref"`
-	Status    string         `json:"status"`
-	Machines  []string       `json:"machines"`
-	Outputs   []string       `json:"outputs"`
-	Lines     map[string]int `json:"lines"`
-	CreatedAt time.Time      `json:"created_at"`
-	Detail    []RunLine      `json:"line_detail"`
+	BuildID  int64    `json:"build_id"`
+	Repo     string   `json:"repo"`
+	Ref      string   `json:"ref"`
+	Status   string   `json:"status"`
+	Machines []string `json:"machines"`
+	Outputs  []string `json:"outputs"`
+	// LocalFiles are those sent from the CLI its lines came from.
+	LocalFiles []string       `json:"local_files,omitempty"`
+	Lines      map[string]int `json:"lines"`
+	CreatedAt  time.Time      `json:"created_at"`
+	Detail     []RunLine      `json:"line_detail"`
 }
 
 // RunLine is one container of a run. Status is queued (among its user's
@@ -219,13 +242,14 @@ func PollCLILogin(ctx context.Context, deviceCode string) (*CLILoginResult, erro
 // a public repo, which needs none.
 func TriggerBuild(ctx context.Context, maestroKey, forgeToken string, req BuildRequest, onLine func(string)) (*StreamEvent, error) {
 	body, err := json.Marshal(struct {
-		Forge  string `json:"forge"`
-		Host   string `json:"host"`
-		Owner  string `json:"owner"`
-		Repo   string `json:"repo"`
-		Ref    string `json:"ref"`
-		Server string `json:"server,omitempty"`
-	}{req.Forge, req.Host, req.Owner, req.Repo, req.Ref, req.Server})
+		Forge  string      `json:"forge"`
+		Host   string      `json:"host"`
+		Owner  string      `json:"owner"`
+		Repo   string      `json:"repo"`
+		Ref    string      `json:"ref"`
+		Server string      `json:"server,omitempty"`
+		Files  *LocalFiles `json:"files,omitempty"`
+	}{req.Forge, req.Host, req.Owner, req.Repo, req.Ref, req.Server, filesOrNil(req.Files)})
 	if err != nil {
 		return nil, fmt.Errorf("encoding request: %w", err)
 	}
@@ -285,15 +309,35 @@ func TriggerBuild(ctx context.Context, maestroKey, forgeToken string, req BuildR
 	return &final, nil
 }
 
-func StartRun(ctx context.Context, maestroKey string, buildID int64) (*Run, error) {
+// StartRun queues a run of a build. With files, its lines come from them in
+// place of the build's: the server clones the repo again for them, with
+// forgeToken when it's private, and runs the generator, which takes longer.
+func StartRun(ctx context.Context, maestroKey string, buildID int64, files LocalFiles, forgeToken string) (*Run, error) {
 	var run Run
 	body := struct {
-		BuildID int64 `json:"build_id"`
-	}{buildID}
-	if err := doWithKey(ctx, maestroKey, http.MethodPost, "/api/runs", body, http.StatusCreated, &run); err != nil {
+		BuildID int64       `json:"build_id"`
+		Files   *LocalFiles `json:"files,omitempty"`
+	}{buildID, filesOrNil(files)}
+	timeout, header := defaultTimeout, http.Header{}
+	if !files.Empty() {
+		timeout = localFilesTimeout
+		if forgeToken != "" {
+			header.Set("X-Forge-Token", forgeToken)
+		}
+	}
+	if err := do(ctx, maestroKey, http.MethodPost, "/api/runs", body, http.StatusCreated, &run, timeout, header); err != nil {
 		return nil, err
 	}
 	return &run, nil
+}
+
+// filesOrNil leaves files out of a request that sends none, so that a
+// request is what it was before there were files to send.
+func filesOrNil(files LocalFiles) *LocalFiles {
+	if files.Empty() {
+		return nil
+	}
+	return &files
 }
 
 func GetRun(ctx context.Context, maestroKey string, id int64) (*Run, error) {
@@ -517,7 +561,19 @@ func download(ctx context.Context, maestroKey, path string, w io.Writer) error {
 
 // doWithKey sends body (if any) as JSON, authenticated with the Maestro key,
 // and decodes the response into out unless out is nil.
+// How long a request may take: most, and a run that sent files, for which
+// the server clones the repo and runs its generator.
+const (
+	defaultTimeout    = 60 * time.Second
+	localFilesTimeout = 4 * time.Minute
+)
+
 func doWithKey(ctx context.Context, maestroKey, method, path string, body any, wantStatus int, out any) error {
+	return do(ctx, maestroKey, method, path, body, wantStatus, out, defaultTimeout, nil)
+}
+
+// do is doWithKey with its timeout, and header added to the request.
+func do(ctx context.Context, maestroKey, method, path string, body any, wantStatus int, out any, timeout time.Duration, header http.Header) error {
 	var reader io.Reader
 	if body != nil {
 		encoded, err := json.Marshal(body)
@@ -535,8 +591,11 @@ func doWithKey(ctx context.Context, maestroKey, method, path string, body any, w
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
+	for name, values := range header {
+		req.Header[name] = values
+	}
 
-	client := &http.Client{Timeout: 60 * time.Second}
+	client := &http.Client{Timeout: timeout}
 	resp, err := client.Do(req)
 	if err != nil {
 		return unreachable(err)
