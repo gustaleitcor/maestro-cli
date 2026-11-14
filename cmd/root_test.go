@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -42,6 +43,62 @@ func resetFlags(c *cobra.Command) {
 	}
 }
 
+// With no server named anywhere, it is asked for until one is given: blank
+// lines are asked again, and what isn't a URL is said and asked again.
+func TestAskServer(t *testing.T) {
+	var out strings.Builder
+	got, err := askServer(bufio.NewReader(strings.NewReader("\n  \nnot a url\nmaestro.example.org/\n")), &out)
+	if err != nil || got != "https://maestro.example.org" {
+		t.Errorf("askServer = %q, %v", got, err)
+	}
+	said := ansi.Strip(out.String())
+	if !strings.HasPrefix(said, "No Maestro server is set yet.\n") || strings.Count(said, "Maestro server URL") != 4 || !strings.Contains(said, `"not a url" isn't a server's URL`) {
+		t.Errorf("said %q", said)
+	}
+
+	out.Reset()
+	if _, err := askServer(bufio.NewReader(strings.NewReader("")), &out); err == nil || !strings.Contains(err.Error(), "no Maestro server given") {
+		t.Errorf("nothing typed before the end: %v", err)
+	}
+}
+
+func TestCheckServer(t *testing.T) {
+	for raw, want := range map[string]string{
+		"maestro.example.org":           "https://maestro.example.org",
+		"http://localhost:8080/":        "http://localhost:8080",
+		" https://maestro.example.org ": "https://maestro.example.org",
+		"ftp://maestro.example.org":     "",
+		"https://":                      "",
+		"not a url":                     "",
+	} {
+		got, err := checkServer(raw)
+		if got != want || (want == "") != (err != nil) {
+			t.Errorf("checkServer(%q) = %q, %v; want %q", raw, got, err, want)
+		}
+	}
+}
+
+// What talks to Maestro needs a server first; with no terminal to ask at,
+// it says how to name one. What doesn't talk to it works without.
+func TestNoServerSet(t *testing.T) {
+	signedIn(t, "")
+	t.Setenv("MAESTRO_ORQ_URL", "")
+	rootCmd.SetOut(io.Discard)
+	t.Cleanup(func() { rootCmd.SetOut(nil) })
+
+	for _, args := range [][]string{{}, {"runs"}, {"login"}} {
+		code, said := maestro(t, args...)
+		if code != exitFailed || !strings.Contains(said, "no Maestro server is set") || !strings.Contains(said, "--server <url>") {
+			t.Errorf("maestro %s: exit %d, %q", strings.Join(args, " "), code, said)
+		}
+	}
+	for _, args := range [][]string{{"forges"}, {"--help"}, {"help", "concepts"}, {"logout", "--yes"}} {
+		if code, said := maestro(t, args...); code != 0 {
+			t.Errorf("maestro %s without a server: exit %d, %q", strings.Join(args, " "), code, said)
+		}
+	}
+}
+
 // Which server is talked to: --server, then MAESTRO_ORQ_URL, then the one
 // signed in to, then the default.
 func TestServerPrecedence(t *testing.T) {
@@ -49,13 +106,13 @@ func TestServerPrecedence(t *testing.T) {
 	t.Setenv("MAESTRO_ORQ_URL", "")
 	t.Cleanup(func() { serverFlag = "" })
 
-	if url, from := server(); url != maestroapi.DefaultBaseURL || from != "" {
-		t.Errorf("nothing set: %q from %q", url, from)
+	if url, from := server(); url != "" || from != "" {
+		t.Errorf("nothing set: %q from %q; want none, there is no default", url, from)
 	}
 	if err := config.SaveMaestroKey("https://stored.example.org", "k"); err != nil {
 		t.Fatal(err)
 	}
-	if url, from := server(); url != "https://stored.example.org" || from != "login" {
+	if url, from := server(); url != "https://stored.example.org" || from != "config" {
 		t.Errorf("signed in: %q from %q", url, from)
 	}
 	t.Setenv("MAESTRO_ORQ_URL", "http://localhost:8080/")

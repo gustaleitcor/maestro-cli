@@ -143,7 +143,13 @@ func LoadMaestroKey(server string) (string, error) {
 	return key, nil
 }
 
-// Server is the server the stored key was minted by, or "" when unknown.
+// SaveServer keeps the server to talk to, before any key is minted by it.
+func SaveServer(server string) error {
+	return saveFieldToFile(func(c *Config) *string { return &c.Server }, server)
+}
+
+// Server is the server kept: the one the stored key was minted by, or
+// the one asked for before signing in; "" when there is none.
 func Server() (string, error) {
 	cfg, err := readConfigFile()
 	return cfg.Server, err

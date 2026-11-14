@@ -22,7 +22,7 @@ const logoGap = 3 // columns between the logo and the text beside it
 type Welcome struct {
 	Server string
 	// ServerFrom is what chose Server: "--server", "MAESTRO_ORQ_URL",
-	// "login" (the one signed in to), or "" for the default.
+	// or "config" (the one kept).
 	ServerFrom string
 	// SignedInTo is the server the stored key is for, when it isn't Server.
 	SignedInTo string
@@ -60,7 +60,7 @@ func RenderWelcome(w Welcome, width int) string {
 
 func renderWelcomeInfo(w Welcome) string {
 	if !w.SignedIn && w.SignedInTo == "" && len(w.Forges) == 0 {
-		return "Not signed in.\n\n" +
+		return "Not signed in to " + w.Server + ".\n\n" +
 			"maestro login    Sign in to Maestro\n" +
 			"maestro --help   More information"
 	}

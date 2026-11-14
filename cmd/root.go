@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -41,15 +43,24 @@ machines, one container per line of parameters.
 	SilenceUsage:  true,
 	// Bare invocation shows who is signed in instead of the usual help text.
 	RunE: runWelcome,
-	// maestro (bare), login, logout, forges, help, and completion shouldn't require a
-	// Maestro key to run. Commands that read a forge load it themselves, and
-	// completions that need the key load it themselves too.
+	// Whatever talks to Maestro needs to know which server: when nothing says,
+	// it is asked for first. maestro (bare) and login need no key beyond
+	// that; logout, forges, help and completion need neither. Commands that
+	// read a forge load its token themselves, and completions load the key
+	// themselves too.
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		switch cmd.Name() {
-		case "maestro", "login", "logout", "help", "completion", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd:
+		case "logout", "help", "completion", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd:
 			return nil
 		}
 		if cmd == forgesCmd || cmd.Parent() == forgesCmd {
+			return nil
+		}
+		if err := ensureServer(os.Stdin, os.Stderr); err != nil {
+			return err
+		}
+		// maestro itself, or maestro login.
+		if !cmd.HasParent() || (cmd.Name() == "login" && !cmd.Parent().HasParent()) {
 			return nil
 		}
 
@@ -69,8 +80,10 @@ machines, one container per line of parameters.
 var serverFlag string
 
 // server is the Maestro server to talk to, and what chose it: --server, then
-// MAESTRO_ORQ_URL, then the server signed in to ("login"), then the default
-// (""). A server is a URL; https:// is assumed when it says no scheme.
+// MAESTRO_ORQ_URL, then the one kept in the config ("config"), asked for
+// the first time or signed in to. "" when nothing says: there is no default,
+// so that nothing is ever sent to a server the user didn't name. A server is
+// a URL; https:// is assumed when it says no scheme.
 func server() (url, from string) {
 	if serverFlag != "" {
 		return normalizeServer(serverFlag), "--server"
@@ -79,9 +92,9 @@ func server() (url, from string) {
 		return normalizeServer(env), "MAESTRO_ORQ_URL"
 	}
 	if stored, err := config.Server(); err == nil && stored != "" {
-		return stored, "login"
+		return stored, "config"
 	}
-	return maestroapi.DefaultBaseURL, ""
+	return "", ""
 }
 
 func normalizeServer(raw string) string {
@@ -92,8 +105,63 @@ func normalizeServer(raw string) string {
 	return strings.TrimRight(raw, "/")
 }
 
+// checkServer is a server's URL as typed, made whole (https:// when it says
+// no scheme), or why it isn't one.
+func checkServer(raw string) (string, error) {
+	normalized := normalizeServer(raw)
+	parsed, err := url.Parse(normalized)
+	if err != nil || parsed.Host == "" || strings.ContainsAny(normalized, " \t") || (parsed.Scheme != "https" && parsed.Scheme != "http") {
+		return "", fmt.Errorf("%q isn't a server's URL, such as https://maestro.example.org", strings.TrimSpace(raw))
+	}
+	return normalized, nil
+}
+
+// ensureServer asks for the Maestro server when nothing names one, and
+// keeps it in the config, so that it is asked once. Without a terminal to
+// ask at, it says how to name one instead.
+func ensureServer(in *os.File, out io.Writer) error {
+	if url, _ := server(); url != "" {
+		return nil
+	}
+	if !term.IsTerminal(int(in.Fd())) {
+		return errors.New("no Maestro server is set\n\nPass --server <url>, set MAESTRO_ORQ_URL, or run `maestro login --server <url>` once")
+	}
+	url, err := askServer(bufio.NewReader(in), out)
+	if err != nil {
+		return err
+	}
+	if err := config.SaveServer(url); err != nil {
+		return err
+	}
+	fmt.Fprintln(out, dimStyle.Render("Kept. `maestro login --server <url>` changes it."))
+	return nil
+}
+
+// askServer asks for a server's URL until it is given one.
+func askServer(in *bufio.Reader, out io.Writer) (string, error) {
+	fmt.Fprintln(out, "No Maestro server is set yet.")
+	for {
+		fmt.Fprint(out, "Maestro server URL (e.g. https://maestro.example.org): ")
+		line, readErr := in.ReadString('\n')
+		if raw := strings.TrimSpace(line); raw != "" {
+			url, err := checkServer(raw)
+			if err == nil {
+				return url, nil
+			}
+			fmt.Fprintln(out, warnStyle.Render(err.Error()))
+		}
+		if readErr != nil {
+			if readErr == io.EOF {
+				fmt.Fprintln(out)
+				return "", errors.New("no Maestro server given")
+			}
+			return "", fmt.Errorf("reading input: %w", readErr)
+		}
+	}
+}
+
 func init() {
-	rootCmd.PersistentFlags().StringVar(&serverFlag, "server", "", "the Maestro server to talk to (default: the one you signed in to)")
+	rootCmd.PersistentFlags().StringVar(&serverFlag, "server", "", "the Maestro server to talk to (default: the one kept, asked for the first time)")
 	// Asked at every request, so that what a flag says is what is used,
 	// completions included.
 	maestroapi.Server = func() string {

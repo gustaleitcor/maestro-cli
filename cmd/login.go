@@ -23,7 +23,8 @@ var loginCmd = &cobra.Command{
 The link can be opened in any browser, on this machine or another.
 
 With --server, signs in to that Maestro server, which every command then
-talks to; the key is only ever sent to the server that minted it.
+talks to; without it, to the one kept, which is asked for the first time.
+The key is only ever sent to the server that minted it.
 
 The key is kept in the system keyring, and a login without --store-in-file goes
 back to it. If yours asks for a password, or has none,
