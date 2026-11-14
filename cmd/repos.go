@@ -26,7 +26,7 @@ var reposCmd = &cobra.Command{
 	Use:     "repos",
 	Aliases: []string{"repo"},
 	Short:   "Repository-related commands",
-	Args:    cobra.NoArgs,
+	Args:    nounArgs,
 	RunE:    runReposList,
 }
 

@@ -34,7 +34,7 @@ const noRuns = "No runs yet. Start one with: maestro run <build>"
 var runsCmd = &cobra.Command{
 	Use:   "runs",
 	Short: "Commands for the runs started with `maestro run`",
-	Args:  cobra.NoArgs,
+	Args:  cobra.MatchAll(nounArgs, flagCheck(checkWatch)),
 	RunE:  runRunsList,
 }
 
@@ -44,7 +44,7 @@ var runsListCmd = &cobra.Command{
 	Long: `Lists your runs, newest first. With --watch, the list is drawn again every
 --interval until you press ctrl-c. With --all, an administrator is given
 everyone's runs, and whose each is.`,
-	Args:              cobra.NoArgs,
+	Args:              cobra.MatchAll(cobra.NoArgs, flagCheck(checkWatch)),
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE:              runRunsList,
 }
@@ -55,7 +55,7 @@ var runsShowCmd = &cobra.Command{
 	Long: `Shows each line of a run: where it ran, how it ended, what it kept. With
 --watch, it is drawn again every --interval until the run is over, or you
 press ctrl-c. Without a run, it shows your newest.`,
-	Args:              cobra.MaximumNArgs(1),
+	Args:              cobra.MatchAll(numberArgs(0, 1, "run"), flagCheck(checkWatch)),
 	ValidArgsFunction: completeRuns,
 	RunE:              runRunsShow,
 }
@@ -71,7 +71,7 @@ to stderr, so the two can be told apart or sent to different places.
 
 All of stdout comes before all of stderr; how they were mixed as the
 container ran isn't kept.`,
-	Args:              cobra.ExactArgs(2),
+	Args:              numberArgs(2, 2, "run", "line"),
 	ValidArgsFunction: completeRunLines,
 	RunE:              runRunsLogs,
 }
@@ -82,7 +82,7 @@ var runsGetCmd = &cobra.Command{
 	Long: `Downloads every file kept from a run's containers into <dir>/<run>/<line>/,
 and what each printed among them, as stdout.log and stderr.log (dir defaults
 to the current directory).`,
-	Args:              cobra.RangeArgs(1, 2),
+	Args:              numberArgs(1, 2, "run"),
 	ValidArgsFunction: completeRunThenDir,
 	RunE:              runRunsGet,
 }
@@ -90,7 +90,7 @@ to the current directory).`,
 var runsCancelCmd = &cobra.Command{
 	Use:               "cancel <run>",
 	Short:             "Cancel a run: drop what hasn't started and stop what has",
-	Args:              cobra.ExactArgs(1),
+	Args:              numberArgs(1, 1, "run"),
 	ValidArgsFunction: completeRuns,
 	RunE:              runRunsCancel,
 }
@@ -99,7 +99,7 @@ var runsRmCmd = &cobra.Command{
 	Use:               "rm <run>",
 	Aliases:           []string{"remove"},
 	Short:             "Delete a finished run and the files kept from it",
-	Args:              cobra.ExactArgs(1),
+	Args:              numberArgs(1, 1, "run"),
 	ValidArgsFunction: completeRuns,
 	RunE:              runRunsRm,
 }

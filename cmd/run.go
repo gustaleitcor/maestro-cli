@@ -37,7 +37,7 @@ Each may have any name here. A Dockerfile changes the image, which takes
 
   maestro run 12 -c small.toml --watch
   maestro run 12 -g genvrs.py`,
-	Args:              cobra.ExactArgs(1),
+	Args:              cobra.MatchAll(numberArgs(1, 1, "build"), flagCheck(checkWatch)),
 	ValidArgsFunction: completeBuilds,
 	RunE:              runRun,
 }

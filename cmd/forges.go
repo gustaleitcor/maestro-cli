@@ -30,7 +30,7 @@ var forgesCmd = &cobra.Command{
 	Short:   "Manage the git forges Maestro reads repositories from",
 	Long: `A forge is where your repositories live: GitHub, Forgejo (Codeberg,
 Gitea) or GitLab. Maestro only reads from it.`,
-	Args: cobra.NoArgs,
+	Args: nounArgs,
 	RunE: runForgesList,
 }
 

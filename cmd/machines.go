@@ -19,7 +19,7 @@ var machinesCmd = &cobra.Command{
 	Use:     "machines",
 	Aliases: []string{"machine"},
 	Short:   "Commands for the machines containers run on",
-	Args:    cobra.NoArgs,
+	Args:    nounArgs,
 	RunE:    runMachinesList,
 }
 

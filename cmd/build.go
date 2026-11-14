@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -66,10 +67,21 @@ change to maestro.toml or the generator alone needs no new build: send them
 to ` + "`maestro run`" + ` instead, which runs the image you have.
 
   maestro build my-app -c bench.toml -g genvrs.py -f Dockerfile`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.MatchAll(repoArg, flagCheck(checkWatch)),
 	RunE: runBuild,
 
 	ValidArgsFunction: completeRepos,
+}
+
+// repoArg is Args of build: the one repo to build.
+func repoArg(cmd *cobra.Command, args []string) error {
+	switch {
+	case len(args) == 0:
+		return fmt.Errorf("maestro build needs a repo: a name, owner/name or URL (see `maestro repos`)")
+	case len(args) > 1:
+		return fmt.Errorf("maestro build builds one repo at a time, not %d", len(args))
+	}
+	return nil
 }
 
 // buildFiles are what a repo can be built from. A maestro.toml may name a
@@ -171,29 +183,34 @@ type builtAnswer struct {
 // readLocalFiles reads the files flags name, each at most maxLocalFile.
 func readLocalFiles(flags localFlags) (maestroapi.LocalFiles, error) {
 	var files maestroapi.LocalFiles
+	// Each is said as the flag that named it: "-c small.toml: no such file".
 	for _, f := range []struct {
-		path string
-		into *string
-	}{{flags.config, &files.Config}, {flags.generator, &files.Generator}, {flags.dockerfile, &files.Dockerfile}} {
+		flag, path string
+		into       *string
+	}{{"-c", flags.config, &files.Config}, {"-g", flags.generator, &files.Generator}, {"-f", flags.dockerfile, &files.Dockerfile}} {
 		if f.path == "" {
 			continue
 		}
+		named := f.flag + " " + f.path
 		info, err := os.Stat(f.path)
+		if errors.Is(err, fs.ErrNotExist) {
+			return files, fmt.Errorf("%s: no such file", named)
+		}
 		if err != nil {
-			return files, err
+			return files, fmt.Errorf("%s: %w", named, err)
 		}
 		if !info.Mode().IsRegular() {
-			return files, fmt.Errorf("%s isn't a file", f.path)
+			return files, fmt.Errorf("%s: not a file", named)
 		}
 		if info.Size() > maxLocalFile {
-			return files, fmt.Errorf("%s is larger than %d MiB, the most that can be sent", f.path, maxLocalFile>>20)
+			return files, fmt.Errorf("%s: larger than %d MiB, the most that can be sent", named, maxLocalFile>>20)
 		}
 		raw, err := os.ReadFile(f.path)
 		if err != nil {
-			return files, err
+			return files, fmt.Errorf("%s: %w", named, err)
 		}
 		if len(raw) == 0 {
-			return files, fmt.Errorf("%s is empty", f.path)
+			return files, fmt.Errorf("%s: empty", named)
 		}
 		*f.into = string(raw)
 	}

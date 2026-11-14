@@ -26,7 +26,7 @@ const (
 
 var ErrNoGitHubToken = errors.New("no github token found; run `maestro login` first")
 
-var ErrNoMaestroKey = errors.New("no maestro key found; run `maestro login` first")
+var ErrNoMaestroKey = errors.New("not signed in to Maestro")
 
 type Config struct {
 	GitHubToken string `json:"github_token,omitempty"`

@@ -82,6 +82,23 @@ func TestWatchedRunExitsAsItEnded(t *testing.T) {
 	}
 }
 
+// A file sent from here is named as the flag that named it.
+func TestLocalFileErrorsNameTheFlag(t *testing.T) {
+	dir := t.TempDir()
+	cases := []struct {
+		flags localFlags
+		want  string
+	}{
+		{localFlags{config: dir + "/nope.toml"}, "-c " + dir + "/nope.toml: no such file"},
+		{localFlags{generator: dir}, "-g " + dir + ": not a file"},
+	}
+	for _, c := range cases {
+		if _, err := readLocalFiles(c.flags); err == nil || err.Error() != c.want {
+			t.Errorf("%+v: %v; want %q", c.flags, err, c.want)
+		}
+	}
+}
+
 // With -q or --json, stdout has the answer and nothing else, for a script.
 func TestRunPrintsOnlyTheAnswerForScripts(t *testing.T) {
 	fakeRunOrq(t, "queued")

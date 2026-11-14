@@ -46,7 +46,7 @@ var rootCmd = &cobra.Command{
 
 		mk, err := config.LoadMaestroKey()
 		if err != nil {
-			return fmt.Errorf("%w\n\nRun `maestro login` to authenticate", err)
+			return fmt.Errorf("%w\n\nRun `maestro login` to sign in", err)
 		}
 		maestroKey = mk
 		return nil
@@ -80,10 +80,21 @@ func (e *exitError) Error() string { return e.err.Error() }
 func (e *exitError) Unwrap() error { return e.err }
 
 func Execute() {
-	cmd, err := rootCmd.ExecuteC()
+	cmd, err := execute()
 	if err != nil {
 		os.Exit(report(os.Stderr, cmd, err))
 	}
+}
+
+var prepared sync.Once
+
+// execute runs the command asked for, once every command has been added.
+func execute() (*cobra.Command, error) {
+	prepared.Do(func() {
+		asUsage(rootCmd)
+		rootCmd.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return usageError(err) })
+	})
+	return rootCmd.ExecuteC()
 }
 
 // report says what went wrong, if there is anything to say, and returns
@@ -99,9 +110,18 @@ func report(w io.Writer, cmd *cobra.Command, err error) int {
 	if errors.As(err, &exit) {
 		code = exit.code
 	}
-	// A mistyped command or flag, not a command that failed.
+	// A mistyped command or flag, not a command that failed: how it is asked.
 	if strings.HasPrefix(err.Error(), "unknown ") {
-		fmt.Fprintln(w, "Run 'maestro --help' for usage.")
+		code = exitUsage
+	}
+	if code == exitUsage {
+		if cmd == nil {
+			cmd = rootCmd
+		}
+		if !strings.HasPrefix(err.Error(), "unknown command") {
+			fmt.Fprintln(w, "\nUsage: "+cmd.UseLine())
+		}
+		fmt.Fprintf(w, "Run '%s --help' for more.\n", cmd.CommandPath())
 	}
 	return code
 }

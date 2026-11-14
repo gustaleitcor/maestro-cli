@@ -35,9 +35,16 @@ also see every container, and the server Maestro runs on, as "orq".
 
 Many people watching share one reading: Maestro takes it at most every couple
 of seconds, however many windows are open.`,
-	Args:              cobra.MaximumNArgs(1),
+	Args:              cobra.MatchAll(cobra.MaximumNArgs(1), flagCheck(checkTopInterval)),
 	ValidArgsFunction: completeMachines,
 	RunE:              runTop,
+}
+
+func checkTopInterval() error {
+	if topInterval < minTopPeriod {
+		return fmt.Errorf("--interval must be at least %s: Maestro doesn't read the machines more often than that", minTopPeriod)
+	}
+	return nil
 }
 
 var machinesStatsCmd = &cobra.Command{
@@ -67,9 +74,6 @@ func fetchMetrics(cmd *cobra.Command) tui.Fetch {
 }
 
 func runTop(cmd *cobra.Command, args []string) error {
-	if topInterval < minTopPeriod {
-		return fmt.Errorf("--interval must be at least %s: Maestro doesn't read the machines more often than that", minTopPeriod)
-	}
 	only := ""
 	if len(args) == 1 {
 		only = args[0]

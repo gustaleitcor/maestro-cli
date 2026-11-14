@@ -22,7 +22,7 @@ var buildsCmd = &cobra.Command{
 	Use:     "builds",
 	Aliases: []string{"image"},
 	Short:   "Commands for what `maestro build` built",
-	Args:    cobra.NoArgs,
+	Args:    nounArgs,
 	RunE:    runBuildsList,
 }
 
@@ -47,7 +47,7 @@ Each user may keep a limited number of images; this frees a place for a new
 build. The build's record and its runs, with their files, are kept.
 
 <build> is the build number shown by ` + "`maestro builds list`" + `, with or without #.`,
-	Args:              cobra.ExactArgs(1),
+	Args:              numberArgs(1, 1, "build"),
 	ValidArgsFunction: completeBuilds,
 	RunE:              runBuildsRm,
 }
