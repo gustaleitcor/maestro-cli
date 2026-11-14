@@ -92,7 +92,10 @@ func TestNoServerSet(t *testing.T) {
 			t.Errorf("maestro %s: exit %d, %q", strings.Join(args, " "), code, said)
 		}
 	}
-	for _, args := range [][]string{{"forges"}, {"--help"}, {"help", "concepts"}, {"logout", "--yes"}} {
+	// completion bash is how a package gets its completions, built where no
+	// one ever signed in.
+	for _, args := range [][]string{{"forges"}, {"forges", "list"}, {"--help"}, {"help", "concepts"}, {"logout", "--yes"},
+		{"completion", "bash"}, {"completion", "fish"}, {"completion", "zsh"}} {
 		if code, said := maestro(t, args...); code != 0 {
 			t.Errorf("maestro %s without a server: exit %d, %q", strings.Join(args, " "), code, said)
 		}

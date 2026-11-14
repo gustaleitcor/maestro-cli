@@ -49,11 +49,7 @@ machines, one container per line of parameters.
 	// read a forge load its token themselves, and completions load the key
 	// themselves too.
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		switch cmd.Name() {
-		case "logout", "help", "completion", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd:
-			return nil
-		}
-		if cmd == forgesCmd || cmd.Parent() == forgesCmd {
+		if !needsServer(cmd) {
 			return nil
 		}
 		if err := ensureServer(os.Stdin, os.Stderr); err != nil {
@@ -75,6 +71,22 @@ machines, one container per line of parameters.
 		maestroKey = mk
 		return nil
 	},
+}
+
+// needsServer is whether cmd talks to Maestro. logout, forges, help and
+// completion don't, nor anything under them: `maestro completion bash` is
+// named bash, and must work on a computer that never signed in, as when a
+// package is built.
+func needsServer(cmd *cobra.Command) bool {
+	for c := cmd; c != nil; c = c.Parent() {
+		switch c.Name() {
+		case "logout", "help", "completion", "forges", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd:
+			if c.Parent() == nil || !c.Parent().HasParent() {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 var serverFlag string
