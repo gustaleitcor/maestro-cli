@@ -41,9 +41,8 @@ var forgesAddCmd = &cobra.Command{
 checked before it is stored. Only Forgejo takes a --url.
 
 The token is kept in the system keyring. Without --store-in-file, adding a
-forge goes back to the keyring; with it, secrets are kept in the config file.
-
-  maestro forges add
+forge goes back to the keyring; with it, secrets are kept in the config file.`,
+	Example: `  maestro forges add
   maestro forges add --kind gitlab
   maestro forges add work --kind forgejo --url https://git.example.com`,
 	Args:              cobra.MaximumNArgs(1),

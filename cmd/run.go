@@ -21,13 +21,10 @@ parameters in the repo's maestro.toml, and per line its generator yielded
 when the image was built, spread over the machines it names.
 Without a maestro.toml, a single container runs the image's own command.
 
-<build> is the build number shown by ` + "`maestro builds list`" + `, with or without #.
+<build> is the build number shown by ` + "`maestro builds`" + `, with or without #.
 Containers start as machines have room; --watch follows them until the run
-is over, as ` + "`maestro runs show <run> --watch`" + ` does later.
-
-  maestro run 12 --watch
-  maestro runs show <run> --watch
-  maestro runs get <run>
+is over, as ` + "`maestro runs show <run> --watch`" + ` does later, and exits 1
+if the run failed.
 
 To try other lines without a new build, send your own maestro.toml (-c) or
 the generator it names (-g) from here: the server reads them against the
@@ -35,9 +32,24 @@ repo as the build had it and runs the build's image on the lines they make.
 Each may have any name here. A Dockerfile changes the image, which takes
 ` + "`maestro build -f`" + `.
 
+` + "`maestro help concepts`" + ` says what lines are.`,
+	Example: `  maestro run 12 --watch
   maestro run 12 -c small.toml --watch
-  maestro run 12 -g genvrs.py`,
+  maestro run 12 -g genvrs.py
+  run=$(maestro run 12 -q) && maestro runs show "$run" --watch`,
 	Args:              cobra.MatchAll(numberArgs(1, 1, "build"), flagCheck(checkWatch)),
+	ValidArgsFunction: completeBuilds,
+	RunE:              runRun,
+}
+
+// buildsRunCmd is run where a build's commands are, for whoever looks there:
+// cobra can't put one command under two parents.
+var buildsRunCmd = &cobra.Command{
+	Use:               "run <build>",
+	Short:             "Run a build's image on the machines (as maestro run)",
+	Long:              runCmd.Long,
+	Example:           strings.ReplaceAll(runCmd.Example, "maestro run ", "maestro builds run "),
+	Args:              runCmd.Args,
 	ValidArgsFunction: completeBuilds,
 	RunE:              runRun,
 }
@@ -45,13 +57,22 @@ Each may have any name here. A Dockerfile changes the image, which takes
 var runLocal localFlags
 
 func init() {
-	addWatchFlags(runCmd, "follow the run until it is over")
-	runCmd.Flags().StringVarP(&runLocal.config, "config", "c", "", "a maestro.toml here to make the lines from in place of the build's")
-	runCmd.Flags().StringVarP(&runLocal.generator, "generator", "g", "", "a generator script here, in place of the one maestro.toml names")
-	// Only to say it takes a build: as on build, so it isn't taken for a typo.
-	runCmd.Flags().StringVarP(&runLocal.dockerfile, "dockerfile", "f", "", "not on run: a Dockerfile takes a new image, from maestro build -f")
-	addAnswerFlags(runCmd, "the queued run")
+	for _, c := range []*cobra.Command{runCmd, buildsRunCmd} {
+		addRunFlags(c)
+	}
 	rootCmd.AddCommand(runCmd)
+	buildsCmd.AddCommand(buildsRunCmd)
+}
+
+func addRunFlags(c *cobra.Command) {
+	addWatchFlags(c, "follow the run until it is over; exit 1 if it failed")
+	c.Flags().StringVarP(&runLocal.config, "config", "c", "", "a maestro.toml here to make the lines from in place of the build's")
+	c.Flags().StringVarP(&runLocal.generator, "generator", "g", "", "a generator script here, in place of the one maestro.toml names")
+	// Only to say it takes a build, as on build, so that it isn't taken for
+	// a typo; hidden, as it is never right here.
+	c.Flags().StringVarP(&runLocal.dockerfile, "dockerfile", "f", "", "not on run: a Dockerfile takes a new image, from maestro build -f")
+	c.Flags().MarkHidden("dockerfile")
+	addAnswerFlags(c, "the queued run")
 }
 
 func runRun(cmd *cobra.Command, args []string) error {

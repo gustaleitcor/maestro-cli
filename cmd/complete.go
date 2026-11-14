@@ -48,7 +48,7 @@ func completeBuilds(cmd *cobra.Command, args []string, toComplete string) ([]str
 		for _, image := range images {
 			id := strconv.FormatInt(image.BuildID, 10)
 			if strings.HasPrefix(id, strings.TrimPrefix(toComplete, "#")) {
-				offers = append(offers, completion(id, image.Repo+"@"+image.Ref))
+				offers = append(offers, completion(id, "build #"+id+" · "+image.Repo+"@"+image.Ref))
 			}
 		}
 		return offers
@@ -105,7 +105,7 @@ func runOffers(ctx context.Context, key, toComplete string) []string {
 	for _, run := range runs {
 		id := strconv.FormatInt(run.ID, 10)
 		if strings.HasPrefix(id, strings.TrimPrefix(toComplete, "#")) {
-			offers = append(offers, completion(id, run.Status+": "+run.Repo+"@"+run.Ref))
+			offers = append(offers, completion(id, "run "+id+" · "+run.Status+" · "+run.Repo+"@"+run.Ref))
 		}
 	}
 	return offers

@@ -48,25 +48,22 @@ context either way.
 --forge when several do. A public repo on GitHub, GitLab or Codeberg needs no
 forge and no token: pass its full URL.
 
-  maestro build my-app
-  maestro build some-org/my-app --ref v1.2.0
-  maestro build https://codeberg.org/some-org/my-app
-  maestro build https://github.com/some-org/public-app
-
 The build gets a number: ` + "`maestro run <build>`" + ` runs its image, and
-` + "`maestro builds list`" + ` shows the ones you have. With --run, the image is
-run as soon as it is built; --watch does that and follows the run until it
-is over.
-
-  maestro build my-app --watch
+` + "`maestro builds`" + ` shows the ones you have. With --run, the image is run as
+soon as it is built; --watch implies --run, and follows the run (not the
+build) until it is over.
 
 To try a change without pushing it, send your own maestro.toml (-c), the
 generator it names (-g) or the Dockerfile (-f) from here: the server builds
 the repo with them in place of its own. Each may have any name here. A
 change to maestro.toml or the generator alone needs no new build: send them
-to ` + "`maestro run`" + ` instead, which runs the image you have.
-
-  maestro build my-app -c bench.toml -g genvrs.py -f Dockerfile`,
+to ` + "`maestro run`" + ` instead, which runs the image you have.`,
+	Example: `  maestro build my-app
+  maestro build some-org/my-app --ref v1.2.0
+  maestro build https://github.com/some-org/public-app
+  maestro build my-app --watch
+  maestro build my-app -c bench.toml -g genvrs.py -f Dockerfile
+  build=$(maestro build my-app -q)`,
 	Args: cobra.MatchAll(repoArg, flagCheck(checkWatch)),
 	RunE: runBuild,
 
@@ -91,7 +88,7 @@ var buildFiles = []string{"Dockerfile", "Containerfile", "maestro.toml"}
 func init() {
 	buildCmd.Flags().StringVar(&buildRef, "ref", "", "branch, tag or commit to build (default: the default branch)")
 	buildCmd.Flags().BoolVar(&buildRun, "run", false, "run the image once it is built")
-	addWatchFlags(buildCmd, "run the image once it is built, and follow the run until it is over")
+	addWatchFlags(buildCmd, "run the image once it is built (as --run), and follow the run until it is over")
 	addForgeFlag(buildCmd, &buildForge)
 	buildCmd.Flags().StringVarP(&buildLocal.config, "config", "c", "", "a maestro.toml here to build with in place of the repo's")
 	buildCmd.Flags().StringVarP(&buildLocal.generator, "generator", "g", "", "a generator script here, in place of the one maestro.toml names")

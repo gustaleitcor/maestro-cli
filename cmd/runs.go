@@ -66,11 +66,10 @@ var runsLogsCmd = &cobra.Command{
 	Long: `Prints what a line's container wrote: its stdout to stdout and its stderr
 to stderr, so the two can be told apart or sent to different places.
 
-  maestro runs logs 31 2 2>/dev/null   # only what it printed to stdout
-  maestro runs logs 31 2 >/dev/null    # only what it printed to stderr
-
 All of stdout comes before all of stderr; how they were mixed as the
 container ran isn't kept.`,
+	Example: `  maestro runs logs 31 2 2>/dev/null   # only what it printed to stdout
+  maestro runs logs 31 2 >/dev/null    # only what it printed to stderr`,
 	Args:              numberArgs(2, 2, "run", "line"),
 	ValidArgsFunction: completeRunLines,
 	RunE:              runRunsLogs,

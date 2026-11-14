@@ -37,12 +37,16 @@ type ForgeIdentity struct {
 }
 
 // RenderWelcome puts the logo beside the user's info, or above it when the
-// terminal is too narrow for both. A width of 0 means unknown.
+// terminal is too narrow for both. A width of 0 is no terminal at all, as
+// when piped: then the info alone.
 func RenderWelcome(w Welcome, width int) string {
-	art := logoStyle.Render(logo)
 	info := renderWelcomeInfo(w)
+	if width <= 0 {
+		return info + "\n"
+	}
+	art := logoStyle.Render(logo)
 
-	if width > 0 && lipgloss.Width(art)+logoGap+lipgloss.Width(info) > width {
+	if lipgloss.Width(art)+logoGap+lipgloss.Width(info) > width {
 		return art + "\n\n" + info + "\n"
 	}
 	gap := strings.Repeat(" ", logoGap)

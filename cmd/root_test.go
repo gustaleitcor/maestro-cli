@@ -36,6 +36,20 @@ func resetFlags(c *cobra.Command) {
 	}
 }
 
+// maestro --help lists every command under a group: one added without a
+// place in commandGroups would fall into a list of its own.
+func TestEveryCommandHasAGroup(t *testing.T) {
+	maestro(t, "--help")
+	for _, c := range rootCmd.Commands() {
+		if c.IsAvailableCommand() && c.GroupID == "" {
+			t.Errorf("maestro %s is in no group of commandGroups", c.Name())
+		}
+	}
+	if c, _, _ := rootCmd.Find([]string{"builds", "run"}); c.Name() != "run" || c.Parent().Name() != "builds" {
+		t.Error("builds run isn't there")
+	}
+}
+
 // What a command is given is checked first: a mistake is said as itself,
 // with the usage, and exits 2, signed in or not and before the server is
 // asked anything.

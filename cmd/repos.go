@@ -25,7 +25,7 @@ var (
 var reposCmd = &cobra.Command{
 	Use:     "repos",
 	Aliases: []string{"repo"},
-	Short:   "Repository-related commands",
+	Short:   "List the repositories your forges can see",
 	Args:    nounArgs,
 	RunE:    runReposList,
 }

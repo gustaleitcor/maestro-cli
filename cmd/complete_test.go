@@ -63,11 +63,11 @@ func TestCompletions(t *testing.T) {
 		want       []string
 		directive  cobra.ShellCompDirective
 	}{
-		{"builds", completeBuilds, nil, "", []string{"12\to/r@main", "9\to/s@dev"}, keep},
-		{"builds by prefix, with #", completeBuilds, nil, "#1", []string{"12\to/r@main"}, keep},
+		{"builds", completeBuilds, nil, "", []string{"12\tbuild #12 · o/r@main", "9\tbuild #9 · o/s@dev"}, keep},
+		{"builds by prefix, with #", completeBuilds, nil, "#1", []string{"12\tbuild #12 · o/r@main"}, keep},
 		{"builds, already given", completeBuilds, []string{"12"}, "", nil, cobra.ShellCompDirectiveNoFileComp},
-		{"runs", completeRuns, nil, "", []string{"31\trunning: o/r@main", "4\tsucceeded: o/s@dev"}, keep},
-		{"run lines: the run first", completeRunLines, nil, "3", []string{"31\trunning: o/r@main"}, keep},
+		{"runs", completeRuns, nil, "", []string{"31\trun 31 · running · o/r@main", "4\trun 4 · succeeded · o/s@dev"}, keep},
+		{"run lines: the run first", completeRunLines, nil, "3", []string{"31\trun 31 · running · o/r@main"}, keep},
 		{"run lines: then its lines", completeRunLines, []string{"31"}, "", []string{"1\trunning: -t 10", "2\tqueued: -t 20"}, keep},
 		{"run lines: no third", completeRunLines, []string{"31", "1"}, "", nil, cobra.ShellCompDirectiveNoFileComp},
 		{"run, then a directory", completeRunThenDir, []string{"31"}, "", nil, cobra.ShellCompDirectiveFilterDirs},

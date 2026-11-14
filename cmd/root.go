@@ -25,7 +25,16 @@ var Version = "dev"
 
 var rootCmd = &cobra.Command{
 	Use:     "maestro",
-	Short:   "Maestro CLI — orchestration and repository tooling",
+	Short:   "Build images from your repos and run them across Maestro's machines",
+	Long: `Builds container images from your git repos and runs them across Maestro's
+machines, one container per line of parameters.
+
+  maestro login            sign in
+  maestro build my-app     build an image; the build gets a number
+  maestro run 12 --watch   run build #12's image, and follow the run
+  maestro runs get 31      download what run 31 kept
+
+` + "`maestro help concepts`" + ` says what builds, runs and lines are.`,
 	Version: Version,
 	// Execute prints the error once; a failed command isn't a usage mistake.
 	SilenceErrors: true,
@@ -51,6 +60,12 @@ var rootCmd = &cobra.Command{
 		maestroKey = mk
 		return nil
 	},
+}
+
+func init() {
+	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "print without colours (as NO_COLOR=1 does)")
+	// After the flags are read, before any command runs.
+	cobra.OnInitialize(applyNoColor)
 }
 
 // writeJSON is what --json prints: the same things a table shows, as the
@@ -88,9 +103,42 @@ func Execute() {
 
 var prepared sync.Once
 
+// commandGroups is how maestro --help lists the commands: by what they are
+// for, in the order they are first needed.
+var commandGroups = []struct {
+	id, title string
+	commands  []string
+}{
+	{"start", "Get started:", []string{"login", "build", "run"}},
+	{"work", "Follow your work:", []string{"runs", "builds", "queue", "usage"}},
+	{"forges", "Forges and repos:", []string{"forges", "repos"}},
+	{"cluster", "Machines and scheduling:", []string{"top", "machines", "settings", "export"}},
+	{"setup", "Setup:", []string{"logout", "completion", "help"}},
+}
+
+// groupCommands puts each command in its group, once all are added.
+func groupCommands() {
+	for _, g := range commandGroups {
+		rootCmd.AddGroup(&cobra.Group{ID: g.id, Title: g.title})
+		for _, name := range g.commands {
+			switch name {
+			case "help":
+				rootCmd.SetHelpCommandGroupID(g.id)
+			case "completion":
+				rootCmd.SetCompletionCommandGroupID(g.id)
+			default:
+				if c, _, err := rootCmd.Find([]string{name}); err == nil && c != rootCmd {
+					c.GroupID = g.id
+				}
+			}
+		}
+	}
+}
+
 // execute runs the command asked for, once every command has been added.
 func execute() (*cobra.Command, error) {
 	prepared.Do(func() {
+		groupCommands()
 		asUsage(rootCmd)
 		rootCmd.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return usageError(err) })
 	})
