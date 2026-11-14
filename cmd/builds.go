@@ -57,12 +57,19 @@ func init() {
 		c.Flags().BoolVar(&buildsAsJSON, "json", false, "print the builds as JSON")
 	}
 	rootCmd.AddCommand(buildsCmd)
+	addYesFlag(buildsRmCmd)
 	buildsCmd.AddCommand(buildsListCmd, buildsRmCmd)
 }
 
 func runBuildsRm(cmd *cobra.Command, args []string) error {
 	buildID, err := parseID(args[0], "build")
 	if err != nil {
+		return err
+	}
+	if ok, err := confirm(fmt.Sprintf("Remove the image of build #%d? Its runs and their files are kept.", buildID)); err != nil || !ok {
+		if err == nil {
+			fmt.Println(dimStyle.Render(fmt.Sprintf("Kept the image of build #%d.", buildID)))
+		}
 		return err
 	}
 	if err := maestroapi.RemoveImage(cmd.Context(), maestroKey, buildID); err != nil {

@@ -2,11 +2,14 @@ package cmd
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"maestro-cli/internal/config"
 )
@@ -27,6 +30,32 @@ Revoke the key and tokens on the Maestro page and on each forge.`,
 func init() {
 	logoutCmd.Flags().BoolVarP(&logoutYes, "yes", "y", false, "don't ask for confirmation")
 	rootCmd.AddCommand(logoutCmd)
+}
+
+// deleteYes is --yes of the commands that delete: rm of runs, builds and
+// forges.
+var deleteYes bool
+
+func addYesFlag(c *cobra.Command) {
+	c.Flags().BoolVarP(&deleteYes, "yes", "y", false, "don't ask first")
+}
+
+// confirm asks question at the terminal and says whether to go on. With
+// --yes it doesn't ask; without a terminal to ask at, only --yes goes on,
+// so that a script deletes nothing it didn't say to.
+func confirm(question string) (bool, error) {
+	if deleteYes {
+		return true, nil
+	}
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		return false, usageError(errors.New("there is no terminal to ask at: add --yes to go on without asking"))
+	}
+	fmt.Printf("%s [y/N] ", question)
+	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
+	if err != nil && err != io.EOF {
+		return false, fmt.Errorf("reading input: %w", err)
+	}
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(line)), "y"), nil
 }
 
 func runLogout(cmd *cobra.Command, args []string) error {

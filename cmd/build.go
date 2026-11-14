@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -19,6 +20,7 @@ import (
 	"maestro-cli/internal/forge"
 	"maestro-cli/internal/maestroapi"
 	"maestro-cli/internal/netfail"
+	"maestro-cli/tui"
 )
 
 var (
@@ -130,7 +132,9 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(out, "Building %s/%s/%s@%s...\n", active.Client.Host(), owner, repo, ref)
 	sayLocalFiles(buildLocal)
 
-	final, err := maestroapi.TriggerBuild(cmd.Context(), maestroKey, active.Token, maestroapi.BuildRequest{
+	// The server builds for as long as it is listened to: ctrl-c stops it.
+	buildCtx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt)
+	final, err := maestroapi.TriggerBuild(buildCtx, maestroKey, active.Token, maestroapi.BuildRequest{
 		Forge: active.Client.Kind(),
 		Host:  active.Client.Host(),
 		Owner: owner,
@@ -138,6 +142,12 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		Ref:   ref,
 		Files: files,
 	}, func(line string) { fmt.Fprint(out, line) })
+	interrupted := buildCtx.Err() != nil
+	stop()
+	if interrupted {
+		fmt.Fprintln(os.Stderr, "\n"+dimStyle.Render("Stopped: leaving cancels the build on the server too."))
+		return tui.ErrInterrupted
+	}
 	if err != nil {
 		return err
 	}

@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
+	"strconv"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -14,7 +17,7 @@ import (
 var (
 	usageAsJSON bool
 	usageDays   int
-	usageUser   int64
+	usageUser   string
 	usageDaily  bool
 )
 
@@ -26,13 +29,24 @@ days, counted as each line ends. What you used counts against you, less as
 it gets older, when the scheduler weighs whose line goes next, if an
 administrator set it up so.
 
-Administrators see everyone's, or one user's with --user.`,
-	Args:              cobra.NoArgs,
+Administrators see everyone's, or one user's with --user, by their number
+or email.`,
+	Example: `  maestro usage --daily --days 7
+  maestro usage --user ana@example.org`,
+	Args:              cobra.MatchAll(cobra.NoArgs, flagCheck(checkUsageUser)),
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		usage, err := maestroapi.GetUsage(cmd.Context(), maestroKey, usageDays, usageUser)
+		id, email, _ := parseUser(usageUser)
+		usage, err := maestroapi.GetUsage(cmd.Context(), maestroKey, usageDays, id)
 		if err != nil {
 			return err
+		}
+		if email != "" {
+			// Everyone's usage says whose each is: the one asked for is kept.
+			usage = slices.DeleteFunc(usage, func(u maestroapi.Usage) bool { return !strings.EqualFold(u.Email, email) })
+			if len(usage) == 0 {
+				return fmt.Errorf("nothing used by %s in the last %d day(s), or no such user", email, usageDays)
+			}
 		}
 		if usageAsJSON {
 			return writeJSON(os.Stdout, usage)
@@ -44,9 +58,29 @@ Administrators see everyone's, or one user's with --user.`,
 func init() {
 	usageCmd.Flags().BoolVar(&usageAsJSON, "json", false, "print the usage as JSON, a day at a time")
 	usageCmd.Flags().IntVar(&usageDays, "days", 30, "how many days back")
-	usageCmd.Flags().Int64Var(&usageUser, "user", 0, "one user's usage, by their number (administrators)")
+	usageCmd.Flags().StringVar(&usageUser, "user", "", "one user's usage, by their number or email (administrators)")
 	usageCmd.Flags().BoolVar(&usageDaily, "daily", false, "a row for each day")
 	rootCmd.AddCommand(usageCmd)
+}
+
+// parseUser reads --user: a user's number, or their email.
+func parseUser(arg string) (id int64, email string, err error) {
+	switch {
+	case arg == "":
+		return 0, "", nil
+	case strings.Contains(arg, "@"):
+		return 0, arg, nil
+	}
+	id, err = strconv.ParseInt(arg, 10, 64)
+	if err != nil || id <= 0 {
+		return 0, "", fmt.Errorf("--user takes a user's number or email, not %q", arg)
+	}
+	return id, "", nil
+}
+
+func checkUsageUser() error {
+	_, _, err := parseUser(usageUser)
+	return err
 }
 
 func writeUsage(out io.Writer, usage []maestroapi.Usage, days int, daily bool) error {

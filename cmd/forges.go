@@ -73,6 +73,19 @@ var forgesRmCmd = &cobra.Command{
 	Short:   "Remove a forge and forget its token",
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		forges, err := config.Forges()
+		if err != nil {
+			return err
+		}
+		if !slices.ContainsFunc(forges, func(f config.Forge) bool { return f.Name == args[0] }) {
+			return fmt.Errorf("no forge named %q; see `maestro forges list`", args[0])
+		}
+		if ok, err := confirm(fmt.Sprintf("Remove forge %s and forget its token?", args[0])); err != nil || !ok {
+			if err == nil {
+				fmt.Println(dimStyle.Render("Kept forge " + args[0] + "."))
+			}
+			return err
+		}
 		removed, err := config.RemoveForge(args[0])
 		if err != nil {
 			return err
@@ -209,6 +222,7 @@ func anonymousForge(host string) (*activeForge, error) {
 }
 
 func init() {
+	addYesFlag(forgesRmCmd)
 	forgesAddCmd.Flags().StringVar(&forgeAddKind, "kind", "", "forge kind: "+strings.Join(forge.Kinds, ", "))
 	forgesAddCmd.Flags().StringVar(&forgeAddURL, "url", "", "Forgejo instance URL (default: https://codeberg.org)")
 	forgesAddCmd.RegisterFlagCompletionFunc("kind", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {

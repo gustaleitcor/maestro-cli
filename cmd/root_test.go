@@ -92,6 +92,75 @@ func TestKeyIsNotSentToAnotherServer(t *testing.T) {
 	}
 }
 
+// Deleting asks first; with no terminal to ask at, as in a script, only
+// --yes deletes, and nothing is asked of the server before.
+func TestDeletingWithoutATerminalTakesYes(t *testing.T) {
+	var deleted []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			deleted = append(deleted, r.URL.Path)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	signedIn(t, "k")
+	t.Setenv("MAESTRO_ORQ_URL", srv.URL)
+
+	for _, args := range [][]string{{"runs", "rm", "31"}, {"builds", "rm", "12"}} {
+		code, said := maestro(t, args...)
+		if code != exitUsage || !strings.Contains(said, "add --yes") {
+			t.Errorf("maestro %s without --yes: exit %d, %q", strings.Join(args, " "), code, said)
+		}
+	}
+	if len(deleted) != 0 {
+		t.Fatalf("deleted %q without --yes", deleted)
+	}
+	if code, said := maestro(t, "runs", "rm", "31", "--yes"); code != 0 || len(deleted) != 1 || deleted[0] != "/api/runs/31" {
+		t.Errorf("with --yes: exit %d, %q, deleted %q", code, said, deleted)
+	}
+}
+
+// --user takes a number, or an email that picks one user out of everyone's
+// usage; anything else is a mistake said before the server is asked.
+func TestUsageOfOneUser(t *testing.T) {
+	var asked []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		asked = append(asked, r.URL.RequestURI())
+		w.Write([]byte(`[{"id": 3, "name": "Ana", "email": "ana@example.org", "days": [{"day": "2026-11-13", "cpu_hours": 2}]},
+			{"id": 4, "name": "Bob", "email": "bob@example.org", "days": [{"day": "2026-11-13", "cpu_hours": 5}]}]`))
+	}))
+	defer srv.Close()
+	signedIn(t, "k")
+	t.Setenv("MAESTRO_ORQ_URL", srv.URL)
+
+	got, err := stdout(t, func() error {
+		_, err := maestroOK(t, "usage", "--user", "ANA@example.org")
+		return err
+	})
+	if err != nil || !strings.Contains(got, "Ana") || strings.Contains(got, "Bob") {
+		t.Errorf("--user by email printed %q, %v", got, err)
+	}
+	if code, said := maestro(t, "usage", "--user", "ana"); code != exitUsage || !strings.Contains(said, "number or email") {
+		t.Errorf("--user ana: exit %d, %q", code, said)
+	}
+	if code, said := maestro(t, "usage", "--user", "zoe@example.org"); code != exitFailed || !strings.Contains(said, "nothing used by zoe@example.org") {
+		t.Errorf("--user of no one: exit %d, %q", code, said)
+	}
+	if len(asked) != 2 || asked[0] != "/api/usage?days=30" {
+		t.Errorf("asked %q", asked)
+	}
+}
+
+// maestroOK is maestro for a command expected to work, with its error.
+func maestroOK(t *testing.T, args ...string) (int, error) {
+	t.Helper()
+	resetFlags(rootCmd)
+	t.Cleanup(func() { resetFlags(rootCmd) })
+	rootCmd.SetArgs(args)
+	_, err := execute()
+	return 0, err
+}
+
 // maestro --help lists every command under a group: one added without a
 // place in commandGroups would fall into a list of its own.
 func TestEveryCommandHasAGroup(t *testing.T) {

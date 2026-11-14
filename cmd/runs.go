@@ -148,6 +148,7 @@ func init() {
 	runsGetCmd.Flags().Int64SliceVar(&runsGetLines, "line", nil, "only this line (again for more)")
 	runsGetCmd.Flags().BoolVar(&runsGetForce, "force", false, "download over a run already downloaded there")
 	rootCmd.AddCommand(runsCmd)
+	addYesFlag(runsRmCmd)
 	runsCmd.AddCommand(runsListCmd, runsShowCmd, runsLogsCmd, runsGetCmd, runsCancelCmd, runsRmCmd)
 }
 
@@ -768,6 +769,12 @@ func runRunsCancel(cmd *cobra.Command, args []string) error {
 func runRunsRm(cmd *cobra.Command, args []string) error {
 	id, err := parseID(args[0], "run")
 	if err != nil {
+		return err
+	}
+	if ok, err := confirm(fmt.Sprintf("Delete run %d and the files kept from it?", id)); err != nil || !ok {
+		if err == nil {
+			fmt.Println(dimStyle.Render(fmt.Sprintf("Kept run %d.", id)))
+		}
 		return err
 	}
 	if err := maestroapi.DeleteRun(cmd.Context(), maestroKey, id); err != nil {
