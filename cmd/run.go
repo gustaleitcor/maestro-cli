@@ -47,7 +47,7 @@ func init() {
 	runCmd.Flags().StringVarP(&runLocal.config, "config", "c", "", "a maestro.toml here to make the lines from in place of the build's")
 	runCmd.Flags().StringVarP(&runLocal.generator, "generator", "g", "", "a generator script here, in place of the one maestro.toml names")
 	// Only to say it takes a build: as on build, so it isn't taken for a typo.
-	runCmd.Flags().StringVarP(&runLocal.dockerfile, "dockerfile", "f", "", "not on run: a Dockerfile takes a new image, from `maestro build -f`")
+	runCmd.Flags().StringVarP(&runLocal.dockerfile, "dockerfile", "f", "", "not on run: a Dockerfile takes a new image, from maestro build -f")
 	rootCmd.AddCommand(runCmd)
 }
 
