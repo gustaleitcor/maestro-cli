@@ -14,17 +14,20 @@ import (
 )
 
 // frames gives a render that writes each of its frames in turn, the last
-// one being the one it is done at. A frame starting with "!" is a failure.
-func frames(list ...string) (func(context.Context, io.Writer) (bool, error), *int) {
+// one being the one it is over at. A frame starting with "!" is a failure.
+func frames(list ...string) (Render, *int) {
 	calls := 0
-	return func(_ context.Context, w io.Writer) (bool, error) {
+	return func(_ context.Context, w io.Writer) (string, error) {
 		frame := list[min(calls, len(list)-1)]
 		calls++
 		if strings.HasPrefix(frame, "!") {
-			return false, errors.New(frame[1:])
+			return "", errors.New(frame[1:])
 		}
 		fmt.Fprint(w, frame)
-		return calls >= len(list), nil
+		if calls >= len(list) {
+			return "over", nil
+		}
+		return "", nil
 	}, &calls
 }
 
@@ -70,7 +73,7 @@ func TestWatchRedrawsInPlaceUntilDone(t *testing.T) {
 	}
 
 	plain := ansi.Strip(got)
-	for _, want := range []string{"every 1ms · updated 15:04:05 · ctrl-c to stop", "1    queued", "1    running", "1    succeeded", "updated 15:04:05 · done"} {
+	for _, want := range []string{"every 1ms · updated 15:04:05 · ctrl-c to stop", "1    queued", "1    running", "1    succeeded", "updated 15:04:05 · over"} {
 		if !strings.Contains(plain, want) {
 			t.Errorf("lacks %q in %q", want, plain)
 		}
@@ -130,13 +133,13 @@ func TestWatchStopsWhenTheContextEnds(t *testing.T) {
 	var out, errOut bytes.Buffer
 	ctx, cancel := context.WithCancel(context.Background())
 	calls := 0
-	err := testWatcher(&out, &errOut, 80, 24).run(ctx, func(_ context.Context, w io.Writer) (bool, error) {
+	err := testWatcher(&out, &errOut, 80, 24).run(ctx, func(_ context.Context, w io.Writer) (string, error) {
 		if calls++; calls == 2 {
 			cancel()
-			return false, context.Canceled
+			return "", context.Canceled
 		}
 		fmt.Fprintln(w, "still going")
-		return false, nil
+		return "", nil
 	})
 	if !errors.Is(err, ErrInterrupted) || calls != 2 {
 		t.Errorf("err = %v after %d renders; want ErrInterrupted, for the caller to judge", err, calls)

@@ -32,10 +32,15 @@ type watcher struct {
 // list watched for ever it is the way out; for a run, it isn't over.
 var ErrInterrupted = errors.New("interrupted")
 
-// Watch runs render every interval until it reports being done or ctrl-c is
+// Render draws what is watched into w. over is "" while it goes on, and
+// once it is over says how it ended, for the status line: "run over:
+// failed (2 failed, 5 succeeded)", styled as the caller sees fit.
+type Render func(ctx context.Context, w io.Writer) (over string, err error)
+
+// Watch runs render every interval until it reports being over or ctrl-c is
 // pressed (ErrInterrupted). A first render that fails is returned; a later
 // one keeps what was last drawn and says so.
-func Watch(ctx context.Context, interval time.Duration, render func(context.Context, io.Writer) (done bool, err error)) error {
+func Watch(ctx context.Context, interval time.Duration, render Render) error {
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
 	defer stop()
 
@@ -61,7 +66,7 @@ const (
 	showCursor  = "\x1b[?25h"
 )
 
-func (w watcher) run(ctx context.Context, render func(context.Context, io.Writer) (bool, error)) error {
+func (w watcher) run(ctx context.Context, render Render) error {
 	onTerminal := w.size != nil
 	if onTerminal {
 		fmt.Fprint(w.out, hideCursor)
@@ -74,7 +79,8 @@ func (w watcher) run(ctx context.Context, render func(context.Context, io.Writer
 	first := true
 	for {
 		var body bytes.Buffer
-		done, err := render(ctx, &body)
+		over, err := render(ctx, &body)
+		done := over != ""
 		if ctx.Err() != nil {
 			return ErrInterrupted
 		}
@@ -95,7 +101,7 @@ func (w watcher) run(ctx context.Context, render func(context.Context, io.Writer
 			fmt.Fprintln(w.errOut, topWarn.Render("update failed: "+lastFailure))
 		}
 		if onTerminal {
-			w.draw(first, w.status(shownAt, done, err), shown)
+			w.draw(first, w.status(shownAt, over, err), shown)
 		}
 		first = false
 		if done && err == nil {
@@ -110,13 +116,13 @@ func (w watcher) run(ctx context.Context, render func(context.Context, io.Writer
 	}
 }
 
-func (w watcher) status(shownAt time.Time, done bool, err error) string {
+func (w watcher) status(shownAt time.Time, over string, err error) string {
 	at := shownAt.Format("15:04:05")
 	switch {
 	case err != nil:
 		return topWarn.Render("update failed: "+strings.Join(strings.Fields(err.Error()), " ")) + topDim.Render(fmt.Sprintf(" · showing %s · ctrl-c to stop", at))
-	case done:
-		return topDim.Render(fmt.Sprintf("updated %s · done", at))
+	case over != "":
+		return topDim.Render(fmt.Sprintf("updated %s · ", at)) + over
 	}
 	return topDim.Render(fmt.Sprintf("every %s · updated %s · ctrl-c to stop", w.interval, at))
 }

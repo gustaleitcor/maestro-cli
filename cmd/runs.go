@@ -205,13 +205,13 @@ func runRunsList(cmd *cobra.Command, args []string) error {
 		shown, _ := pickRuns(runs)
 		return writeJSON(os.Stdout, shown)
 	}
-	show := func(ctx context.Context, w io.Writer) (bool, error) {
+	show := func(ctx context.Context, w io.Writer) (string, error) {
 		runs, err := maestroapi.ListRuns(ctx, maestroKey, runsAll)
 		if err != nil {
-			return false, err
+			return "", err
 		}
 		shown, matching := pickRuns(runs)
-		return false, writeRunsList(w, shown, runsAll, matching)
+		return "", writeRunsList(w, shown, runsAll, matching)
 	}
 	if runsWatch {
 		// A list is never over: ctrl-c is the way out of it.
@@ -319,13 +319,13 @@ func runRunsShow(cmd *cobra.Command, args []string) error {
 func showRun(ctx context.Context, id int64, watch bool) error {
 	var last *maestroapi.Run
 	// A run that is neither queued nor running won't change again.
-	show := func(ctx context.Context, w io.Writer) (bool, error) {
+	show := func(ctx context.Context, w io.Writer) (string, error) {
 		run, err := maestroapi.GetRun(ctx, maestroKey, id)
 		if err != nil {
-			return false, err
+			return "", err
 		}
 		last = run
-		return !runActive(run), writeRunShow(w, run, runsFailed)
+		return runOver(run), writeRunShow(w, run, runsFailed)
 	}
 	if !watch {
 		_, err := show(ctx, os.Stdout)
@@ -343,6 +343,18 @@ func showRun(ctx context.Context, id int64, watch bool) error {
 
 func runActive(run *maestroapi.Run) bool {
 	return run.Status == "queued" || run.Status == "running"
+}
+
+// runOver is how a run ended, for the status line of its watch, or "" while
+// it goes on.
+func runOver(run *maestroapi.Run) string {
+	switch {
+	case runActive(run):
+		return ""
+	case run.Status == "succeeded":
+		return successStyle.Render("run over: succeeded")
+	}
+	return warnStyle.Render(fmt.Sprintf("run over: %s (%s)", run.Status, lineCounts(runLineCounts(run))))
 }
 
 // runOutcome is nil for a run that succeeded, and the failure, with how its

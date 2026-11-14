@@ -205,6 +205,22 @@ func TestRunsShowFailed(t *testing.T) {
 	}
 }
 
+// The watch of a run says, once it is over, how it ended.
+func TestRunOver(t *testing.T) {
+	for _, c := range []struct {
+		run  maestroapi.Run
+		want string
+	}{
+		{maestroapi.Run{Status: "running"}, ""},
+		{maestroapi.Run{Status: "succeeded"}, "run over: succeeded"},
+		{maestroapi.Run{Status: "failed", Lines: map[string]int{"failed": 2, "succeeded": 5}}, "run over: failed (5 succeeded, 2 failed)"},
+	} {
+		if got := ansi.Strip(runOver(&c.run)); got != c.want {
+			t.Errorf("%s: %q, want %q", c.run.Status, got, c.want)
+		}
+	}
+}
+
 // A run is downloaded over one already there only with --force, and
 // --line downloads only the lines it names.
 func TestRunsGetLinesAndForce(t *testing.T) {
