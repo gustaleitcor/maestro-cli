@@ -258,6 +258,9 @@ func writeRunShow(out io.Writer, run *maestroapi.Run) error {
 	if len(run.LocalFiles) > 0 {
 		fmt.Fprintln(out, dimStyle.Render(fmt.Sprintf("Lines from your %s, not the build's.", strings.Join(run.LocalFiles, ", "))))
 	}
+	if run.OutputsLayout == "shared" {
+		fmt.Fprintln(out, dimStyle.Render("Outputs in one tree shared by every line: a later line overwrites a path an earlier one wrote."))
+	}
 	fmt.Fprintln(out)
 
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
@@ -383,17 +386,26 @@ func runRunsGet(cmd *cobra.Command, args []string) error {
 	}
 
 	runDir := filepath.Join(dir, strconv.FormatInt(run.ID, 10))
+	// A run whose outputs are shared has one tree of them for every line:
+	// each file is downloaded once, into shared/.
+	shared := run.OutputsLayout == "shared"
+	seen := map[string]bool{}
 	count := 0
 	for _, l := range run.Detail {
 		lineDir := filepath.Join(runDir, strconv.FormatInt(l.Line, 10))
+		filesDir := lineDir
+		if shared {
+			filesDir = filepath.Join(runDir, "shared")
+		}
 		for _, file := range l.Files {
-			if file.Missing {
+			if file.Missing || (shared && seen[file.Path]) {
 				continue
 			}
-			target := filepath.Join(lineDir, filepath.FromSlash(file.Path))
+			seen[file.Path] = true
+			target := filepath.Join(filesDir, filepath.FromSlash(file.Path))
 			// The server only lists paths inside the line, but don't trust that blindly.
-			if rel, err := filepath.Rel(lineDir, target); err != nil || strings.HasPrefix(rel, "..") {
-				return fmt.Errorf("refusing to write %q outside %s", file.Path, lineDir)
+			if rel, err := filepath.Rel(filesDir, target); err != nil || strings.HasPrefix(rel, "..") {
+				return fmt.Errorf("refusing to write %q outside %s", file.Path, filesDir)
 			}
 			if err := save(target, func(f *os.File) error {
 				return maestroapi.DownloadRunFile(cmd.Context(), maestroKey, run.ID, l.Line, file.Path, f)

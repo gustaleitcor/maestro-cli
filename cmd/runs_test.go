@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -269,5 +270,54 @@ func TestLineCountsSayEveryLevelALineWaitsAt(t *testing.T) {
 	got := lineCounts(map[string]int{"queued": 4, "staged": 2, "assigned": 3, "running": 1})
 	if want := "4 queued, 2 staged, 3 assigned, 1 running"; got != want {
 		t.Errorf("lineCounts = %q, want %q", got, want)
+	}
+}
+
+// A run whose outputs are shared downloads one tree of them, each file
+// once however many lines wrote it, beside each line's logs.
+func TestRunsGetShared(t *testing.T) {
+	var asked []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		asked = append(asked, r.URL.Path)
+		switch {
+		case r.URL.Path == "/api/runs/7":
+			fmt.Fprint(w, `{"id": 7, "status": "succeeded", "outputs_layout": "shared", "line_detail": [
+				{"line": 1, "status": "succeeded", "started_at": "2026-11-14T10:00:00Z", "logs": ["stdout", "stderr"],
+				 "files": [{"path": "results/1/x.txt"}, {"path": "results/summary.txt"}]},
+				{"line": 2, "status": "succeeded", "started_at": "2026-11-14T10:00:00Z", "logs": ["stdout", "stderr"],
+				 "files": [{"path": "results/2/x.txt"}, {"path": "results/summary.txt"}]}]}`)
+		case strings.Contains(r.URL.Path, "/files/"):
+			fmt.Fprint(w, "content of "+r.URL.Path)
+		case strings.HasSuffix(r.URL.Path, "/logs"):
+			fmt.Fprint(w, "log")
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	t.Setenv("MAESTRO_ORQ_URL", srv.URL)
+	maestroKey = "k"
+	t.Cleanup(func() { maestroKey = "" })
+
+	dir := t.TempDir()
+	if err := runRunsGet(background(), []string{"7", dir}); err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range []string{"7/shared/results/1/x.txt", "7/shared/results/2/x.txt", "7/shared/results/summary.txt", "7/1/stdout.log", "7/2/stderr.log"} {
+		if _, err := os.Stat(filepath.Join(dir, rel)); err != nil {
+			t.Errorf("%s: %v", rel, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, "7/1/results")); err == nil {
+		t.Error("a shared output was put under a line")
+	}
+	summaries := 0
+	for _, p := range asked {
+		if strings.HasSuffix(p, "/files/results/summary.txt") {
+			summaries++
+		}
+	}
+	if summaries != 1 {
+		t.Errorf("summary.txt downloaded %d times, want once", summaries)
 	}
 }

@@ -119,6 +119,9 @@ type Run struct {
 	Status   string   `json:"status"`
 	Machines []string `json:"machines"`
 	Outputs  []string `json:"outputs"`
+	// OutputsLayout is per-line, each line's outputs apart, or shared, every
+	// line's in one tree; empty from a server from before.
+	OutputsLayout string `json:"outputs_layout,omitempty"`
 	// LocalFiles are those sent from the CLI its lines came from.
 	LocalFiles []string       `json:"local_files,omitempty"`
 	Lines      map[string]int `json:"lines"`
