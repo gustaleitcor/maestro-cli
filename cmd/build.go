@@ -84,6 +84,7 @@ func init() {
 	buildCmd.Flags().StringVarP(&buildLocal.config, "config", "c", "", "a maestro.toml here to build with in place of the repo's")
 	buildCmd.Flags().StringVarP(&buildLocal.generator, "generator", "g", "", "a generator script here, in place of the one maestro.toml names")
 	buildCmd.Flags().StringVarP(&buildLocal.dockerfile, "dockerfile", "f", "", "a Dockerfile here to build from in place of the repo's")
+	addAnswerFlags(buildCmd, "the build (and its run, with --run)")
 	rootCmd.AddCommand(buildCmd)
 }
 
@@ -116,7 +117,8 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	fmt.Printf("Building %s/%s/%s@%s...\n", active.Client.Host(), owner, repo, ref)
+	out := chatter()
+	fmt.Fprintf(out, "Building %s/%s/%s@%s...\n", active.Client.Host(), owner, repo, ref)
 	sayLocalFiles(buildLocal)
 
 	final, err := maestroapi.TriggerBuild(cmd.Context(), maestroKey, active.Token, maestroapi.BuildRequest{
@@ -126,7 +128,7 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		Repo:  repo,
 		Ref:   ref,
 		Files: files,
-	}, func(line string) { fmt.Print(line) })
+	}, func(line string) { fmt.Fprint(out, line) })
 	if err != nil {
 		return err
 	}
@@ -141,19 +143,29 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	if final.BuildID > 0 {
 		succeeded = fmt.Sprintf("Build #%d succeeded:", final.BuildID)
 	}
-	fmt.Printf("\n%s %s\n", successStyle.Render(succeeded), final.ImageID)
+	fmt.Fprintf(out, "\n%s %s\n", successStyle.Render(succeeded), final.ImageID)
 
 	if !buildRun && !runsWatch {
-		return nil
+		return printAnswer(builtAnswer{Build: final}, final.BuildID)
 	}
 	if final.BuildID == 0 {
 		return fmt.Errorf("this server doesn't say the build's number; run it with `maestro run <build>`")
 	}
 	run, err := startRun(cmd.Context(), final.BuildID)
-	if err != nil || !runsWatch {
+	if err != nil {
 		return err
 	}
-	return showRun(cmd.Context(), run.ID, true)
+	if runsWatch {
+		return showRun(cmd.Context(), run.ID, true)
+	}
+	return printAnswer(builtAnswer{Build: final, Run: run}, run.ID)
+}
+
+// builtAnswer is what build --json prints: the build, and the run of it
+// that --run started.
+type builtAnswer struct {
+	Build *maestroapi.StreamEvent `json:"build"`
+	Run   *maestroapi.Run         `json:"run,omitempty"`
 }
 
 // readLocalFiles reads the files flags name, each at most maxLocalFile.
@@ -200,7 +212,7 @@ func sayLocalFiles(flags localFlags) {
 		}
 	}
 	if len(sent) > 0 {
-		fmt.Println(dimStyle.Render("Sending " + strings.Join(sent, ", ") + " from here."))
+		fmt.Fprintln(chatter(), dimStyle.Render("Sending " + strings.Join(sent, ", ") + " from here."))
 	}
 }
 
@@ -212,7 +224,7 @@ func checkBuildFile(ctx context.Context, client forge.Forge, owner, repo, ref st
 	for _, name := range buildFiles {
 		found, err := client.HasFile(ctx, owner, repo, ref, name)
 		if err != nil {
-			fmt.Println(warnStyle.Render("Warning: could not check for a Dockerfile: " + err.Error()))
+			fmt.Fprintln(chatter(), warnStyle.Render("Warning: could not check for a Dockerfile: "+err.Error()))
 			return nil
 		}
 		if found {

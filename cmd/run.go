@@ -3,6 +3,8 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"slices"
 	"strings"
 
@@ -48,6 +50,7 @@ func init() {
 	runCmd.Flags().StringVarP(&runLocal.generator, "generator", "g", "", "a generator script here, in place of the one maestro.toml names")
 	// Only to say it takes a build: as on build, so it isn't taken for a typo.
 	runCmd.Flags().StringVarP(&runLocal.dockerfile, "dockerfile", "f", "", "not on run: a Dockerfile takes a new image, from maestro build -f")
+	addAnswerFlags(runCmd, "the queued run")
 	rootCmd.AddCommand(runCmd)
 }
 
@@ -72,10 +75,42 @@ func runRun(cmd *cobra.Command, args []string) error {
 	} else {
 		run, err = startRunWith(cmd.Context(), buildID, files)
 	}
-	if err != nil || !runsWatch {
+	if err != nil {
 		return err
 	}
-	return showRun(cmd.Context(), run.ID, true)
+	if runsWatch {
+		return showRun(cmd.Context(), run.ID, true)
+	}
+	return printAnswer(run, run.ID)
+}
+
+// addAnswerFlags gives run and build --json and -q, for scripts: stdout
+// then has the answer alone, and what they say along the way goes to stderr.
+func addAnswerFlags(c *cobra.Command, what string) {
+	c.Flags().BoolVar(&runsAsJSON, "json", false, "print "+what+" as JSON, and nothing else on stdout")
+	c.Flags().BoolVarP(&runsQuiet, "quiet", "q", false, "print only the number of "+what+", and nothing else on stdout")
+}
+
+// chatter is where a command says what it does along the way: stdout,
+// unless --json or -q keep stdout for the answer alone.
+func chatter() io.Writer {
+	if runsAsJSON || runsQuiet {
+		return os.Stderr
+	}
+	return os.Stdout
+}
+
+// printAnswer prints, with --json, v, and with -q, id; otherwise chatter
+// has said it all already.
+func printAnswer(v any, id int64) error {
+	switch {
+	case runsAsJSON:
+		return writeJSON(os.Stdout, v)
+	case runsQuiet:
+		_, err := fmt.Println(id)
+		return err
+	}
+	return nil
 }
 
 // startRunWith queues a run of a build whose lines come from files: the
@@ -95,7 +130,7 @@ func startRunWith(ctx context.Context, buildID int64, files maestroapi.LocalFile
 		token = active.Token
 	}
 	sayLocalFiles(runLocal)
-	fmt.Println(dimStyle.Render(fmt.Sprintf("Reading them against %s@%s, as build #%d had it...", builds[at].Repo, builds[at].Ref, buildID)))
+	fmt.Fprintln(chatter(), dimStyle.Render(fmt.Sprintf("Reading them against %s@%s, as build #%d had it...", builds[at].Repo, builds[at].Ref, buildID)))
 	run, err := maestroapi.StartRun(ctx, maestroKey, buildID, files, token)
 	if err != nil {
 		return nil, err
@@ -120,17 +155,17 @@ func startRun(ctx context.Context, buildID int64) (*maestroapi.Run, error) {
 
 // sayQueued says what was queued.
 func sayQueued(run *maestroapi.Run) {
-
+	out := chatter()
 	where := "any machine"
 	if len(run.Machines) > 0 {
 		where = strings.Join(run.Machines, ", ")
 	}
-	fmt.Printf("%s run %d: %d line(s) on %s.\n", successStyle.Render("Queued"), run.ID, len(run.Detail), where)
+	fmt.Fprintf(out, "%s run %d of build #%d: %d line(s) on %s.\n", successStyle.Render("Queued"), run.ID, run.BuildID, len(run.Detail), where)
 	if len(run.Outputs) > 0 {
-		fmt.Printf("Keeping %s from each container.\n", strings.Join(run.Outputs, ", "))
+		fmt.Fprintf(out, "Keeping %s from each container.\n", strings.Join(run.Outputs, ", "))
 	}
 	if len(run.LocalFiles) > 0 {
-		fmt.Printf("Lines from your %s.\n", strings.Join(run.LocalFiles, ", "))
+		fmt.Fprintf(out, "Lines from your %s.\n", strings.Join(run.LocalFiles, ", "))
 	}
-	fmt.Println(dimStyle.Render(fmt.Sprintf("Follow it with `maestro runs show %d --watch`.", run.ID)))
+	fmt.Fprintln(out, dimStyle.Render(fmt.Sprintf("Follow it with `maestro runs show %d --watch`.", run.ID)))
 }

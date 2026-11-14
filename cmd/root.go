@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -60,15 +61,49 @@ func writeJSON(w io.Writer, v any) error {
 	return encoder.Encode(v)
 }
 
+// How maestro exits: 0 when all went well, exitFailed when something it did
+// failed (a run included, when it was watched to its end), exitUsage when it
+// was asked wrongly, exitInterrupted when ctrl-c stopped it before the end.
+const (
+	exitFailed      = 1
+	exitUsage       = 2
+	exitInterrupted = 130
+)
+
+// exitError is a failure with an exit status of its own.
+type exitError struct {
+	code int
+	err  error
+}
+
+func (e *exitError) Error() string { return e.err.Error() }
+func (e *exitError) Unwrap() error { return e.err }
+
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, errorStyle.Render("Error:"), err)
-		// A mistyped command or flag, not a command that failed.
-		if strings.HasPrefix(err.Error(), "unknown ") {
-			fmt.Fprintln(os.Stderr, "Run 'maestro --help' for usage.")
-		}
-		os.Exit(1)
+	cmd, err := rootCmd.ExecuteC()
+	if err != nil {
+		os.Exit(report(os.Stderr, cmd, err))
 	}
+}
+
+// report says what went wrong, if there is anything to say, and returns
+// the status to exit with.
+func report(w io.Writer, cmd *cobra.Command, err error) int {
+	// Whoever pressed ctrl-c knows; the command said what goes on, if anything.
+	if errors.Is(err, tui.ErrInterrupted) {
+		return exitInterrupted
+	}
+	fmt.Fprintln(w, errorStyle.Render("Error:"), err)
+	code := exitFailed
+	var exit *exitError
+	if errors.As(err, &exit) {
+		code = exit.code
+	}
+	// A mistyped command or flag, not a command that failed.
+	if strings.HasPrefix(err.Error(), "unknown ") {
+		fmt.Fprintln(w, "Run 'maestro --help' for usage.")
+	}
+	return code
 }
 
 // runWelcome asks Maestro and every configured forge who the stored

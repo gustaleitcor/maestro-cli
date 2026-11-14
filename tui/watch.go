@@ -3,6 +3,7 @@ package tui
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -26,9 +27,14 @@ type watcher struct {
 	now  func() time.Time
 }
 
+// ErrInterrupted is what Watch returns when ctrl-c ends it before render
+// said it was done. Whether that is a failure is the caller's to say: for a
+// list watched for ever it is the way out; for a run, it isn't over.
+var ErrInterrupted = errors.New("interrupted")
+
 // Watch runs render every interval until it reports being done or ctrl-c is
-// pressed, which is a way of ending it and not a failure. A first render
-// that fails is returned; a later one keeps what was last drawn and says so.
+// pressed (ErrInterrupted). A first render that fails is returned; a later
+// one keeps what was last drawn and says so.
 func Watch(ctx context.Context, interval time.Duration, render func(context.Context, io.Writer) (done bool, err error)) error {
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
 	defer stop()
@@ -70,7 +76,7 @@ func (w watcher) run(ctx context.Context, render func(context.Context, io.Writer
 		var body bytes.Buffer
 		done, err := render(ctx, &body)
 		if ctx.Err() != nil {
-			return nil
+			return ErrInterrupted
 		}
 		if err != nil && first {
 			return err
@@ -98,7 +104,7 @@ func (w watcher) run(ctx context.Context, render func(context.Context, io.Writer
 
 		select {
 		case <-ctx.Done():
-			return nil
+			return ErrInterrupted
 		case <-time.After(w.interval):
 		}
 	}

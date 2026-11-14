@@ -24,6 +24,8 @@ var (
 	runsInterval time.Duration
 	runsAsJSON   bool
 	runsAll      bool
+	// runsQuiet is run's and build's -q: only the number of what they made.
+	runsQuiet bool
 )
 
 const noRuns = "No runs yet. Start one with: maestro run <build>"
@@ -144,6 +146,12 @@ func checkWatch() error {
 	if runsWatch && runsAsJSON {
 		return fmt.Errorf("--json prints once; it can't be used with --watch")
 	}
+	if runsWatch && runsQuiet {
+		return fmt.Errorf("-q prints only the number; it can't be used with --watch")
+	}
+	if runsAsJSON && runsQuiet {
+		return fmt.Errorf("--json and -q each print the answer their own way; pick one")
+	}
 	if runsWatch && runsInterval < minTopPeriod {
 		return fmt.Errorf("--interval must be at least %s", minTopPeriod)
 	}
@@ -169,7 +177,11 @@ func runRunsList(cmd *cobra.Command, args []string) error {
 		return false, writeRunsList(w, runs, runsAll)
 	}
 	if runsWatch {
-		return tui.Watch(cmd.Context(), runsInterval, show)
+		// A list is never over: ctrl-c is the way out of it.
+		if err := tui.Watch(cmd.Context(), runsInterval, show); !errors.Is(err, tui.ErrInterrupted) {
+			return err
+		}
+		return nil
 	}
 	_, err := show(cmd.Context(), os.Stdout)
 	return err
@@ -233,20 +245,60 @@ func runRunsShow(cmd *cobra.Command, args []string) error {
 }
 
 // showRun prints a run, and with watch keeps it on screen until it is over.
+// A watched run that ended failed or cancelled is a failure of the command,
+// so that a script can tell; one left before its end says it goes on.
 func showRun(ctx context.Context, id int64, watch bool) error {
+	var last *maestroapi.Run
 	// A run that is neither queued nor running won't change again.
 	show := func(ctx context.Context, w io.Writer) (bool, error) {
 		run, err := maestroapi.GetRun(ctx, maestroKey, id)
 		if err != nil {
 			return false, err
 		}
-		return run.Status != "queued" && run.Status != "running", writeRunShow(w, run)
+		last = run
+		return !runActive(run), writeRunShow(w, run)
 	}
-	if watch {
-		return tui.Watch(ctx, runsInterval, show)
+	if !watch {
+		_, err := show(ctx, os.Stdout)
+		return err
 	}
-	_, err := show(ctx, os.Stdout)
-	return err
+	err := tui.Watch(ctx, runsInterval, show)
+	if errors.Is(err, tui.ErrInterrupted) {
+		fmt.Fprintln(os.Stderr, dimStyle.Render(fmt.Sprintf("Stopped watching; run %d goes on. Cancel it with `maestro runs cancel %d`.", id, id)))
+	}
+	if err != nil {
+		return err
+	}
+	return runOutcome(last)
+}
+
+func runActive(run *maestroapi.Run) bool {
+	return run.Status == "queued" || run.Status == "running"
+}
+
+// runOutcome is nil for a run that succeeded, and the failure, with how its
+// lines ended, for one that didn't.
+func runOutcome(run *maestroapi.Run) error {
+	switch run.Status {
+	case "failed":
+		return &exitError{exitFailed, fmt.Errorf("run %d failed: %s", run.ID, lineCounts(runLineCounts(run)))}
+	case "cancelled":
+		return &exitError{exitFailed, fmt.Errorf("run %d was cancelled: %s", run.ID, lineCounts(runLineCounts(run)))}
+	}
+	return nil
+}
+
+// runLineCounts is how many of a run's lines are in each status, from the
+// counts the server gave or, failing those, its lines.
+func runLineCounts(run *maestroapi.Run) map[string]int {
+	if len(run.Lines) > 0 {
+		return run.Lines
+	}
+	counts := map[string]int{}
+	for _, l := range run.Detail {
+		counts[l.Status]++
+	}
+	return counts
 }
 
 func writeRunShow(out io.Writer, run *maestroapi.Run) error {

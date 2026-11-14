@@ -138,8 +138,8 @@ func TestWatchStopsWhenTheContextEnds(t *testing.T) {
 		fmt.Fprintln(w, "still going")
 		return false, nil
 	})
-	if err != nil || calls != 2 {
-		t.Errorf("err = %v after %d renders; ctrl-c is not a failure", err, calls)
+	if !errors.Is(err, ErrInterrupted) || calls != 2 {
+		t.Errorf("err = %v after %d renders; want ErrInterrupted, for the caller to judge", err, calls)
 	}
 	if strings.Contains(out.String(), "update failed") {
 		t.Error("being stopped was drawn as a failed update")
