@@ -90,7 +90,7 @@ func nounArgs(cmd *cobra.Command, args []string) error {
 		cmd.SuggestionsMinimumDistance = 2
 	}
 	if suggestions := cmd.SuggestionsFor(args[0]); len(suggestions) > 0 {
-		msg += "\n\nDid you mean this?\n\t" + strings.Join(suggestions, "\n\t")
+		msg += "\n\nDid you mean this?\n\t" + strings.Join(suggestions, "\n\t") + "\n"
 	}
 	return errors.New(msg)
 }
