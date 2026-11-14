@@ -1,16 +1,20 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
+	"maestro-cli/internal/book"
 	"maestro-cli/internal/maestroapi"
 )
 
@@ -22,8 +26,9 @@ type docTopic struct {
 	Title string
 }
 
-// topics are the book's pages, in the book's order. book/Dockerfile checks
-// that every page here exists, so a page moved there must move here too.
+// topics are the book's pages, in the book's order. A test checks that every
+// page here is one book/src/SUMMARY.md lists, so a page moved there must move
+// here too.
 var topics = []docTopic{
 	{[]string{"intro"}, "introduction.html", "What Maestro is"},
 	{[]string{"concepts"}, "concepts.html", "The words Maestro uses"},
@@ -59,7 +64,11 @@ var topics = []docTopic{
 
 var (
 	docsURLOnly   bool
+	docsWeb       bool
 	docsTopicList bool
+
+	// bookDir is where the book maestro carries is on disk; tests replace it.
+	bookDir = book.Dir
 
 	// openBrowser opens url in the user's browser; tests replace it.
 	openBrowser = startBrowser
@@ -76,12 +85,14 @@ var docsCmd = &cobra.Command{
 how Maestro builds, queues and runs your containers, and how to set it up.
 
 Name a topic (maestro docs queue) to open its page, or a command
-(maestro docs runs logs) for what it takes. Without a browser here, as over
-SSH, the link can be opened on another machine.
+(maestro docs runs logs) for what it takes.
 
-The book is the one the server you use serves, so it says what that server
-does. MAESTRO_DOCS_URL points at another copy.`,
-	Example: "  maestro docs\n  maestro docs toml\n  maestro docs runs logs --url",
+maestro carries the book, so it opens offline, without signing in: it is
+unpacked into your cache the first time, and opened from there. --web opens
+the copy your Maestro server serves instead, which can be opened on another
+machine, as when this one is reached over SSH. MAESTRO_DOCS_URL points at
+another copy still.`,
+	Example: "  maestro docs\n  maestro docs toml\n  maestro docs runs logs\n  maestro docs queue --web --url",
 	// What args name is checked before a server is asked for.
 	Args: func(cmd *cobra.Command, args []string) error {
 		_, err := topicPath(args)
@@ -93,6 +104,7 @@ does. MAESTRO_DOCS_URL points at another copy.`,
 
 func init() {
 	docsCmd.Flags().BoolVar(&docsURLOnly, "url", false, "only print the link")
+	docsCmd.Flags().BoolVar(&docsWeb, "web", false, "the book your Maestro server serves, instead of the one maestro carries")
 	docsCmd.Flags().BoolVar(&docsTopicList, "topics", false, "print every topic and its page, for scripts")
 	_ = docsCmd.Flags().MarkHidden("topics")
 	rootCmd.AddCommand(docsCmd)
@@ -107,7 +119,7 @@ func runDocs(cmd *cobra.Command, args []string) error {
 	if docsTopicList {
 		return writeTopics(out)
 	}
-	base, err := docsBaseURL()
+	base, local, err := docsBase(cmd.ErrOrStderr())
 	if err != nil {
 		return err
 	}
@@ -121,21 +133,47 @@ func runDocs(cmd *cobra.Command, args []string) error {
 	}
 	// The link is printed already: a browser that won't open is no error.
 	if err := openBrowser(link); err != nil {
-		fmt.Fprintln(out, dimStyle.Render("No browser opened here; open the link in one."))
+		hint := "No browser opened here; open the link in one."
+		if local {
+			hint = "No browser opened here. `maestro docs --web --url` gives the server's copy, to open elsewhere."
+		}
+		fmt.Fprintln(out, dimStyle.Render(hint))
 	}
 	return nil
 }
 
-// docsBaseURL is where the book is: MAESTRO_DOCS_URL, or else the server's
-// /docs, beside its page, the server being asked for if nothing names it.
-func docsBaseURL() (string, error) {
+// docsBase is where the book is, and whether it is the one maestro carries:
+// MAESTRO_DOCS_URL, then with --web the server's /docs, beside its page,
+// and else the carried one, unpacked. A maestro built without its book
+// says so and goes to the server's.
+func docsBase(notes io.Writer) (base string, local bool, err error) {
 	if u := os.Getenv("MAESTRO_DOCS_URL"); u != "" {
-		return strings.TrimRight(u, "/"), nil
+		return strings.TrimRight(u, "/"), false, nil
+	}
+	if !docsWeb {
+		dir, err := bookDir()
+		if err == nil {
+			return fileURL(dir), true, nil
+		}
+		if !errors.Is(err, book.ErrMissing) {
+			return "", false, err
+		}
+		fmt.Fprintln(notes, dimStyle.Render(err.Error()+" (book/build.sh adds it); opening the server's."))
 	}
 	if err := ensureServer(os.Stdin, os.Stderr); err != nil {
-		return "", err
+		return "", false, err
 	}
-	return maestroapi.BaseURL() + "/docs", nil
+	return maestroapi.BaseURL() + "/docs", false, nil
+}
+
+// fileURL is dir as a file:// URL, which a browser opens without a server;
+// on Windows, C:\Users\… becomes file:///C:/Users/….
+func fileURL(dir string) string {
+	p := filepath.ToSlash(dir)
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	return (&url.URL{Scheme: "file", Path: p}).String()
 }
 
 // topicURL is the link to what args name, in the book at base.
@@ -150,8 +188,9 @@ func topicURL(base string, args []string) (string, error) {
 // topicPath is the page args name: nothing is the book's first page, one
 // word a topic, and otherwise a command's entry in the CLI reference.
 func topicPath(args []string) (string, error) {
+	// By name: a folder opened from disk is a listing, not its index.
 	if len(args) == 0 {
-		return "", nil
+		return "index.html", nil
 	}
 	if len(args) == 1 {
 		if t, ok := findTopic(args[0]); ok {

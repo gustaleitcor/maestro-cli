@@ -1,0 +1,9 @@
+# For book/Dockerfile, the only image built from here: what a release
+# leaves, and what book/build.sh writes, stay out.
+.git
+dist
+maestro
+book/dist
+book/mermaid*.js
+book/src/reference/cli.md
+internal/book/site/book.tar.gz

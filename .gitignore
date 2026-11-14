@@ -3,3 +3,10 @@ maestro-cli
 maestro
 dist/
 completions/
+
+# The book, as book/build.sh builds it, and what it packs for go build.
+book/dist
+book/mermaid.min.js
+book/mermaid-init.js
+book/src/reference/cli.md
+internal/book/site/book.tar.gz

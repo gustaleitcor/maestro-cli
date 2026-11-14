@@ -1,0 +1,34 @@
+[book]
+title = "Maestro"
+description = "How Maestro builds your repos into images and runs them across shared machines, and how to set it up."
+authors = ["LOGSAD"]
+language = "en"
+src = "src"
+
+[build]
+build-dir = "dist"
+# A page SUMMARY.md lists and that isn't there is a mistake, not a page to
+# make: reference/cli.md is written by `maestro gen-docs` before a build.
+create-missing = false
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output.html]
+# Opened from disk by `maestro docs`, which carries it; also served at
+# <view>/docs/, beside the Maestro page, which only the 404 page minds.
+site-url = "/docs/"
+default-theme = "light"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/gustaleitcor/maestro-cli"
+edit-url-template = "https://github.com/gustaleitcor/maestro-cli/edit/main/book/{path}"
+# Written by `mdbook-mermaid install`, before a build.
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+no-section-label = false
+
+[output.html.fold]
+enable = true
+level = 1
+
+[output.html.search]
+limit-results = 20

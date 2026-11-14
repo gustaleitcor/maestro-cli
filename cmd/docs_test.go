@@ -4,10 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"os"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
+
+	"maestro-cli/internal/book"
 )
 
 func TestTopicURL(t *testing.T) {
@@ -16,7 +20,7 @@ func TestTopicURL(t *testing.T) {
 		args []string
 		want string
 	}{
-		{nil, base + "/"},
+		{nil, base + "/index.html"},
 		{[]string{"queue"}, base + "/watch/queue.html"},
 		{[]string{"TOML"}, base + "/run/maestro-toml.html"},
 		// A command a topic explains opens the topic, not the reference.
@@ -59,15 +63,70 @@ func TestTopicNamesAreUnique(t *testing.T) {
 	}
 }
 
-func TestDocsBaseURL(t *testing.T) {
+// carriedBook makes the book maestro carries be dir, or err.
+func carriedBook(t *testing.T, dir string, err error) {
+	t.Helper()
+	old := bookDir
+	t.Cleanup(func() { bookDir = old })
+	bookDir = func() (string, error) { return dir, err }
+}
+
+func TestDocsBase(t *testing.T) {
 	t.Setenv("MAESTRO_ORQ_URL", "http://localhost:8081/")
-	t.Setenv("MAESTRO_DOCS_URL", "")
-	if got, err := docsBaseURL(); err != nil || got != "http://localhost:8081/docs" {
-		t.Errorf("got %s (%v)", got, err)
-	}
+	t.Cleanup(func() { docsWeb = false })
+	carriedBook(t, "/home/ada/.cache/maestro/book/abc", nil)
+	var notes bytes.Buffer
+
 	t.Setenv("MAESTRO_DOCS_URL", "http://localhost:3000/")
-	if got, err := docsBaseURL(); err != nil || got != "http://localhost:3000" {
-		t.Errorf("MAESTRO_DOCS_URL: got %s (%v)", got, err)
+	if base, local, err := docsBase(&notes); err != nil || base != "http://localhost:3000" || local {
+		t.Errorf("MAESTRO_DOCS_URL: %s %v (%v)", base, local, err)
+	}
+	t.Setenv("MAESTRO_DOCS_URL", "")
+	if base, local, err := docsBase(&notes); err != nil || base != "file:///home/ada/.cache/maestro/book/abc" || !local {
+		t.Errorf("the carried book: %s %v (%v)", base, local, err)
+	}
+	docsWeb = true
+	if base, local, err := docsBase(&notes); err != nil || base != "http://localhost:8081/docs" || local {
+		t.Errorf("--web: %s %v (%v)", base, local, err)
+	}
+	docsWeb = false
+	if notes.Len() > 0 {
+		t.Errorf("noted %q", notes.String())
+	}
+
+	// Built without book/build.sh: the server's, saying why.
+	carriedBook(t, "", book.ErrMissing)
+	if base, _, err := docsBase(&notes); err != nil || base != "http://localhost:8081/docs" || !strings.Contains(notes.String(), "without its book") {
+		t.Errorf("no book: %s (%v), noted %q", base, err, notes.String())
+	}
+}
+
+func TestFileURL(t *testing.T) {
+	for dir, want := range map[string]string{
+		"/home/ada/.cache/maestro/book/abc": "file:///home/ada/.cache/maestro/book/abc",
+		"/home/a da/book":                   "file:///home/a%20da/book",
+	} {
+		if got := fileURL(dir); got != want {
+			t.Errorf("%s: %s, want %s", dir, got, want)
+		}
+	}
+}
+
+// Every topic opens a page the book has: one SUMMARY.md lists.
+func TestTopicsAreInTheBook(t *testing.T) {
+	summary, err := os.ReadFile("../book/src/SUMMARY.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pages := map[string]bool{}
+	for _, m := range regexp.MustCompile(`\]\(([^)]+)\.md\)`).FindAllStringSubmatch(string(summary), -1) {
+		pages[m[1]+".html"] = true
+	}
+	for _, topic := range topics {
+		page, _, _ := strings.Cut(topic.Page, "#")
+		if !pages[page] {
+			t.Errorf("maestro docs %s opens %s, which book/src/SUMMARY.md doesn't list", topic.Names[0], page)
+		}
 	}
 }
 
@@ -77,6 +136,7 @@ func TestDocsWithoutAServer(t *testing.T) {
 	signedIn(t, "")
 	t.Setenv("MAESTRO_ORQ_URL", "")
 	t.Setenv("MAESTRO_DOCS_URL", "http://docs.test")
+	carriedBook(t, t.TempDir(), nil)
 	rootCmd.SetOut(io.Discard)
 	t.Cleanup(func() { rootCmd.SetOut(nil) })
 
@@ -89,8 +149,11 @@ func TestDocsWithoutAServer(t *testing.T) {
 		t.Errorf("an unknown topic: exit %d, %q", code, said)
 	}
 	t.Setenv("MAESTRO_DOCS_URL", "")
-	if code, said := maestro(t, "docs", "--url"); code != exitFailed || !strings.Contains(said, "no Maestro server is set") {
-		t.Errorf("no server and no MAESTRO_DOCS_URL: exit %d, %q", code, said)
+	if code, said := maestro(t, "docs", "queue", "--url"); code != 0 {
+		t.Errorf("the carried book, without a server: exit %d, %q", code, said)
+	}
+	if code, said := maestro(t, "docs", "--web", "--url"); code != exitFailed || !strings.Contains(said, "no Maestro server is set") {
+		t.Errorf("--web without a server: exit %d, %q", code, said)
 	}
 }
 
