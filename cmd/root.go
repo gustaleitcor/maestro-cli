@@ -36,7 +36,8 @@ machines, one container per line of parameters.
   maestro run 12 --watch   run build #12's image, and follow the run
   maestro runs get 31      download what run 31 kept
 
-` + "`maestro help concepts`" + ` says what builds, runs and lines are.`,
+` + "`maestro help concepts`" + ` says what builds, runs and lines are, and
+` + "`maestro docs`" + ` opens the book that explains the rest.`,
 	Version: Version,
 	// Execute prints the error once; a failed command isn't a usage mistake.
 	SilenceErrors: true,
@@ -74,13 +75,14 @@ machines, one container per line of parameters.
 }
 
 // needsServer is whether cmd talks to Maestro. logout, forges, help and
-// completion don't, nor anything under them: `maestro completion bash` is
+// completion don't, nor anything under them; docs only needs the server's
+// URL, and asks for it itself when nothing else says where the book is: `maestro completion bash` is
 // named bash, and must work on a computer that never signed in, as when a
 // package is built.
 func needsServer(cmd *cobra.Command) bool {
 	for c := cmd; c != nil; c = c.Parent() {
 		switch c.Name() {
-		case "logout", "help", "completion", "forges", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd:
+		case "logout", "help", "completion", "forges", "docs", "gen-docs", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd:
 			if c.Parent() == nil || !c.Parent().HasParent() {
 				return false
 			}
@@ -226,7 +228,7 @@ var commandGroups = []struct {
 	id, title string
 	commands  []string
 }{
-	{"start", "Get started:", []string{"login", "build", "run"}},
+	{"start", "Get started:", []string{"login", "build", "run", "docs"}},
 	{"work", "Follow your work:", []string{"runs", "builds", "queue", "usage"}},
 	{"forges", "Forges and repos:", []string{"forges", "repos"}},
 	{"cluster", "Machines and scheduling:", []string{"top", "machines", "settings", "export"}},
