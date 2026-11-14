@@ -22,6 +22,9 @@ var loginCmd = &cobra.Command{
 	Long: `Prints a link to the Maestro page and a short code to approve there.
 The link can be opened in any browser, on this machine or another.
 
+With --server, signs in to that Maestro server, which every command then
+talks to; the key is only ever sent to the server that minted it.
+
 The key is kept in the system keyring, and a login without --store-in-file goes
 back to it. If yours asks for a password, or has none,
 pass --store-in-file to keep secrets in the config file (readable only by you)
@@ -117,10 +120,10 @@ func loginMaestroInBrowser(ctx context.Context) error {
 		switch result.Status {
 		case "pending":
 		case "approved":
-			if err := config.SaveMaestroKey(result.Key); err != nil {
+			if err := config.SaveMaestroKey(maestroapi.BaseURL(), result.Key); err != nil {
 				return fmt.Errorf("saving Maestro key: %w", err)
 			}
-			fmt.Println(successStyle.Render("Maestro: logged in as " + result.Email + "."))
+			fmt.Println(successStyle.Render("Maestro: logged in to " + maestroapi.BaseURL() + " as " + result.Email + "."))
 			return nil
 		case "denied":
 			return fmt.Errorf("the login was denied on the Maestro page")

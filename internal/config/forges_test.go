@@ -34,7 +34,7 @@ func TestForgesRoundTrip(t *testing.T) {
 	if err := AddForge(Forge{Name: "codeberg", Kind: "forgejo"}, "tok-3"); err != nil {
 		t.Fatal(err)
 	}
-	if err := SaveMaestroKey("mk_test"); err != nil {
+	if err := SaveMaestroKey("", "mk_test"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -58,7 +58,7 @@ func TestForgesRoundTrip(t *testing.T) {
 	if _, err := ForgeToken("work"); err == nil {
 		t.Error("ForgeToken(work) should fail after removal")
 	}
-	if key, err := LoadMaestroKey(); err != nil || key != "mk_test" {
+	if key, err := LoadMaestroKey(""); err != nil || key != "mk_test" {
 		t.Errorf("forge changes clobbered the Maestro key: %q, %v", key, err)
 	}
 
@@ -92,7 +92,7 @@ func TestLegacyGitHubTokenMigrates(t *testing.T) {
 	if _, err := LoadGitHubToken(); err == nil {
 		t.Error("the legacy github_token should be gone after migrating")
 	}
-	if key, err := LoadMaestroKey(); err != nil || key != "mk_old" {
+	if key, err := LoadMaestroKey(""); err != nil || key != "mk_old" {
 		t.Errorf("migration clobbered the Maestro key: %q, %v", key, err)
 	}
 
@@ -108,7 +108,7 @@ func TestReset(t *testing.T) {
 	if err := AddForge(Forge{Name: "codeberg", Kind: "forgejo"}, "tok-1"); err != nil {
 		t.Fatal(err)
 	}
-	if err := SaveMaestroKey("mk_test"); err != nil {
+	if err := SaveMaestroKey("", "mk_test"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -118,8 +118,8 @@ func TestReset(t *testing.T) {
 	if forges, err := Forges(); err != nil || len(forges) != 0 {
 		t.Fatalf("Forges() after Reset = %v, %v", forges, err)
 	}
-	if _, err := LoadMaestroKey(); err != ErrNoMaestroKey {
-		t.Fatalf("LoadMaestroKey() after Reset = %v, want ErrNoMaestroKey", err)
+	if _, err := LoadMaestroKey(""); err != ErrNoMaestroKey {
+		t.Fatalf("LoadMaestroKey after Reset = %v, want ErrNoMaestroKey", err)
 	}
 	if _, err := ForgeToken("codeberg"); err == nil {
 		t.Fatal("ForgeToken() after Reset still returns a token")
@@ -148,10 +148,10 @@ func TestUseFileStoreSticks(t *testing.T) {
 	if err != nil || cfg.ForgeTokens["work"] != "tok" {
 		t.Errorf("token in file = %q, %v", cfg.ForgeTokens["work"], err)
 	}
-	if err := SaveMaestroKey("mk"); err != nil {
+	if err := SaveMaestroKey("", "mk"); err != nil {
 		t.Fatal(err)
 	}
-	if key, err := LoadMaestroKey(); err != nil || key != "mk" {
+	if key, err := LoadMaestroKey(""); err != nil || key != "mk" {
 		t.Errorf("LoadMaestroKey = %q, %v", key, err)
 	}
 	if err := UseFileStore(false); err != nil {

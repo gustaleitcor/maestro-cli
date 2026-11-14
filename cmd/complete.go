@@ -26,7 +26,7 @@ func completion(value any, description string) string {
 // PersistentPreRunE for completions, so the key is loaded here; without one,
 // or if the server can't be reached, nothing is offered.
 func withKey(offer func(ctx context.Context, key string) []string) ([]string, cobra.ShellCompDirective) {
-	key, err := config.LoadMaestroKey()
+	key, err := config.LoadMaestroKey(maestroapi.BaseURL())
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}

@@ -53,7 +53,11 @@ machines, one container per line of parameters.
 			return nil
 		}
 
-		mk, err := config.LoadMaestroKey()
+		mk, err := config.LoadMaestroKey(maestroapi.BaseURL())
+		var other *config.OtherServerError
+		if errors.As(err, &other) {
+			return fmt.Errorf("%w\n\nRun `maestro login --server %s` to sign in there, which forgets the key for %s", err, other.Asked, other.Stored)
+		}
 		if err != nil {
 			return fmt.Errorf("%w\n\nRun `maestro login` to sign in", err)
 		}
@@ -62,7 +66,40 @@ machines, one container per line of parameters.
 	},
 }
 
+var serverFlag string
+
+// server is the Maestro server to talk to, and what chose it: --server, then
+// MAESTRO_ORQ_URL, then the server signed in to ("login"), then the default
+// (""). A server is a URL; https:// is assumed when it says no scheme.
+func server() (url, from string) {
+	if serverFlag != "" {
+		return normalizeServer(serverFlag), "--server"
+	}
+	if env := os.Getenv("MAESTRO_ORQ_URL"); env != "" {
+		return normalizeServer(env), "MAESTRO_ORQ_URL"
+	}
+	if stored, err := config.Server(); err == nil && stored != "" {
+		return stored, "login"
+	}
+	return maestroapi.DefaultBaseURL, ""
+}
+
+func normalizeServer(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if !strings.Contains(raw, "://") {
+		raw = "https://" + raw
+	}
+	return strings.TrimRight(raw, "/")
+}
+
 func init() {
+	rootCmd.PersistentFlags().StringVar(&serverFlag, "server", "", "the Maestro server to talk to (default: the one you signed in to)")
+	// Asked at every request, so that what a flag says is what is used,
+	// completions included.
+	maestroapi.Server = func() string {
+		url, _ := server()
+		return url
+	}
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "print without colours (as NO_COLOR=1 does)")
 	// After the flags are read, before any command runs.
 	cobra.OnInitialize(applyNoColor)
@@ -181,10 +218,16 @@ func runWelcome(cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithTimeout(cmd.Context(), 5*time.Second)
 	defer cancel()
 
-	w := tui.Welcome{Server: maestroapi.BaseURL()}
+	w := tui.Welcome{}
+	w.Server, w.ServerFrom = server()
 	var wg sync.WaitGroup
 
-	if key, err := config.LoadMaestroKey(); err == nil {
+	key, err := config.LoadMaestroKey(w.Server)
+	var other *config.OtherServerError
+	if errors.As(err, &other) {
+		w.SignedInTo = other.Stored
+	}
+	if err == nil {
 		w.SignedIn = true
 		wg.Go(func() {
 			w.Email, w.AccountErr = maestroapi.VerifyKey(ctx, key)

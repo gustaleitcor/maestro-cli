@@ -17,7 +17,13 @@ import (
 	"maestro-cli/internal/netfail"
 )
 
-const defaultBaseURL = "https://maestro.logsad.com"
+// DefaultBaseURL is the server talked to when nothing names another.
+const DefaultBaseURL = "https://maestro.logsad.com"
+
+// Server, when set, says which server to talk to: the CLI's choice among
+// its --server, MAESTRO_ORQ_URL and the server it signed in to. Without it,
+// MAESTRO_ORQ_URL, then DefaultBaseURL.
+var Server func() string
 
 type verifyKeyResponse struct {
 	Valid bool   `json:"valid"`
@@ -360,10 +366,15 @@ func GetSettings(ctx context.Context, maestroKey string) (*Settings, error) {
 }
 
 func BaseURL() string {
+	if Server != nil {
+		if u := Server(); u != "" {
+			return strings.TrimRight(u, "/")
+		}
+	}
 	if u := os.Getenv("MAESTRO_ORQ_URL"); u != "" {
 		return strings.TrimRight(u, "/")
 	}
-	return defaultBaseURL
+	return DefaultBaseURL
 }
 
 func VerifyKey(ctx context.Context, key string) (string, error) {

@@ -1,12 +1,17 @@
 package cmd
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+
+	"maestro-cli/internal/config"
+	"maestro-cli/internal/maestroapi"
 )
 
 // maestro runs the way it would from a shell: args, then what it exits
@@ -33,6 +38,56 @@ func resetFlags(c *cobra.Command) {
 	}
 	for _, sub := range c.Commands() {
 		resetFlags(sub)
+	}
+}
+
+// Which server is talked to: --server, then MAESTRO_ORQ_URL, then the one
+// signed in to, then the default.
+func TestServerPrecedence(t *testing.T) {
+	signedIn(t, "")
+	t.Setenv("MAESTRO_ORQ_URL", "")
+	t.Cleanup(func() { serverFlag = "" })
+
+	if url, from := server(); url != maestroapi.DefaultBaseURL || from != "" {
+		t.Errorf("nothing set: %q from %q", url, from)
+	}
+	if err := config.SaveMaestroKey("https://stored.example.org", "k"); err != nil {
+		t.Fatal(err)
+	}
+	if url, from := server(); url != "https://stored.example.org" || from != "login" {
+		t.Errorf("signed in: %q from %q", url, from)
+	}
+	t.Setenv("MAESTRO_ORQ_URL", "http://localhost:8080/")
+	if url, from := server(); url != "http://localhost:8080" || from != "MAESTRO_ORQ_URL" {
+		t.Errorf("env: %q from %q", url, from)
+	}
+	serverFlag = "flag.example.org/"
+	if url, from := server(); url != "https://flag.example.org" || from != "--server" {
+		t.Errorf("flag: %q from %q", url, from)
+	}
+	if maestroapi.BaseURL() != "https://flag.example.org" {
+		t.Errorf("requests go to %q, not what --server said", maestroapi.BaseURL())
+	}
+}
+
+// A key minted by one server is never sent to another: --server naming
+// another one is told to sign in there, and that server hears nothing.
+func TestKeyIsNotSentToAnotherServer(t *testing.T) {
+	signedIn(t, "")
+	t.Setenv("MAESTRO_ORQ_URL", "")
+	asked := 0
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { asked++ }))
+	defer other.Close()
+	if err := config.SaveMaestroKey("https://maestro.example.org", "k"); err != nil {
+		t.Fatal(err)
+	}
+
+	code, said := maestro(t, "runs", "--server", other.URL)
+	if code != exitFailed || !strings.Contains(said, "not signed in to "+other.URL) || !strings.Contains(said, "maestro login --server "+other.URL) {
+		t.Errorf("exit %d, said %q", code, said)
+	}
+	if asked != 0 {
+		t.Errorf("the other server was asked %d time(s)", asked)
 	}
 }
 

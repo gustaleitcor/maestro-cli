@@ -21,6 +21,11 @@ const logoGap = 3 // columns between the logo and the text beside it
 
 type Welcome struct {
 	Server string
+	// ServerFrom is what chose Server: "--server", "MAESTRO_ORQ_URL",
+	// "login" (the one signed in to), or "" for the default.
+	ServerFrom string
+	// SignedInTo is the server the stored key is for, when it isn't Server.
+	SignedInTo string
 	// SignedIn is whether a Maestro key is stored. Email is who it belongs
 	// to; AccountErr is set instead when the server wouldn't say.
 	SignedIn   bool
@@ -54,7 +59,7 @@ func RenderWelcome(w Welcome, width int) string {
 }
 
 func renderWelcomeInfo(w Welcome) string {
-	if !w.SignedIn && len(w.Forges) == 0 {
+	if !w.SignedIn && w.SignedInTo == "" && len(w.Forges) == 0 {
 		return "Not signed in.\n\n" +
 			"maestro login    Sign in to Maestro\n" +
 			"maestro --help   More information"
@@ -65,6 +70,8 @@ func renderWelcomeInfo(w Welcome) string {
 
 	var b strings.Builder
 	switch {
+	case w.SignedInTo != "":
+		fmt.Fprintln(&b, labelStyle.Render("Account:")+" "+warnStyle.Render("not signed in here")+"; signed in to "+w.SignedInTo)
 	case !w.SignedIn:
 		fmt.Fprintln(&b, labelStyle.Render("Account:")+" not signed in; run `maestro login`")
 	case errors.Is(w.AccountErr, netfail.ErrUnreachable):
@@ -75,7 +82,11 @@ func renderWelcomeInfo(w Welcome) string {
 	default:
 		fmt.Fprintln(&b, labelStyle.Render("Account:")+" "+w.Email)
 	}
-	fmt.Fprintln(&b, labelStyle.Render("Server:")+" "+w.Server)
+	server := w.Server
+	if w.ServerFrom == "--server" || w.ServerFrom == "MAESTRO_ORQ_URL" {
+		server += helpStyle.Render(" (from " + w.ServerFrom + ")")
+	}
+	fmt.Fprintln(&b, labelStyle.Render("Server:")+" "+server)
 
 	if len(w.Forges) == 0 {
 		fmt.Fprintln(&b, labelStyle.Render("Forges:")+" none; run `maestro forges add`")

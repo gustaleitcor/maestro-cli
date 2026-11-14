@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/zalando/go-keyring"
 )
@@ -31,6 +32,9 @@ var ErrNoMaestroKey = errors.New("not signed in to Maestro")
 type Config struct {
 	GitHubToken string `json:"github_token,omitempty"`
 	MaestroKey  string `json:"maestro_key,omitempty"`
+	// Server is the Maestro server the key was minted by, wherever the key
+	// itself is kept; empty for a key stored before servers were.
+	Server string `json:"server,omitempty"`
 
 	// Store is "file" once the user chose to keep secrets in this file and
 	// not in the system keyring; see UseFileStore.
@@ -113,12 +117,48 @@ func DeleteGitHubToken() error {
 	return deleteSecret(githubKeyringUser, func(c *Config) *string { return &c.GitHubToken })
 }
 
-func SaveMaestroKey(key string) error {
-	return saveSecret(maestroKeyringUser, key, func(c *Config) *string { return &c.MaestroKey })
+// SaveMaestroKey keeps the key server minted, and which server that was.
+func SaveMaestroKey(server, key string) error {
+	if err := saveSecret(maestroKeyringUser, key, func(c *Config) *string { return &c.MaestroKey }); err != nil {
+		return err
+	}
+	return saveFieldToFile(func(c *Config) *string { return &c.Server }, server)
 }
 
-func LoadMaestroKey() (string, error) {
-	return loadSecret(maestroKeyringUser, ErrNoMaestroKey, func(c *Config) string { return c.MaestroKey })
+// LoadMaestroKey returns the key, if it is server's: a key is never sent to
+// a server other than the one that minted it. server "" takes it whatever
+// server it is for, and a key stored before servers were goes to any.
+func LoadMaestroKey(server string) (string, error) {
+	key, err := loadSecret(maestroKeyringUser, ErrNoMaestroKey, func(c *Config) string { return c.MaestroKey })
+	if err != nil {
+		return "", err
+	}
+	stored, err := Server()
+	if err != nil {
+		return "", err
+	}
+	if server != "" && stored != "" && !SameServer(stored, server) {
+		return "", &OtherServerError{Stored: stored, Asked: server}
+	}
+	return key, nil
+}
+
+// Server is the server the stored key was minted by, or "" when unknown.
+func Server() (string, error) {
+	cfg, err := readConfigFile()
+	return cfg.Server, err
+}
+
+// SameServer is whether two URLs name one server, as typed or as stored.
+func SameServer(a, b string) bool {
+	return strings.EqualFold(strings.TrimRight(a, "/"), strings.TrimRight(b, "/"))
+}
+
+// OtherServerError is a key kept for one server when another was asked for.
+type OtherServerError struct{ Stored, Asked string }
+
+func (e *OtherServerError) Error() string {
+	return fmt.Sprintf("not signed in to %s: the key here is for %s", e.Asked, e.Stored)
 }
 
 func DeleteMaestroKey() error {
