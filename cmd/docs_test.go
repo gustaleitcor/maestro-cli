@@ -23,10 +23,14 @@ func TestTopicURL(t *testing.T) {
 		want string
 	}{
 		{nil, base + "/index.html"},
-		{[]string{"queue"}, base + "/watch/queue.html"},
-		{[]string{"TOML"}, base + "/run/maestro-toml.html"},
+		{[]string{"queue"}, base + "/how/queue.html"},
+		{[]string{"TOML"}, base + "/repo/maestro-toml.html"},
+		{[]string{"quickstart"}, base + "/start/quickstart.html"},
+		// A name a page had before the book was reordered still opens it.
+		{[]string{"concepts"}, base + "/reference/glossary.html"},
 		// A command a topic explains opens the topic, not the reference.
-		{[]string{"run"}, base + "/watch/runs.html"},
+		{[]string{"run"}, base + "/use/runs.html"},
+		{[]string{"settings"}, base + "/how/score.html"},
 		{[]string{"runs", "logs"}, base + "/reference/cli.html#maestro-runs-logs"},
 		{[]string{"builds", "rm"}, base + "/reference/cli.html#maestro-builds-rm"},
 	} {
@@ -214,10 +218,10 @@ func TestDocsOpensTheBrowser(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out, "http://docs.test/watch/queue.html") {
+	if !strings.Contains(out, "http://docs.test/how/queue.html") {
 		t.Errorf("the link isn't printed: %q", out)
 	}
-	if len(opened) != 1 || opened[0] != "http://docs.test/watch/queue.html" {
+	if len(opened) != 1 || opened[0] != "http://docs.test/how/queue.html" {
 		t.Errorf("opened %q", opened)
 	}
 
@@ -245,9 +249,9 @@ func TestCompleteTopics(t *testing.T) {
 	if len(got) != len(topics) {
 		t.Errorf("offered %d topics, want %d", len(got), len(topics))
 	}
-	got, _ = completeTopics(docsCmd, nil, "qu")
+	got, _ = completeTopics(docsCmd, nil, "que")
 	if len(got) != 1 || !strings.HasPrefix(got[0], "queue\t") {
-		t.Errorf("qu: %q", got)
+		t.Errorf("que: %q", got)
 	}
 }
 

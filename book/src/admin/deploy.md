@@ -1,17 +1,18 @@
 # Deploying Maestro
 
-A Maestro is one server, orq, with the Maestro page served beside it, on
-one host, and the machines it drives. The
-[maestro](https://github.com/gustaleitcor/maestro) repo ties them together:
-each part is a git submodule of it, and its compose files run them.
+A Maestro deployment is one host that runs the server, orq, and serves the
+Maestro page beside it, plus the machines orq drives. The
+[maestro](https://github.com/gustaleitcor/maestro) repository puts the parts
+together. Each part is a git submodule of it, and its compose files run
+them.
 
 | Part | What it is | How it runs |
 | --- | --- | --- |
-| `maestro-orq` | the server: Go, SQLite, its own Podman for builds | a container that stays up, on port 3005 |
-| `maestro-view` | the Maestro page: a Vue app | built once into `maestro-view/dist`, then served as files |
-| `maestro-cli/book` | this book: mdBook, which `maestro` also carries | optionally built once into `maestro-cli/book/dist`, then served as files |
-| Redis | sessions, and answers kept a few seconds | any Redis, Valkey or KeyDB |
-| a reverse proxy | TLS, and one host for all of it | Caddy, nginx, … |
+| `maestro-orq` | The server, written in Go, with SQLite and its own Podman for builds | A container that stays up, on port 3005 |
+| `maestro-view` | The Maestro page, a Vue app | Built once into `maestro-view/dist`, then served as files |
+| `maestro-cli/book` | This book, which `maestro` also carries | Optionally built once into `maestro-cli/book/dist`, then served as files |
+| Redis | Sessions, and answers cached for a few seconds | Any Redis, Valkey or KeyDB |
+| A reverse proxy | TLS, and one host name for everything | Caddy, nginx or another |
 
 ## Production
 
@@ -22,18 +23,19 @@ cp .env.example .env   # the identity provider, MACHINE_SECRET, REDIS_URL
 podman compose up --build -d
 ```
 
-`orq` stays up as a server. `view` and `docs` build `maestro-view/dist` and
-`maestro-cli/book/dist` and exit: the reverse proxy serves those directories
-directly, not through a container.
+The `orq` service stays up as the server. The `view` and `docs` services
+build `maestro-view/dist` and `maestro-cli/book/dist` and then exit. The
+reverse proxy serves those two directories itself, with no container in
+between.
 
-The reverse proxy, on the page's host, must:
+On the page's host, the reverse proxy has three jobs.
 
-- send `/api/*` to orq (port 3005), so that `OIDC_REDIRECT_URL` reaches it
-  and the session cookie is first-party;
-- serve `maestro-cli/book/dist` at `/docs/`, which the page's Docs link and
-  `maestro docs --web` open (`maestro docs` alone opens the copy `maestro`
-  carries, and needs none of this);
-- serve `maestro-view/dist` for everything else.
+1. Send `/api/*` to orq on port 3005. This lets `OIDC_REDIRECT_URL` reach
+   orq and makes the session cookie first-party.
+2. Serve `maestro-cli/book/dist` at `/docs/`. The page's Docs link and
+   `maestro docs --web` open that copy. `maestro docs` without `--web` opens
+   the copy inside the CLI and needs none of this.
+3. Serve `maestro-view/dist` for every other path.
 
 With Caddy:
 
@@ -54,35 +56,38 @@ maestro.example.org {
 }
 ```
 
-To update, pull, then build again; a container that already exists is only
-replaced with `--force-recreate`:
+## Updating
+
+Pull, then build again. Compose replaces a container that already exists
+only when you pass `--force-recreate`:
 
 ```sh
 git pull --recurse-submodules
 podman compose up --build -d --force-recreate orq view docs
 ```
 
-orq keeps everything about runs in its database, so it can be restarted in
-the middle of one: see [What orq keeps](retention.md).
+orq keeps everything about runs in its database, so you can restart it in
+the middle of a run. [What orq keeps](retention.md) describes what happens
+to the lines that were running.
 
 ## What orq needs
 
-- **Its Podman**, through `PODMAN_SOCKET`, to build images. The compose file
-  mounts the host user's socket.
-- **Two volumes:** `/data` for the SQLite database, and `/maestro/data` for
-  what runs leave behind, which grows with every run.
-- **Redis**, at `REDIS_URL`.
-- **An identity provider**: see [The identity provider](identity.md).
-- **`MACHINE_SECRET`**, at least 32 characters, which encrypts the machines'
-  SSH keys: see [Adding machines](machines.md).
+| Need | Detail |
+| --- | --- |
+| Its own Podman | Reached through `PODMAN_SOCKET`, to build images. The compose file mounts the host user's socket. |
+| Two volumes | `/data` for the SQLite database, and `/maestro/data` for the logs and outputs of runs. The second grows with every run. |
+| Redis | At `REDIS_URL` |
+| An identity provider | See [The identity provider](identity.md). |
+| `MACHINE_SECRET` | At least 32 characters. It encrypts the machines' SSH keys. See [Adding machines](machines.md). |
 
-Every variable is in [Environment variables](../reference/env.md).
+[Environment variables](../reference/env.md) lists every variable.
 
 ## The page and the book
 
-The page is built with `VITE_ORQ_URL` (where orq is, the same host in
-production) and optionally `VITE_IDP_NAME`, the sign-in button's label. It
-has no server of its own, nor does the book.
+The page is built with `VITE_ORQ_URL`, the address of orq, which in
+production is the page's own host. `VITE_IDP_NAME` optionally sets the label
+of the sign-in button. Neither the page nor the book has a server of its
+own.
 
 ## A development stack
 
@@ -91,10 +96,16 @@ git clone --recurse-submodules https://github.com/gustaleitcor/maestro
 podman compose -f docker-compose-dev.yml up --build
 ```
 
-The dev stack runs its own throwaway identity provider (Dex) and Valkey. Open
-the page with `cd maestro-view && npm run dev` (with
-`VIEW_URL=http://localhost:5173` exported before starting the stack), or
-serve `maestro-view/dist` on port 8080, and sign in as `dev@example.com`
-with the password `password`. `mdbook serve maestro-cli/book` serves this
-book on port 3000 as you edit it; `MAESTRO_DOCS_URL=http://localhost:3000`
-points `maestro docs` at it. See [Contributing](../contributing.md#this-book).
+The development stack runs its own throwaway identity provider (Dex) and
+Valkey. Sign in as `dev@example.com` with the password `password`.
+
+There are two ways to open the page:
+
+- Run `cd maestro-view && npm run dev`, with
+  `VIEW_URL=http://localhost:5173` exported before you start the stack.
+- Serve `maestro-view/dist` on port 8080.
+
+`mdbook serve maestro-cli/book` serves this book on port 3000 and rebuilds
+it as you edit. Set `MAESTRO_DOCS_URL=http://localhost:3000` to point
+`maestro docs` at it. [Contributing](../contributing.md#this-book) has more
+on working on the book.

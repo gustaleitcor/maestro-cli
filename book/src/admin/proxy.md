@@ -1,46 +1,53 @@
 # Machines behind a proxy
 
-A machine that can't be reached over plain TCP, such as one behind
-Cloudflare Access, is reached through a proxy command, as with ssh's
-`ProxyCommand`. orq runs the command and speaks SSH over its standard input
-and output itself, so the host key is still pinned and everything else works
-as for any machine.
+Some machines can't be reached over plain TCP, such as one behind
+Cloudflare Access. orq reaches those through a proxy command, the way ssh
+does with `ProxyCommand`. orq runs the command and speaks SSH over the
+command's standard input and output. The host key is still pinned, and
+everything else works as it does for any machine.
+
+## Turning proxy commands on
+
+A proxy command runs a program inside orq's container, so allowing them
+lets any administrator run commands on the server. orq refuses proxy
+commands unless `MACHINE_PROXY_COMMANDS=true`. While the setting is off, a
+machine saved with a proxy command shows as unreachable and says why.
 
 ## Cloudflare Access
 
-In the machine's form, set the proxy command to
+In the machine's form, set the host to the Access hostname, such as
+`q1-ssh.example.com`, and set the proxy command to:
 
 ```text
 cloudflared access ssh --hostname %h
 ```
 
-with the host set to the Access hostname (e.g. `q1-ssh.example.com`). `%h`,
-`%p` and `%r` become the host, port and user, and `%%` a `%`. cloudflared is
-in orq's image.
+orq replaces `%h`, `%p` and `%r` with the host, the port and the user, and
+`%%` with a `%`. `cloudflared` is included in orq's image.
 
-Under *Proxy environment*, paste the Access service token as
+Under "Proxy environment", paste the Access service token:
 
 ```text
 TUNNEL_SERVICE_TOKEN_ID=…
 TUNNEL_SERVICE_TOKEN_SECRET=…
 ```
 
-(a file of `export NAME=value` lines, such as one you source for ssh, can be
-pasted as it is). Like the private key, it is stored encrypted with
-`MACHINE_SECRET` and never sent back: the page shows only the names, and an
-edit that leaves it empty keeps what is stored. The command gets only
-`PATH`, `HOME` and these variables, none of orq's own environment.
+You can also paste a file of `export NAME=value` lines as it is, such as
+one you source before running ssh.
 
-## Turning them on
+orq stores the proxy environment encrypted with `MACHINE_SECRET`, as it
+does the private key, and never sends it back. The page shows only the
+names of the variables. Saving an edit with the field left empty keeps what
+is stored.
 
-A proxy command runs a program inside orq's container, so it lets any
-administrator run commands on the server. orq refuses them unless
-`MACHINE_PROXY_COMMANDS=true`, and a machine saved with one shows as
-unreachable, saying why, while it is off.
+The command runs with `PATH`, `HOME` and the variables you pasted. It gets
+none of orq's own environment.
 
-## Cost
+## What a proxy costs
 
-orq doesn't keep connections open: each one, from the runner, a check or
-`maestro top` (one every couple of seconds while someone watches it), starts
-its own cloudflared, which adds half a second to a second to it. If
-cloudflared fails, what it printed is in the machine's error.
+orq doesn't keep connections open. Each connection from the runner, from a
+check of the machine, or from `maestro top` starts its own `cloudflared`,
+which adds between half a second and a second. `maestro top` opens one
+every couple of seconds while someone is watching.
+
+If `cloudflared` fails, the machine's error shows what it printed.

@@ -1,57 +1,66 @@
 # The identity provider
 
-Maestro trusts exactly one identity provider per deployment, over standard
-[OpenID Connect](https://openid.net/developers/how-connect-works/). orq sends
-the browser to the provider, checks the ID token it gets back, and then keeps
-its own session (the `maestro_session` cookie, kept in Redis). Nothing in
-Maestro is specific to any one provider.
+A Maestro deployment trusts one identity provider, which it talks to over
+standard [OpenID Connect](https://openid.net/developers/how-connect-works/).
+orq sends the browser to the provider, checks the ID token that comes back,
+and then keeps a session of its own. The session is the `maestro_session`
+cookie, stored in Redis. No part of Maestro depends on a particular
+provider.
 
 ## Registering Maestro
 
-Register Maestro with your provider as a confidential client using the
-authorization code flow, with the redirect URI `<orq>/api/auth/callback`
-(the page's host, in production: `https://maestro.example.org/api/auth/callback`),
-then configure orq:
+Register Maestro with your provider as a confidential client that uses the
+authorization code flow. The redirect URI is `<orq>/api/auth/callback`. In
+production orq is on the page's host, so the URI looks like
+`https://maestro.example.org/api/auth/callback`.
 
-| Variable | Default | |
+Then configure orq with these variables:
+
+| Variable | Default | Meaning |
 | --- | --- | --- |
-| `OIDC_ISSUER` | required | Issuer URL; must serve `/.well-known/openid-configuration` |
+| `OIDC_ISSUER` | required | The issuer URL. It must serve `/.well-known/openid-configuration`. |
 | `OIDC_CLIENT_ID` | required | |
 | `OIDC_CLIENT_SECRET` | required | |
 | `OIDC_REDIRECT_URL` | required | `<orq>/api/auth/callback`, as registered with the provider |
-| `OIDC_SCOPES` | `openid email profile` | Space-separated |
-| `OIDC_ROLES_CLAIM` | `roles` | ID token claim holding the user's roles (a string or a list); e.g. `groups` |
-| `OIDC_ALLOWED_ROLES` | empty | Comma-separated. Empty lets in anyone the provider authenticates |
-| `VIEW_URL` | first of `ALLOWED_ORIGINS` | Where the Maestro page is served; logins return there |
-| `REDIS_URL` | required | `redis://[:password@]host:port/db` of a Redis, Valkey or KeyDB, where sessions are kept |
+| `OIDC_SCOPES` | `openid email profile` | Separated by spaces |
+| `OIDC_ROLES_CLAIM` | `roles` | The ID token claim that holds the user's roles, as a string or a list. Some providers use `groups`. |
+| `OIDC_ALLOWED_ROLES` | empty | Separated by commas. When empty, anyone the provider authenticates can sign in. |
+| `VIEW_URL` | The first of `ALLOWED_ORIGINS` | Where the Maestro page is served. Sign-ins return there. |
+| `REDIS_URL` | required | `redis://[:password@]host:port/db` of the Redis, Valkey or KeyDB that keeps sessions |
 | `SESSION_TTL` | `12h` | How long a Maestro session lasts |
-| `COOKIE_SECURE` | `true` (`false` with `MODE=dev`) | Set `false` only when serving over plain http |
+| `COOKIE_SECURE` | `true`, or `false` with `MODE=dev` | Set it to `false` only when you serve over plain http. |
 
-The page only needs `VITE_ORQ_URL`, and optionally `VITE_IDP_NAME` for the
-sign-in button's label.
+The page needs `VITE_ORQ_URL`, and optionally `VITE_IDP_NAME` for the label
+of the sign-in button.
 
 ## Administrators
 
-A user is an administrator when the provider gives them one of
-`OIDC_ADMIN_ROLES` (by default `ADMIN`) in the roles claim, or their email is
-in `ADMIN_EMAILS`. Administrators add machines, manage groups and the
-scheduler's settings, and see everyone's runs and containers.
+A user is an administrator in either of two cases: the provider puts one of
+`OIDC_ADMIN_ROLES` (by default `ADMIN`) in the user's roles claim, or the
+user's email is in `ADMIN_EMAILS`.
 
-## Providers
+Administrators add machines, manage groups and the scheduler's settings,
+and see everyone's runs and containers.
 
-- **SaciAuthService** (auth.logsad.com): what logsad.com runs; tested end to
-  end.
-- **Dex**: what the dev stack runs.
-- **Keycloak, Authentik, Zitadel, …**: any provider with OIDC discovery, the
-  authorization code flow, PKCE (S256) and RS256/ES256-signed ID tokens
-  should work, but these have not been tried yet. Point `OIDC_ROLES_CLAIM`
-  at whichever claim your provider puts roles or groups in.
+## Providers that have been tried
+
+| Provider | Status |
+| --- | --- |
+| SaciAuthService (auth.logsad.com) | Runs logsad.com's Maestro. Tested end to end. |
+| Dex | Runs in the development stack. |
+| Keycloak, Authentik, Zitadel and others | Untried. |
+
+An untried provider should work if it has OIDC discovery, the authorization
+code flow, PKCE with S256, and ID tokens signed with RS256 or ES256. Point
+`OIDC_ROLES_CLAIM` at the claim your provider puts roles or groups in.
 
 ## Sessions and keys
 
-Signing out of Maestro ends the Maestro session only; it does not sign the
-user out of the provider, and signing out of the provider does not end a
-Maestro session that is already open.
+Signing out of Maestro ends the Maestro session and leaves the user signed
+in at the provider. Signing out at the provider leaves an open Maestro
+session running until it expires.
 
 The CLI doesn't use sessions. `maestro login` has the user approve a code on
-the page, which hands the CLI a Maestro key of its own, kept until revoked.
+the page, and orq then gives the CLI a Maestro key of its own. A key doesn't
+expire, and Maestro has no screen for revoking one. `maestro logout` removes
+the key from the user's computer.

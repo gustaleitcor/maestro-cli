@@ -1,0 +1,107 @@
+# Runs and lines
+
+A run starts one container for each line of a build. Each line runs once, on
+the first machine it is allowed on that has room for it.
+
+```sh
+maestro run 12                  # start a run of build #12
+maestro run 12 --watch          # start it and follow it to the end
+maestro runs                    # your newest runs
+maestro runs show 31            # the lines of run 31
+maestro runs logs 31 2          # what line 2 printed
+maestro runs get 31             # download the outputs and logs
+maestro runs cancel 31          # stop it
+maestro runs rm 31              # delete it and its files
+```
+
+## Listing your runs
+
+```text
+RUN  REPO                                BUILD  STATUS     LINES                CREATED
+33   ada/maestro-template@main           #14    running    3 queued, 2 running  54m ago
+32   ada/maestro-template@main           #13    succeeded  1 succeeded          1h ago
+31   gustaleitcor/maestro-template@main  #12    succeeded  2 succeeded          2h ago
+```
+
+`maestro runs` shows your 20 newest runs. `--limit` changes the number, and
+0 means all of them. `--status` and `--repo` narrow the list. An
+administrator sees everyone's runs with `--all`.
+
+## Looking at one run
+
+```text
+Run 33 of ada/maestro-template@main (build #14): failed, on any machine
+2 line(s): 1 succeeded, 1 failed
+
+LINE  PARAMETERS      MACHINE  STATUS           FILES
+1     -t 10 out.txt   Q1       succeeded        out.txt
+2     -t ten out.txt  Q2       failed (exit 2)  out.txt (missing)
+```
+
+`maestro runs show` with no number shows your newest run. `--failed` leaves
+only the lines that failed, ended in an error, or were cancelled.
+
+## Following a run
+
+`--watch` redraws the output in place every 2 seconds, or as often as
+`--interval` says. It works on `maestro run`, `maestro runs show` and
+`maestro runs list`.
+
+`maestro runs show <run> --watch` returns when the run is over. It says how
+the run ended and exits with status 1 if the run failed or was cancelled, so
+a script can wait on it. Ctrl-C stops the watching and leaves the run alone.
+When the output goes to a pipe, `--watch` prints a new copy only when
+something changed.
+
+## Reading logs
+
+`maestro runs logs <run> <line>` prints what the line wrote to standard
+output on your standard output, and what it wrote to standard error on your
+standard error. Redirect one away to read the other:
+
+```sh
+maestro runs logs 31 2 2>/dev/null     # standard output only
+```
+
+A run with a single line doesn't need the line number.
+
+`-f` follows the line the way `tail -f` follows a file. It waits for a line
+that hasn't started, prints what a running line prints as it comes, and
+returns when the line ends.
+
+For a line that has ended, all of its standard output comes before all of
+its standard error. Maestro stores the two apart and doesn't record how they
+were interleaved.
+
+## Downloading
+
+`maestro runs get <run>` downloads every line's outputs and logs into a
+directory named after the run. [What a line leaves behind](results.md)
+describes the layout. `--line` picks lines, a second argument picks the
+directory, and `--force` downloads over a run that is already there.
+
+## Cancelling and deleting
+
+`maestro runs cancel <run>` drops the lines that haven't started and stops
+the ones that are running. Lines that had already ended keep their status.
+
+`maestro runs rm <run>` deletes the run with all its logs and files. It asks
+first.
+
+## How a line ends
+
+| Status | What happened |
+| --- | --- |
+| `succeeded` | The program exited with 0. |
+| `failed` | The program exited with another code, or the kernel killed it for using more memory than the line asked for. |
+| `error` | The line couldn't run. Most often it couldn't start on its machine, or the machine restarted while it ran and the container was lost. |
+| `cancelled` | You cancelled the run before the line ended. |
+
+An `error` comes from the system and says nothing about your program. The
+Maestro page shows such lines in amber with the reason, and you can run them
+again.
+
+A machine that stops answering doesn't turn its waiting lines into errors.
+Maestro moves them back to `staged` so another machine can take them. Lines
+already running on that machine are left alone and checked again when it
+returns.

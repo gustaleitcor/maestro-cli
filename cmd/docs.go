@@ -22,7 +22,8 @@ import (
 )
 
 // docTopic is a page of the Maestro book. Names are what `maestro docs`
-// takes: the first is the topic's own, the others are commands it explains.
+// takes: the first is the topic's own, the others are commands it explains
+// and names it had before the book was reordered.
 type docTopic struct {
 	Names []string
 	Page  string
@@ -34,35 +35,41 @@ type docTopic struct {
 // here too.
 var topics = []docTopic{
 	{[]string{"intro"}, "introduction.html", "What Maestro is"},
-	{[]string{"concepts"}, "concepts.html", "The words Maestro uses"},
-	{[]string{"architecture"}, "architecture.html", "How the parts fit"},
-	{[]string{"install", "completion"}, "start/install.html", "Installing the CLI"},
-	{[]string{"login", "logout"}, "start/login.html", "Signing in"},
-	{[]string{"forges", "repos"}, "start/forges.html", "Git forges"},
-	{[]string{"start"}, "start/first-run.html", "Your first run"},
-	{[]string{"toml"}, "run/maestro-toml.html", "maestro.toml, key by key"},
-	{[]string{"generator"}, "run/generators.html", "Computing lines with a generator"},
-	{[]string{"env"}, "run/container.html", "Inside the container"},
-	{[]string{"local"}, "run/local-files.html", "Trying a change without pushing it"},
-	{[]string{"example"}, "run/example.html", "A worked example: the stress test"},
-	{[]string{"builds", "build"}, "watch/builds.html", "Builds and images"},
-	{[]string{"runs", "run"}, "watch/runs.html", "Runs and lines"},
-	{[]string{"outputs"}, "watch/results.html", "What a line leaves behind"},
-	{[]string{"queue"}, "watch/queue.html", "The queue, explained"},
-	{[]string{"top", "machines"}, "watch/top.html", "Watching the machines"},
-	{[]string{"usage", "export"}, "watch/usage.html", "Usage and export"},
-	{[]string{"view"}, "view/tour.html", "The Maestro page"},
+	{[]string{"quickstart", "start"}, "start/quickstart.html", "Quickstart: run the template"},
+	{[]string{"template"}, "start/your-copy.html", "Your own copy of the template"},
+	{[]string{"dockerfile"}, "repo/dockerfile.html", "The minimum: a Dockerfile"},
+	{[]string{"toml"}, "repo/maestro-toml.html", "maestro.toml: how the image is run"},
+	{[]string{"generator"}, "repo/generator.html", "Generating lines with Python"},
+	{[]string{"env"}, "repo/container.html", "Inside the container"},
+	{[]string{"local"}, "repo/local-files.html", "Trying a change without pushing it"},
+	{[]string{"examples", "example"}, "repo/examples.html", "Fuller examples"},
+	{[]string{"install", "completion"}, "use/install.html", "Installing the CLI"},
+	{[]string{"login", "logout"}, "use/login.html", "Signing in"},
+	{[]string{"forges", "repos"}, "use/forges.html", "Git forges"},
+	{[]string{"conventions"}, "use/cli.html", "How the CLI behaves"},
+	{[]string{"builds", "build"}, "use/builds.html", "Builds and images"},
+	{[]string{"runs", "run"}, "use/runs.html", "Runs and lines"},
+	{[]string{"outputs"}, "use/results.html", "What a line leaves behind"},
+	{[]string{"view"}, "use/page.html", "The Maestro page"},
+	{[]string{"top", "machines"}, "use/machines.html", "Watching the machines"},
+	{[]string{"usage", "export"}, "use/usage.html", "Usage and export"},
+	{[]string{"parts", "architecture"}, "how/parts.html", "The parts"},
+	{[]string{"queue"}, "how/queue.html", "The queue"},
+	{[]string{"score", "settings"}, "how/score.html", "Policies and the score"},
 	{[]string{"deploy"}, "admin/deploy.html", "Deploying Maestro"},
 	{[]string{"identity"}, "admin/identity.html", "The identity provider"},
 	{[]string{"add-machine"}, "admin/machines.html", "Adding machines"},
 	{[]string{"proxy"}, "admin/proxy.html", "Machines behind a proxy"},
-	{[]string{"policies", "settings"}, "admin/policies.html", "Scheduler policies"},
+	{[]string{"policies"}, "admin/policies.html", "Choosing the policies"},
 	{[]string{"groups"}, "admin/groups.html", "Groups"},
 	{[]string{"sim"}, "admin/sim.html", "Comparing policies offline"},
 	{[]string{"retention"}, "admin/retention.html", "What orq keeps, and for how long"},
-	{[]string{"cli"}, "reference/cli.html", "Every command and flag"},
+	{[]string{"cli"}, "reference/cli.html", "Every command"},
+	{[]string{"toml-keys"}, "reference/maestro-toml.html", "maestro.toml keys"},
 	{[]string{"variables"}, "reference/env.html", "Environment variables"},
 	{[]string{"troubleshooting"}, "reference/troubleshooting.html", "When something goes wrong"},
+	{[]string{"glossary", "concepts"}, "reference/glossary.html", "Glossary"},
+	{[]string{"contributing"}, "contributing.html", "Contributing"},
 }
 
 var (

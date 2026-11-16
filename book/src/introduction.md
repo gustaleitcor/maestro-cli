@@ -1,55 +1,63 @@
 # What Maestro is
 
-Maestro runs your program many times over, on a lab's shared machines, and
-keeps what each run leaves behind.
+Maestro runs a program many times on a group of shared machines and keeps
+what each run produces.
 
-You keep a program in a git repo, with a Dockerfile that builds it into a
-container image. Maestro clones the repo, builds the image, and then runs it
-as many containers as you have lines of parameters: a hundred seeds, a grid
-of instances, a thousand cases of a benchmark. Each container gets the cores
-and memory it asked for on whichever machine has room for it first, and when
-it ends Maestro keeps what it printed and the files it wrote, for you to
-download or look at in the browser.
+You keep the program in a git repository with a Dockerfile. Maestro clones
+the repository, builds a container image from it, and starts one container
+for each set of parameters you list. A hundred seeds become a hundred
+containers. Each container gets the cores and memory it asked for, on
+whichever machine has room for it first. When a container ends, Maestro keeps
+what it printed and the files it wrote. You download them, or read them in
+your browser.
 
-The machines are shared, so the lines of everyone wait in one queue, and the
-queue is fair: users and groups take turns, and an administrator chooses the
-policies that decide whose line goes next.
+The machines are shared, so everyone's containers wait in one queue. Users
+take turns in it, and an administrator chooses the rules that decide whose
+container starts next.
+
+## What you need
+
+- An account on a Maestro server. Your lab's administrator has its address.
+- The `maestro` command on your computer.
+- A git repository with a Dockerfile, on GitHub, GitLab, Codeberg or another
+  Forgejo. The quickstart uses a public template, so you can start before you
+  have one.
+
+## How this book is organized
+
+Each chapter adds one thing to what the previous one showed.
+
+1. The [quickstart](start/quickstart.md) builds and runs a ready-made
+   template, so you see a whole run before you learn its parts.
+2. [The minimum: a Dockerfile](repo/dockerfile.md) starts from the least a
+   repository needs. The next chapters add
+   [`maestro.toml`](repo/maestro-toml.md), which runs the image many times,
+   and a [Python script](repo/generator.md) that computes the parameters.
+3. [Working with Maestro](use/install.md) covers the commands and the web
+   page you use every day, from builds to downloaded results.
+4. [How Maestro works](how/parts.md) explains the programs Maestro is made
+   of, the queue, and the score that orders it.
+5. [Running a Maestro](admin/deploy.md) is for administrators. It covers
+   deploying the server, adding machines and choosing the queue's policies.
+6. The reference lists [every command](reference/cli.md),
+   [every `maestro.toml` key](reference/maestro-toml.md) and
+   [every environment variable](reference/env.md), and has a
+   [troubleshooting page](reference/troubleshooting.md) and a
+   [glossary](reference/glossary.md).
+
+If you want results and nothing more, read as far as the generator chapter.
+
+## Opening a page from the terminal
+
+`maestro docs` opens this book in your browser. The book is built into the
+`maestro` command, so it opens offline and describes the version you have
+installed.
 
 ```sh
-maestro login                      # sign in, once
-maestro build my-solver --watch    # build the repo, run it, follow the run
-maestro runs get 31                # download what run 31 kept
+maestro docs              # the first page
+maestro docs toml         # maestro.toml
+maestro docs queue        # why a line is waiting
+maestro docs runs logs    # the reference entry for a command
 ```
 
-## Who this book is for
-
-- **If you run experiments**, read *Using Maestro*. [Your first
-  run](start/first-run.md) goes from a repo to results in a few minutes, and
-  [Describing a run](run/maestro-toml.md) is everything `maestro.toml` can
-  say.
-- **If you run a Maestro** for your lab, read *Running a Maestro*: deploying
-  it, signing in through your identity provider, adding machines and choosing
-  the scheduler's policies.
-- **If you work on Maestro itself**, [Contributing](contributing.md) says
-  where code goes.
-
-## Finding your way
-
-`maestro docs` opens this book; `maestro docs <topic>` opens a page of it,
-and `maestro docs <command>` a command's entry in [Every
-command](reference/cli.md). Every command's `--help` ends with the topic
-that explains it:
-
-```sh
-maestro docs toml        # maestro.toml, key by key
-maestro docs queue       # why a line is waiting
-maestro docs runs logs   # what runs logs takes
-```
-
-`maestro help concepts` says, in the terminal, what [The words Maestro
-uses](concepts.md) says here.
-
-`maestro` carries this book, so `maestro docs` opens it offline, without
-signing in: it describes what that version of `maestro` does.
-`maestro docs --web` opens the copy your Maestro serves, if it serves one,
-which you can open on another machine, as when you reach this one over SSH.
+Every command's `--help` ends with the topic that explains it.
