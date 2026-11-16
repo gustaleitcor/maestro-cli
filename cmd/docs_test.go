@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -63,12 +65,16 @@ func TestTopicNamesAreUnique(t *testing.T) {
 	}
 }
 
-// carriedBook makes the book maestro carries be dir, or err.
+// carriedBook makes the book maestro carries be dir, or err, served at
+// http://127.0.0.1:1 at once and no longer.
 func carriedBook(t *testing.T, dir string, err error) {
 	t.Helper()
-	old := bookDir
-	t.Cleanup(func() { bookDir = old })
+	oldDir, oldServe := bookDir, serveBook
+	t.Cleanup(func() { bookDir, serveBook = oldDir, oldServe })
 	bookDir = func() (string, error) { return dir, err }
+	serveBook = func(_ context.Context, _ string, ready func(string) error) error {
+		return ready("http://127.0.0.1:1")
+	}
 }
 
 func TestDocsBase(t *testing.T) {
@@ -78,16 +84,16 @@ func TestDocsBase(t *testing.T) {
 	var notes bytes.Buffer
 
 	t.Setenv("MAESTRO_DOCS_URL", "http://localhost:3000/")
-	if base, local, err := docsBase(&notes); err != nil || base != "http://localhost:3000" || local {
-		t.Errorf("MAESTRO_DOCS_URL: %s %v (%v)", base, local, err)
+	if base, dir, err := docsBase(&notes); err != nil || base != "http://localhost:3000" || dir != "" {
+		t.Errorf("MAESTRO_DOCS_URL: %s %s (%v)", base, dir, err)
 	}
 	t.Setenv("MAESTRO_DOCS_URL", "")
-	if base, local, err := docsBase(&notes); err != nil || base != "file:///home/ada/.cache/maestro/book/abc" || !local {
-		t.Errorf("the carried book: %s %v (%v)", base, local, err)
+	if base, dir, err := docsBase(&notes); err != nil || base != "" || dir != "/home/ada/.cache/maestro/book/abc" {
+		t.Errorf("the carried book: %s %s (%v)", base, dir, err)
 	}
 	docsWeb = true
-	if base, local, err := docsBase(&notes); err != nil || base != "http://localhost:8081/docs" || local {
-		t.Errorf("--web: %s %v (%v)", base, local, err)
+	if base, dir, err := docsBase(&notes); err != nil || base != "http://localhost:8081/docs" || dir != "" {
+		t.Errorf("--web: %s %s (%v)", base, dir, err)
 	}
 	docsWeb = false
 	if notes.Len() > 0 {
@@ -101,14 +107,42 @@ func TestDocsBase(t *testing.T) {
 	}
 }
 
-func TestFileURL(t *testing.T) {
-	for dir, want := range map[string]string{
-		"/home/ada/.cache/maestro/book/abc": "file:///home/ada/.cache/maestro/book/abc",
-		"/home/a da/book":                   "file:///home/a%20da/book",
-	} {
-		if got := fileURL(dir); got != want {
-			t.Errorf("%s: %s, want %s", dir, got, want)
-		}
+// The carried book is served whole, styles and scripts included, until
+// ctrl-c, and only to this computer.
+func TestServeDir(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(dir+"/index.html", []byte("<h1>Maestro</h1>"), 0o644)
+	os.MkdirAll(dir+"/css", 0o755)
+	os.WriteFile(dir+"/css/general.css", []byte("body{}"), 0o644)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	var base string
+	go func() {
+		done <- serveDir(ctx, dir, func(b string) error {
+			base = b
+			for _, path := range []string{"/index.html", "/css/general.css"} {
+				resp, err := http.Get(b + path)
+				if err != nil {
+					return err
+				}
+				resp.Body.Close()
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("%s: %s", path, resp.Status)
+				}
+			}
+			cancel()
+			return nil
+		})
+	}()
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(base, "http://127.0.0.1:") {
+		t.Errorf("served at %s, not to this computer only", base)
+	}
+	if _, err := http.Get(base + "/index.html"); err == nil {
+		t.Error("still served after ctrl-c")
 	}
 }
 
