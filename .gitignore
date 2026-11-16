@@ -4,9 +4,9 @@ maestro
 dist/
 completions/
 
-# The book, as book/build.sh builds it, and what it packs for go build.
+# What book/build.sh writes on its way to internal/book/site, which is
+# committed.
 book/dist
 book/mermaid.min.js
 book/mermaid-init.js
 book/src/reference/cli.md
-internal/book/site/book.tar.gz

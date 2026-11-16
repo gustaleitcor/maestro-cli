@@ -1,0 +1,825 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Every command - Maestro</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="How Maestro builds your repos into images and runs them across shared machines, and how to set it up.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../introduction.html">What Maestro is</a></li><li class="chapter-item expanded affix "><li class="part-title">Start here</li><li class="chapter-item expanded "><a href="../start/quickstart.html"><strong aria-hidden="true">1.</strong> Quickstart: run the template</a></li><li class="chapter-item expanded "><a href="../start/your-copy.html"><strong aria-hidden="true">2.</strong> Your own copy of the template</a></li><li class="chapter-item expanded affix "><li class="part-title">Your repo, one piece at a time</li><li class="chapter-item expanded "><a href="../repo/dockerfile.html"><strong aria-hidden="true">3.</strong> The minimum: a Dockerfile</a></li><li class="chapter-item expanded "><a href="../repo/maestro-toml.html"><strong aria-hidden="true">4.</strong> maestro.toml: how the image is run</a></li><li class="chapter-item expanded "><a href="../repo/generator.html"><strong aria-hidden="true">5.</strong> Generating lines with Python</a></li><li class="chapter-item expanded "><a href="../repo/container.html"><strong aria-hidden="true">6.</strong> Inside the container</a></li><li class="chapter-item expanded "><a href="../repo/local-files.html"><strong aria-hidden="true">7.</strong> Trying a change without pushing it</a></li><li class="chapter-item expanded "><a href="../repo/examples.html"><strong aria-hidden="true">8.</strong> Fuller examples</a></li><li class="chapter-item expanded affix "><li class="part-title">Working with Maestro</li><li class="chapter-item expanded "><a href="../use/install.html"><strong aria-hidden="true">9.</strong> Installing the CLI</a></li><li class="chapter-item expanded "><a href="../use/login.html"><strong aria-hidden="true">10.</strong> Signing in</a></li><li class="chapter-item expanded "><a href="../use/forges.html"><strong aria-hidden="true">11.</strong> Git forges</a></li><li class="chapter-item expanded "><a href="../use/cli.html"><strong aria-hidden="true">12.</strong> How the CLI behaves</a></li><li class="chapter-item expanded "><a href="../use/builds.html"><strong aria-hidden="true">13.</strong> Builds and images</a></li><li class="chapter-item expanded "><a href="../use/runs.html"><strong aria-hidden="true">14.</strong> Runs and lines</a></li><li class="chapter-item expanded "><a href="../use/results.html"><strong aria-hidden="true">15.</strong> What a line leaves behind</a></li><li class="chapter-item expanded "><a href="../use/page.html"><strong aria-hidden="true">16.</strong> The Maestro page</a></li><li class="chapter-item expanded "><a href="../use/machines.html"><strong aria-hidden="true">17.</strong> Watching the machines</a></li><li class="chapter-item expanded "><a href="../use/usage.html"><strong aria-hidden="true">18.</strong> Usage and export</a></li><li class="chapter-item expanded affix "><li class="part-title">How Maestro works</li><li class="chapter-item expanded "><a href="../how/parts.html"><strong aria-hidden="true">19.</strong> The parts</a></li><li class="chapter-item expanded "><a href="../how/queue.html"><strong aria-hidden="true">20.</strong> The queue</a></li><li class="chapter-item expanded "><a href="../how/score.html"><strong aria-hidden="true">21.</strong> Policies and the score</a></li><li class="chapter-item expanded affix "><li class="part-title">Running a Maestro</li><li class="chapter-item expanded "><a href="../admin/deploy.html"><strong aria-hidden="true">22.</strong> Deploying Maestro</a></li><li class="chapter-item expanded "><a href="../admin/identity.html"><strong aria-hidden="true">23.</strong> The identity provider</a></li><li class="chapter-item expanded "><a href="../admin/machines.html"><strong aria-hidden="true">24.</strong> Adding machines</a></li><li class="chapter-item expanded "><a href="../admin/proxy.html"><strong aria-hidden="true">25.</strong> Machines behind a proxy</a></li><li class="chapter-item expanded "><a href="../admin/policies.html"><strong aria-hidden="true">26.</strong> Choosing the policies</a></li><li class="chapter-item expanded "><a href="../admin/groups.html"><strong aria-hidden="true">27.</strong> Groups</a></li><li class="chapter-item expanded "><a href="../admin/sim.html"><strong aria-hidden="true">28.</strong> Comparing policies offline</a></li><li class="chapter-item expanded "><a href="../admin/retention.html"><strong aria-hidden="true">29.</strong> What orq keeps, and for how long</a></li><li class="chapter-item expanded affix "><li class="part-title">Reference</li><li class="chapter-item expanded "><a href="../reference/cli.html" class="active"><strong aria-hidden="true">30.</strong> Every command</a></li><li class="chapter-item expanded "><a href="../reference/maestro-toml.html"><strong aria-hidden="true">31.</strong> maestro.toml keys</a></li><li class="chapter-item expanded "><a href="../reference/env.html"><strong aria-hidden="true">32.</strong> Environment variables</a></li><li class="chapter-item expanded "><a href="../reference/troubleshooting.html"><strong aria-hidden="true">33.</strong> When something goes wrong</a></li><li class="chapter-item expanded "><a href="../reference/glossary.html"><strong aria-hidden="true">34.</strong> Glossary</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><a href="../contributing.html">Contributing</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Maestro</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/gustaleitcor/maestro-cli" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/gustaleitcor/maestro-cli/edit/main/book/src/reference/cli.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="every-command"><a class="header" href="#every-command">Every command</a></h1>
+<p>Written by the CLI itself when the book is built, so it says what this
+version of <code>maestro</code> takes. <code>maestro &lt;command&gt; --help</code> says the same in a
+terminal.</p>
+<p>Every command also takes <code>-h, --help</code>, and these:</p>
+<pre><code class="language-text">      --no-color        print without colours (as NO_COLOR=1 does)
+      --server string   the Maestro server to talk to (default: the one kept, asked for the first time)
+</code></pre>
+<h2 id="maestro-build"><a class="header" href="#maestro-build">maestro build</a></h2>
+<p>Build a container image from a repo on one of your forges.</p>
+<pre><code class="language-text">maestro build &lt;repo&gt; [flags]
+</code></pre>
+<p>Builds a container image from a repo's Dockerfile (or Containerfile)
+at the root of the repo, or from the one its maestro.toml names with
+dockerfile = "path/to/Dockerfile". The root of the repo is the build's
+context either way.</p>
+<p>&lt;repo&gt; is a name, owner/name, or URL. The forge that has it is used; pass
+--forge when several do. A public repo on GitHub, GitLab or Codeberg needs no
+forge and no token: pass its full URL.</p>
+<p>The build gets a number: <code>maestro run &lt;build&gt;</code> runs its image, and
+<code>maestro builds</code> shows the ones you have. With --run, the image is run as
+soon as it is built; --watch implies --run, and follows the run (not the
+build) until it is over.</p>
+<p>To try a change without pushing it, send your own maestro.toml (-c), the
+generator it names (-g) or the Dockerfile (-f) from here: the server builds
+the repo with them in place of its own. Each may have any name here. A
+change to maestro.toml or the generator alone needs no new build: send them
+to <code>maestro run</code> instead, which runs the image you have.</p>
+<p>Examples:</p>
+<pre><code class="language-sh">maestro build my-app
+maestro build some-org/my-app --ref v1.2.0
+maestro build https://github.com/some-org/public-app
+maestro build my-app --watch
+maestro build my-app -c bench.toml -g genvrs.py -f Dockerfile
+build=$(maestro build my-app -q)
+</code></pre>
+<p>Flags:</p>
+<pre><code class="language-text">  -c, --config string       a maestro.toml here to build with in place of the repo's
+  -f, --dockerfile string   a Dockerfile here to build from in place of the repo's
+      --forge string        which forge to use (see 'maestro forges list')
+  -g, --generator string    a generator script here, in place of the one maestro.toml names
+  -n, --interval duration   how often to refresh with --watch (at least 1s) (default 2s)
+      --json                print the build (and its run, with --run) as JSON, and nothing else on stdout
+  -q, --quiet               print only the number of the build (and its run, with --run), and nothing else on stdout
+      --ref string          branch, tag or commit to build (default: the default branch)
+      --run                 run the image once it is built
+  -w, --watch               run the image once it is built (as --run), and follow the run until it is over
+</code></pre>
+<h2 id="maestro-builds"><a class="header" href="#maestro-builds">maestro builds</a></h2>
+<p>Commands for what <code>maestro build</code> built.</p>
+<pre><code class="language-text">maestro builds [flags]
+</code></pre>
+<p>Also: <code>image</code>.</p>
+<p>Flags:</p>
+<pre><code class="language-text">      --json   print the builds as JSON
+</code></pre>
+<p>Commands:</p>
+<ul>
+<li><a href="#maestro-builds-list">maestro builds list</a>: List your builds, and whether each still has its image</li>
+<li><a href="#maestro-builds-rm">maestro builds rm</a>: Remove the image a build produced</li>
+<li><a href="#maestro-builds-run">maestro builds run</a>: Run a build's image on the machines (as maestro run)</li>
+</ul>
+<h2 id="maestro-builds-list"><a class="header" href="#maestro-builds-list">maestro builds list</a></h2>
+<p>List your builds, and whether each still has its image.</p>
+<pre><code class="language-text">maestro builds list [flags]
+</code></pre>
+<p>Lists every build of yours, newest first: the ones that worked, the ones
+that failed and why, and any still going. IMAGE is the size of the image a
+build has, or "removed" once it is gone; only a build with an image can be
+run. BUILD is the number <code>maestro run</code> and <code>maestro builds rm</code> take.</p>
+<p>Flags:</p>
+<pre><code class="language-text">      --json   print the builds as JSON
+</code></pre>
+<h2 id="maestro-builds-rm"><a class="header" href="#maestro-builds-rm">maestro builds rm</a></h2>
+<p>Remove the image a build produced.</p>
+<pre><code class="language-text">maestro builds rm &lt;build&gt; [flags]
+</code></pre>
+<p>Removes the image of a build, from the server and from the machines.
+Each user may keep a limited number of images; this frees a place for a new
+build. The build's record and its runs, with their files, are kept.</p>
+<p>&lt;build&gt; is the build number shown by <code>maestro builds list</code>, with or without #.</p>
+<p>Also: <code>remove</code>.</p>
+<p>Flags:</p>
+<pre><code class="language-text">  -y, --yes    don't ask first
+</code></pre>
+<h2 id="maestro-builds-run"><a class="header" href="#maestro-builds-run">maestro builds run</a></h2>
+<p>Run a build's image on the machines (as maestro run).</p>
+<pre><code class="language-text">maestro builds run &lt;build&gt; [flags]
+</code></pre>
+<p>Queues a run of the image a build produced: one container per line of
+parameters in the repo's maestro.toml, and per line its generator yielded
+when the image was built, spread over the machines it names.
+Without a maestro.toml, a single container runs the image's own command.</p>
+<p>&lt;build&gt; is the build number shown by <code>maestro builds</code>, with or without #.
+Containers start as machines have room; --watch follows them until the run
+is over, as <code>maestro runs show &lt;run&gt; --watch</code> does later, and exits 1
+if the run failed.</p>
+<p>To try other lines without a new build, send your own maestro.toml (-c) or
+the generator it names (-g) from here: the server reads them against the
+repo as the build had it and runs the build's image on the lines they make.
+Each may have any name here. A Dockerfile changes the image, which takes
+<code>maestro build -f</code>.</p>
+<p><code>maestro help concepts</code> says what lines are.</p>
+<p>Examples:</p>
+<pre><code class="language-sh">maestro builds run 12 --watch
+maestro builds run 12 -c small.toml --watch
+maestro builds run 12 -g genvrs.py
+run=$(maestro builds run 12 -q) &amp;&amp; maestro runs show "$run" --watch
+</code></pre>
+<p>Flags:</p>
+<pre><code class="language-text">  -c, --config string       a maestro.toml here to make the lines from in place of the build's
+  -g, --generator string    a generator script here, in place of the one maestro.toml names
+  -n, --interval duration   how often to refresh with --watch (at least 1s) (default 2s)
+      --json                print the queued run as JSON, and nothing else on stdout
+  -q, --quiet               print only the number of the queued run, and nothing else on stdout
+  -w, --watch               follow the run until it is over; exit 1 if it failed
+</code></pre>
+<h2 id="maestro-completion"><a class="header" href="#maestro-completion">maestro completion</a></h2>
+<p>Generate the autocompletion script for the specified shell.</p>
+<pre><code class="language-text">maestro completion [flags]
+</code></pre>
+<p>Generate the autocompletion script for maestro for the specified shell.
+See each sub-command's help for details on how to use the generated script.</p>
+<p>Flags:</p>
+<pre><code class="language-text">
+</code></pre>
+<p>Commands:</p>
+<ul>
+<li><a href="#maestro-completion-bash">maestro completion bash</a>: Generate the autocompletion script for bash</li>
+<li><a href="#maestro-completion-fish">maestro completion fish</a>: Generate the autocompletion script for fish</li>
+<li><a href="#maestro-completion-powershell">maestro completion powershell</a>: Generate the autocompletion script for powershell</li>
+<li><a href="#maestro-completion-zsh">maestro completion zsh</a>: Generate the autocompletion script for zsh</li>
+</ul>
+<h2 id="maestro-completion-bash"><a class="header" href="#maestro-completion-bash">maestro completion bash</a></h2>
+<p>Generate the autocompletion script for bash.</p>
+<pre><code class="language-text">maestro completion bash
+</code></pre>
+<p>Generate the autocompletion script for the bash shell.</p>
+<p>This script depends on the 'bash-completion' package.
+If it is not installed already, you can install it via your OS's package manager.</p>
+<p>To load completions in your current shell session:</p>
+<pre><code class="language-text">source &lt;(maestro completion bash)
+</code></pre>
+<p>To load completions for every new session, execute once:</p>
+<h4 id="linux"><a class="header" href="#linux">Linux:</a></h4>
+<pre><code class="language-text">maestro completion bash &gt; /etc/bash_completion.d/maestro
+</code></pre>
+<h4 id="macos"><a class="header" href="#macos">macOS:</a></h4>
+<pre><code class="language-text">maestro completion bash &gt; $(brew --prefix)/etc/bash_completion.d/maestro
+</code></pre>
+<p>You will need to start a new shell for this setup to take effect.</p>
+<p>Flags:</p>
+<pre><code class="language-text">      --no-descriptions   disable completion descriptions
+</code></pre>
+<h2 id="maestro-completion-fish"><a class="header" href="#maestro-completion-fish">maestro completion fish</a></h2>
+<p>Generate the autocompletion script for fish.</p>
+<pre><code class="language-text">maestro completion fish [flags]
+</code></pre>
+<p>Generate the autocompletion script for the fish shell.</p>
+<p>To load completions in your current shell session:</p>
+<pre><code class="language-text">maestro completion fish | source
+</code></pre>
+<p>To load completions for every new session, execute once:</p>
+<pre><code class="language-text">maestro completion fish &gt; ~/.config/fish/completions/maestro.fish
+</code></pre>
+<p>You will need to start a new shell for this setup to take effect.</p>
+<p>Flags:</p>
+<pre><code class="language-text">      --no-descriptions   disable completion descriptions
+</code></pre>
+<h2 id="maestro-completion-powershell"><a class="header" href="#maestro-completion-powershell">maestro completion powershell</a></h2>
+<p>Generate the autocompletion script for powershell.</p>
+<pre><code class="language-text">maestro completion powershell [flags]
+</code></pre>
+<p>Generate the autocompletion script for powershell.</p>
+<p>To load completions in your current shell session:</p>
+<pre><code class="language-text">maestro completion powershell | Out-String | Invoke-Expression
+</code></pre>
+<p>To load completions for every new session, add the output of the above command
+to your powershell profile.</p>
+<p>Flags:</p>
+<pre><code class="language-text">      --no-descriptions   disable completion descriptions
+</code></pre>
+<h2 id="maestro-completion-zsh"><a class="header" href="#maestro-completion-zsh">maestro completion zsh</a></h2>
+<p>Generate the autocompletion script for zsh.</p>
+<pre><code class="language-text">maestro completion zsh [flags]
+</code></pre>
+<p>Generate the autocompletion script for the zsh shell.</p>
+<p>If shell completion is not already enabled in your environment you will need
+to enable it.  You can execute the following once:</p>
+<pre><code class="language-text">echo "autoload -U compinit; compinit" &gt;&gt; ~/.zshrc
+</code></pre>
+<p>To load completions in your current shell session:</p>
+<pre><code class="language-text">source &lt;(maestro completion zsh)
+</code></pre>
+<p>To load completions for every new session, execute once:</p>
+<h4 id="linux-1"><a class="header" href="#linux-1">Linux:</a></h4>
+<pre><code class="language-text">maestro completion zsh &gt; "${fpath[1]}/_maestro"
+</code></pre>
+<h4 id="macos-1"><a class="header" href="#macos-1">macOS:</a></h4>
+<pre><code class="language-text">maestro completion zsh &gt; $(brew --prefix)/share/zsh/site-functions/_maestro
+</code></pre>
+<p>You will need to start a new shell for this setup to take effect.</p>
+<p>Flags:</p>
+<pre><code class="language-text">      --no-descriptions   disable completion descriptions
+</code></pre>
+<h2 id="maestro-docs"><a class="header" href="#maestro-docs">maestro docs</a></h2>
+<p>Open the Maestro book, on a topic or a command.</p>
+<pre><code class="language-text">maestro docs [topic | command…] [flags]
+</code></pre>
+<p>Opens the Maestro book in a browser, and prints its link: the book explains
+how Maestro builds, queues and runs your containers, and how to set it up.</p>
+<p>Name a topic (maestro docs queue) to open its page, or a command
+(maestro docs runs logs) for what it takes.</p>
+<p>maestro carries the book, so it opens offline, without signing in: it is
+served from this computer only (127.0.0.1), until ctrl-c, so that any
+browser opens it whole, a sandboxed one too. --web opens the copy your
+Maestro server serves instead, which can be opened on another machine, as
+when this one is reached over SSH. MAESTRO_DOCS_URL points at another copy
+still.</p>
+<p>Also: <code>doc</code>.</p>
+<p>Examples:</p>
+<pre><code class="language-sh">maestro docs
+maestro docs toml
+maestro docs runs logs
+maestro docs queue --web --url
+</code></pre>
+<p>Flags:</p>
+<pre><code class="language-text">      --url    only print the link, without opening a browser
+      --web    the book your Maestro server serves, instead of the one maestro carries
+</code></pre>
+<h2 id="maestro-export"><a class="header" href="#maestro-export">maestro export</a></h2>
+<p>Write what happened to your lines over a period, as CSV.</p>
+<pre><code class="language-text">maestro export [flags]
+</code></pre>
+<p>Writes a row for each line of the runs queued over a period: its run and
+line, whose it is, its cores and memory, the machine it ran on, its status,
+the scheduler settings it was chosen under, and when it was submitted,
+staged, assigned, started and finished, and the group its user was in when
+it was staged. It is what <code>sim evaluate</code>, in maestro-orq, measures
+waits, slowdowns, utilization, fairness and the objective Z from, the same
+as for a simulation.</p>
+<p>Administrators can export everyone's lines with --all.</p>
+<p>Examples:</p>
+<pre><code class="language-sh">maestro export --since 2026-11-01 --until 2026-11-08 &gt; lines.csv
+maestro export --since 2026-11-01 --all -o lines.csv
+maestro export --since 30d -o month.csv
+</code></pre>
+<p>Flags:</p>
+<pre><code class="language-text">      --all             everyone's lines (administrators)
+  -o, --output string   the file to write; the standard output when left out
+      --since string    from this day (2026-11-01), RFC 3339 time or so long ago (12h, 7d, 2w) on; a week ago when left out
+      --until string    until before this day, time or so long ago; now when left out
+</code></pre>
+<h2 id="maestro-forges"><a class="header" href="#maestro-forges">maestro forges</a></h2>
+<p>Manage the git forges Maestro reads repositories from.</p>
+<pre><code class="language-text">maestro forges [flags]
+</code></pre>
+<p>A forge is where your repositories live: GitHub, Forgejo (Codeberg,
+Gitea) or GitLab. Maestro only reads from it.</p>
+<p>Also: <code>forge</code>.</p>
+<p>Flags:</p>
+<pre><code class="language-text">      --json   print the forges as JSON
+</code></pre>
+<p>Commands:</p>
+<ul>
+<li><a href="#maestro-forges-add">maestro forges add</a>: Add a forge and its token</li>
+<li><a href="#maestro-forges-list">maestro forges list</a>: List the configured forges</li>
+<li><a href="#maestro-forges-rm">maestro forges rm</a>: Remove a forge and forget its token</li>
+</ul>
+<h2 id="maestro-forges-add"><a class="header" href="#maestro-forges-add">maestro forges add</a></h2>
+<p>Add a forge and its token.</p>
+<pre><code class="language-text">maestro forges add [name] [flags]
+</code></pre>
+<p>Adds a forge, or replaces the one with the same name. The token is
+checked before it is stored. Only Forgejo takes a --url.</p>
+<p>The token is kept in the system keyring. Without --store-in-file, adding a
+forge goes back to the keyring; with it, secrets are kept in the config file.</p>
+<p>Examples:</p>
+<pre><code class="language-sh">maestro forges add
+maestro forges add --kind gitlab
+maestro forges add work --kind forgejo --url https://git.example.com
+</code></pre>
+<p>Flags:</p>
+<pre><code class="language-text">      --kind string     forge kind: github, forgejo, gitlab
+      --store-in-file   keep secrets in the config file instead of the system keyring, for good
+      --url string      Forgejo instance URL (default: https://codeberg.org)
+</code></pre>
+<h2 id="maestro-forges-list"><a class="header" href="#maestro-forges-list">maestro forges list</a></h2>
+<p>List the configured forges.</p>
+<pre><code class="language-text">maestro forges list [flags]
+</code></pre>
+<p>Flags:</p>
+<pre><code class="language-text">      --json   print the forges as JSON
+</code></pre>
+<h2 id="maestro-forges-rm"><a class="header" href="#maestro-forges-rm">maestro forges rm</a></h2>
+<p>Remove a forge and forget its token.</p>
+<pre><code class="language-text">maestro forges rm &lt;name&gt; [flags]
+</code></pre>
+<p>Also: <code>remove</code>.</p>
+<p>Flags:</p>
+<pre><code class="language-text">  -y, --yes    don't ask first
+</code></pre>
+<h2 id="maestro-login"><a class="header" href="#maestro-login">maestro login</a></h2>
+<p>Sign the CLI in to Maestro.</p>
+<pre><code class="language-text">maestro login [flags]
+</code></pre>
+<p>Prints a link to the Maestro page and a short code to approve there.
+The link can be opened in any browser, on this machine or another.</p>
+<p>With --server, signs in to that Maestro server, which every command then
+talks to; without it, to the one kept, which is asked for the first time.
+The key is only ever sent to the server that minted it.</p>
+<p>The key is kept in the system keyring, and a login without --store-in-file goes
+back to it. If yours asks for a password, or has none,
+pass --store-in-file to keep secrets in the config file (readable only by you)
+instead.</p>
+<p>Flags:</p>
+<pre><code class="language-text">      --store-in-file   keep secrets in the config file instead of the system keyring, for good
+</code></pre>
+<h2 id="maestro-logout"><a class="header" href="#maestro-logout">maestro logout</a></h2>
+<p>Sign out and forget everything the CLI has stored.</p>
+<pre><code class="language-text">maestro logout [flags]
+</code></pre>
+<p>Forgets the Maestro key and the server it is for, every forge and its
+token, on this machine only. A token stays valid on its forge: revoke it
+there if you no longer trust this machine.</p>
+<p>Flags:</p>
+<pre><code class="language-text">  -y, --yes    don't ask for confirmation
+</code></pre>
+<h2 id="maestro-machines"><a class="header" href="#maestro-machines">maestro machines</a></h2>
+<p>Commands for the machines containers run on.</p>
+<pre><code class="language-text">maestro machines [flags]
+</code></pre>
+<p>Also: <code>machine</code>.</p>
+<p>Flags:</p>
+<pre><code class="language-text">      --json   print the machines as JSON
+</code></pre>
+<p>Commands:</p>
+<ul>
+<li><a href="#maestro-machines-list">maestro machines list</a>: List the machines, and whether Maestro can reach them now</li>
+<li><a href="#maestro-machines-stats">maestro machines stats</a>: Print how loaded the machines are, once</li>
+</ul>
+<h2 id="maestro-machines-list"><a class="header" href="#maestro-machines-list">maestro machines list</a></h2>
+<p>List the machines, and whether Maestro can reach them now.</p>
+<pre><code class="language-text">maestro machines list [flags]
+</code></pre>
+<p>Lists the machines an administrator added on the Maestro page. Their
+names are what maestro.toml refers to them by.</p>
+<p>Flags:</p>
+<pre><code class="language-text">      --json   print the machines as JSON
+</code></pre>
+<h2 id="maestro-machines-stats"><a class="header" href="#maestro-machines-stats">maestro machines stats</a></h2>
+<p>Print how loaded the machines are, once.</p>
+<pre><code class="language-text">maestro machines stats [machine] [flags]
+</code></pre>
+<p>Prints a table of every machine's CPU, memory, GPUs, load, the cores and
+memory lines take of what it has for them (with the lines waiting, as +N) and
+containers once. With --json, prints everything Maestro knows, for scripts.</p>
+<p>For something to watch, use <code>maestro top</code>.</p>
+<p>Flags:</p>
+<pre><code class="language-text">      --json   print everything as JSON
+</code></pre>
+<h2 id="maestro-queue"><a class="header" href="#maestro-queue">maestro queue</a></h2>
+<p>Show where lines wait, and your share of the machines.</p>
+<pre><code class="language-text">maestro queue [flags]
+</code></pre>
+<p>Shows how many lines wait at each level, everyone's together and yours:</p>
+<pre><code class="language-text">queued    among their user's lines
+staged    chosen from them, waiting for a machine
+assigned  given to a machine, waiting for room on it
+starting, running
+</code></pre>
+<p>and your share of the machines, as the scheduler weighs it when it chooses
+whose line goes next. Users are in groups: each group's lines are staged
+apart, up to its own capacity, and groups take turns at the machines. You
+see your group and how much of it is staged; administrators see every user,
+with the number an administrator gives a user a weight by, and every group.
+It ends with how the scheduler is set up; <code>maestro settings</code> says it all.</p>
+<p>Flags:</p>
+<pre><code class="language-text">      --json   print the queue as JSON
+</code></pre>
+<h2 id="maestro-repos"><a class="header" href="#maestro-repos">maestro repos</a></h2>
+<p>List the repositories your forges can see.</p>
+<pre><code class="language-text">maestro repos [flags]
+</code></pre>
+<p>Also: <code>repo</code>.</p>
+<p>Flags:</p>
+<pre><code class="language-text">      --forge string   which forge to use (see 'maestro forges list')
+      --json           print the repositories as JSON
+</code></pre>
+<p>Commands:</p>
+<ul>
+<li><a href="#maestro-repos-list">maestro repos list</a>: List the repositories your forge tokens can see</li>
+</ul>
+<h2 id="maestro-repos-list"><a class="header" href="#maestro-repos-list">maestro repos list</a></h2>
+<p>List the repositories your forge tokens can see.</p>
+<pre><code class="language-text">maestro repos list [flags]
+</code></pre>
+<p>Lists one forge's repositories. Left and right arrows switch forge;
+--forge picks the one shown first.</p>
+<p>Piped somewhere, or with --json, it prints every forge's repositories once
+instead, or only those of --forge.</p>
+<p>Flags:</p>
+<pre><code class="language-text">      --forge string   which forge to use (see 'maestro forges list')
+      --json           print the repositories as JSON
+</code></pre>
+<h2 id="maestro-run"><a class="header" href="#maestro-run">maestro run</a></h2>
+<p>Run the image of one of your builds on the machines.</p>
+<pre><code class="language-text">maestro run &lt;build&gt; [flags]
+</code></pre>
+<p>Queues a run of the image a build produced: one container per line of
+parameters in the repo's maestro.toml, and per line its generator yielded
+when the image was built, spread over the machines it names.
+Without a maestro.toml, a single container runs the image's own command.</p>
+<p>&lt;build&gt; is the build number shown by <code>maestro builds</code>, with or without #.
+Containers start as machines have room; --watch follows them until the run
+is over, as <code>maestro runs show &lt;run&gt; --watch</code> does later, and exits 1
+if the run failed.</p>
+<p>To try other lines without a new build, send your own maestro.toml (-c) or
+the generator it names (-g) from here: the server reads them against the
+repo as the build had it and runs the build's image on the lines they make.
+Each may have any name here. A Dockerfile changes the image, which takes
+<code>maestro build -f</code>.</p>
+<p><code>maestro help concepts</code> says what lines are.</p>
+<p>Examples:</p>
+<pre><code class="language-sh">maestro run 12 --watch
+maestro run 12 -c small.toml --watch
+maestro run 12 -g genvrs.py
+run=$(maestro run 12 -q) &amp;&amp; maestro runs show "$run" --watch
+</code></pre>
+<p>Flags:</p>
+<pre><code class="language-text">  -c, --config string       a maestro.toml here to make the lines from in place of the build's
+  -g, --generator string    a generator script here, in place of the one maestro.toml names
+  -n, --interval duration   how often to refresh with --watch (at least 1s) (default 2s)
+      --json                print the queued run as JSON, and nothing else on stdout
+  -q, --quiet               print only the number of the queued run, and nothing else on stdout
+  -w, --watch               follow the run until it is over; exit 1 if it failed
+</code></pre>
+<h2 id="maestro-runs"><a class="header" href="#maestro-runs">maestro runs</a></h2>
+<p>Commands for the runs started with <code>maestro run</code>.</p>
+<pre><code class="language-text">maestro runs [flags]
+</code></pre>
+<p>Flags:</p>
+<pre><code class="language-text">      --all                 everyone's runs (administrators only)
+  -n, --interval duration   how often to refresh with --watch (at least 1s) (default 2s)
+      --json                print the runs as JSON
+      --limit int           how many runs, newest first; 0 for all (default 20)
+      --repo string         only the runs of this repo (owner/name, or name)
+      --status string       only the runs with this status
+  -w, --watch               keep showing it, refreshed as it changes
+</code></pre>
+<p>Commands:</p>
+<ul>
+<li><a href="#maestro-runs-cancel">maestro runs cancel</a>: Cancel a run: drop what hasn't started and stop what has</li>
+<li><a href="#maestro-runs-get">maestro runs get</a>: Download the files kept from a run</li>
+<li><a href="#maestro-runs-list">maestro runs list</a>: List your runs</li>
+<li><a href="#maestro-runs-logs">maestro runs logs</a>: Print what a line's container wrote to stdout and stderr</li>
+<li><a href="#maestro-runs-rm">maestro runs rm</a>: Delete a finished run and the files kept from it</li>
+<li><a href="#maestro-runs-show">maestro runs show</a>: Show each line of a run: where it ran, how it ended, what it kept</li>
+</ul>
+<h2 id="maestro-runs-cancel"><a class="header" href="#maestro-runs-cancel">maestro runs cancel</a></h2>
+<p>Cancel a run: drop what hasn't started and stop what has.</p>
+<pre><code class="language-text">maestro runs cancel &lt;run&gt; [flags]
+</code></pre>
+<p>Flags:</p>
+<pre><code class="language-text">
+</code></pre>
+<h2 id="maestro-runs-get"><a class="header" href="#maestro-runs-get">maestro runs get</a></h2>
+<p>Download the files kept from a run.</p>
+<pre><code class="language-text">maestro runs get &lt;run&gt; [dir] [flags]
+</code></pre>
+<p>Downloads every file kept from a run's containers into &lt;dir&gt;/&lt;run&gt;/&lt;line&gt;/,
+and what each printed among them, as stdout.log and stderr.log (dir defaults
+to the current directory). --line picks some lines only. A run already
+downloaded there is only downloaded over with --force.</p>
+<p>Examples:</p>
+<pre><code class="language-sh">maestro runs get 31
+maestro runs get 31 results/ --line 2 --line 5
+</code></pre>
+<p>Flags:</p>
+<pre><code class="language-text">      --force             download over a run already downloaded there
+      --line int64Slice   only this line (again for more) (default [])
+</code></pre>
+<h2 id="maestro-runs-list"><a class="header" href="#maestro-runs-list">maestro runs list</a></h2>
+<p>List your runs.</p>
+<pre><code class="language-text">maestro runs list [flags]
+</code></pre>
+<p>Lists your runs, newest first: the last --limit of them (20; 0 for all),
+of a --status (queued, running, succeeded, failed, cancelled) or a --repo
+if asked. --json prints the same runs. With --watch, the list is drawn again
+every --interval until you press ctrl-c. With --all, an administrator is
+given everyone's runs, and whose each is.</p>
+<p>Flags:</p>
+<pre><code class="language-text">      --all                 everyone's runs (administrators only)
+  -n, --interval duration   how often to refresh with --watch (at least 1s) (default 2s)
+      --json                print the runs as JSON
+      --limit int           how many runs, newest first; 0 for all (default 20)
+      --repo string         only the runs of this repo (owner/name, or name)
+      --status string       only the runs with this status
+  -w, --watch               keep showing it, refreshed as it changes
+</code></pre>
+<h2 id="maestro-runs-logs"><a class="header" href="#maestro-runs-logs">maestro runs logs</a></h2>
+<p>Print what a line's container wrote to stdout and stderr.</p>
+<pre><code class="language-text">maestro runs logs &lt;run&gt; [line] [flags]
+</code></pre>
+<p>Prints what a line's container wrote: its stdout to stdout and its stderr
+to stderr, so the two can be told apart or sent to different places. The
+line may be left out of a run that has only one.</p>
+<p>With -f, a line that hasn't started yet is waited for, and what a running
+line prints is followed until it ends, as tail -f does.</p>
+<p>Once a line is over, all of its stdout comes before all of its stderr; how
+they were mixed as the container ran isn't kept.</p>
+<p>Examples:</p>
+<pre><code class="language-sh">maestro runs logs 31 2 -f
+maestro runs logs 31 2 2&gt;/dev/null   # only what it printed to stdout
+maestro runs logs 31 2 &gt;/dev/null    # only what it printed to stderr
+</code></pre>
+<p>Flags:</p>
+<pre><code class="language-text">  -f, --follow     wait for the line to start, and follow what it prints until it ends
+      --tail int   only the last N lines of a line still running (all when left out)
+</code></pre>
+<h2 id="maestro-runs-rm"><a class="header" href="#maestro-runs-rm">maestro runs rm</a></h2>
+<p>Delete a finished run and the files kept from it.</p>
+<pre><code class="language-text">maestro runs rm &lt;run&gt; [flags]
+</code></pre>
+<p>Also: <code>remove</code>.</p>
+<p>Flags:</p>
+<pre><code class="language-text">  -y, --yes    don't ask first
+</code></pre>
+<h2 id="maestro-runs-show"><a class="header" href="#maestro-runs-show">maestro runs show</a></h2>
+<p>Show each line of a run: where it ran, how it ended, what it kept.</p>
+<pre><code class="language-text">maestro runs show [run] [flags]
+</code></pre>
+<p>Shows each line of a run: where it ran, how it ended, what it kept. With
+--watch, it is drawn again every --interval until the run is over, or you
+press ctrl-c, and exits 1 if the run failed. Without a run, it shows your
+newest. --failed shows only the lines that failed, errored or were
+cancelled.</p>
+<p>Flags:</p>
+<pre><code class="language-text">      --failed              only the lines that failed, errored or were cancelled
+  -n, --interval duration   how often to refresh with --watch (at least 1s) (default 2s)
+      --json                print the run as JSON
+  -w, --watch               keep showing it, refreshed as it changes; exit 1 if the run failed
+</code></pre>
+<h2 id="maestro-settings"><a class="header" href="#maestro-settings">maestro settings</a></h2>
+<p>Show the server's settings: the image limit and how lines are scheduled.</p>
+<pre><code class="language-text">maestro settings [flags]
+</code></pre>
+<p>Shows how many images each user may keep, and how the scheduler chooses
+whose line goes next and where: the policy of each level, the score's
+weights and how a user's share of the machines is measured. An
+administrator changes them on the Maestro page.</p>
+<p>Flags:</p>
+<pre><code class="language-text">      --json   print the settings as JSON
+</code></pre>
+<h2 id="maestro-top"><a class="header" href="#maestro-top">maestro top</a></h2>
+<p>Watch how loaded the machines are, like top.</p>
+<pre><code class="language-text">maestro top [machine] [flags]
+</code></pre>
+<p>Shows every machine on a row: CPU, memory, GPUs, load, how many of the
+cores it has for lines they take and how many lines wait (6/14 +3),
+refreshed as you watch. Press enter on a machine for its cores, memory, disks, network,
+GPUs and the containers on it with whose they are, or name a machine to open
+it straight away.</p>
+<p>Anyone signed in sees the machines and their own containers. Administrators
+also see every container, and the server Maestro runs on, as "orq".</p>
+<p>Many people watching share one reading: Maestro takes it at most every couple
+of seconds, however many windows are open.</p>
+<p>Flags:</p>
+<pre><code class="language-text">  -n, --interval duration   how often to refresh (at least 1s) (default 2s)
+</code></pre>
+<h2 id="maestro-usage"><a class="header" href="#maestro-usage">maestro usage</a></h2>
+<p>Show how much your lines have used.</p>
+<pre><code class="language-text">maestro usage [flags]
+</code></pre>
+<p>Shows the core-hours and memory GB-hours your lines used over the last
+days, counted as each line ends. What you used counts against you, less as
+it gets older, when the scheduler weighs whose line goes next, if an
+administrator set it up so.</p>
+<p>Administrators see everyone's, or one user's with --user, by their number
+or email.</p>
+<p>Examples:</p>
+<pre><code class="language-sh">maestro usage --daily --days 7
+maestro usage --user ana@example.org
+</code></pre>
+<p>Flags:</p>
+<pre><code class="language-text">      --daily         a row for each day
+      --days int      how many days back (default 30)
+      --json          print the usage as JSON, a day at a time
+      --user string   one user's usage, by their number or email (administrators)
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../admin/retention.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../reference/maestro-toml.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../admin/retention.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../reference/maestro-toml.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

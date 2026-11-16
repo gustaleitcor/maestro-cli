@@ -1,0 +1,363 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Policies and the score - Maestro</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="How Maestro builds your repos into images and runs them across shared machines, and how to set it up.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../introduction.html">What Maestro is</a></li><li class="chapter-item expanded affix "><li class="part-title">Start here</li><li class="chapter-item expanded "><a href="../start/quickstart.html"><strong aria-hidden="true">1.</strong> Quickstart: run the template</a></li><li class="chapter-item expanded "><a href="../start/your-copy.html"><strong aria-hidden="true">2.</strong> Your own copy of the template</a></li><li class="chapter-item expanded affix "><li class="part-title">Your repo, one piece at a time</li><li class="chapter-item expanded "><a href="../repo/dockerfile.html"><strong aria-hidden="true">3.</strong> The minimum: a Dockerfile</a></li><li class="chapter-item expanded "><a href="../repo/maestro-toml.html"><strong aria-hidden="true">4.</strong> maestro.toml: how the image is run</a></li><li class="chapter-item expanded "><a href="../repo/generator.html"><strong aria-hidden="true">5.</strong> Generating lines with Python</a></li><li class="chapter-item expanded "><a href="../repo/container.html"><strong aria-hidden="true">6.</strong> Inside the container</a></li><li class="chapter-item expanded "><a href="../repo/local-files.html"><strong aria-hidden="true">7.</strong> Trying a change without pushing it</a></li><li class="chapter-item expanded "><a href="../repo/examples.html"><strong aria-hidden="true">8.</strong> Fuller examples</a></li><li class="chapter-item expanded affix "><li class="part-title">Working with Maestro</li><li class="chapter-item expanded "><a href="../use/install.html"><strong aria-hidden="true">9.</strong> Installing the CLI</a></li><li class="chapter-item expanded "><a href="../use/login.html"><strong aria-hidden="true">10.</strong> Signing in</a></li><li class="chapter-item expanded "><a href="../use/forges.html"><strong aria-hidden="true">11.</strong> Git forges</a></li><li class="chapter-item expanded "><a href="../use/cli.html"><strong aria-hidden="true">12.</strong> How the CLI behaves</a></li><li class="chapter-item expanded "><a href="../use/builds.html"><strong aria-hidden="true">13.</strong> Builds and images</a></li><li class="chapter-item expanded "><a href="../use/runs.html"><strong aria-hidden="true">14.</strong> Runs and lines</a></li><li class="chapter-item expanded "><a href="../use/results.html"><strong aria-hidden="true">15.</strong> What a line leaves behind</a></li><li class="chapter-item expanded "><a href="../use/page.html"><strong aria-hidden="true">16.</strong> The Maestro page</a></li><li class="chapter-item expanded "><a href="../use/machines.html"><strong aria-hidden="true">17.</strong> Watching the machines</a></li><li class="chapter-item expanded "><a href="../use/usage.html"><strong aria-hidden="true">18.</strong> Usage and export</a></li><li class="chapter-item expanded affix "><li class="part-title">How Maestro works</li><li class="chapter-item expanded "><a href="../how/parts.html"><strong aria-hidden="true">19.</strong> The parts</a></li><li class="chapter-item expanded "><a href="../how/queue.html"><strong aria-hidden="true">20.</strong> The queue</a></li><li class="chapter-item expanded "><a href="../how/score.html" class="active"><strong aria-hidden="true">21.</strong> Policies and the score</a></li><li class="chapter-item expanded affix "><li class="part-title">Running a Maestro</li><li class="chapter-item expanded "><a href="../admin/deploy.html"><strong aria-hidden="true">22.</strong> Deploying Maestro</a></li><li class="chapter-item expanded "><a href="../admin/identity.html"><strong aria-hidden="true">23.</strong> The identity provider</a></li><li class="chapter-item expanded "><a href="../admin/machines.html"><strong aria-hidden="true">24.</strong> Adding machines</a></li><li class="chapter-item expanded "><a href="../admin/proxy.html"><strong aria-hidden="true">25.</strong> Machines behind a proxy</a></li><li class="chapter-item expanded "><a href="../admin/policies.html"><strong aria-hidden="true">26.</strong> Choosing the policies</a></li><li class="chapter-item expanded "><a href="../admin/groups.html"><strong aria-hidden="true">27.</strong> Groups</a></li><li class="chapter-item expanded "><a href="../admin/sim.html"><strong aria-hidden="true">28.</strong> Comparing policies offline</a></li><li class="chapter-item expanded "><a href="../admin/retention.html"><strong aria-hidden="true">29.</strong> What orq keeps, and for how long</a></li><li class="chapter-item expanded affix "><li class="part-title">Reference</li><li class="chapter-item expanded "><a href="../reference/cli.html"><strong aria-hidden="true">30.</strong> Every command</a></li><li class="chapter-item expanded "><a href="../reference/maestro-toml.html"><strong aria-hidden="true">31.</strong> maestro.toml keys</a></li><li class="chapter-item expanded "><a href="../reference/env.html"><strong aria-hidden="true">32.</strong> Environment variables</a></li><li class="chapter-item expanded "><a href="../reference/troubleshooting.html"><strong aria-hidden="true">33.</strong> When something goes wrong</a></li><li class="chapter-item expanded "><a href="../reference/glossary.html"><strong aria-hidden="true">34.</strong> Glossary</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><a href="../contributing.html">Contributing</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Maestro</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/gustaleitcor/maestro-cli" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/gustaleitcor/maestro-cli/edit/main/book/src/how/score.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="policies-and-the-score"><a class="header" href="#policies-and-the-score">Policies and the score</a></h1>
+<p><a href="queue.html">The queue</a> described three steps that move a line toward a
+machine. Each step makes a choice, and a policy makes it. An administrator
+picks the policies, and <code>maestro settings</code> shows the ones in force.</p>
+<h2 id="the-four-policies"><a class="header" href="#the-four-policies">The four policies</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Setting</th><th>The choice it makes</th><th>When</th></tr></thead><tbody>
+<tr><td><code>user</code></td><td>Which of one user's queued lines is that user's next</td><td>Selection</td></tr>
+<tr><td><code>select</code></td><td>Which user's next line is staged, among the users of a group</td><td>Selection</td></tr>
+<tr><td><code>allocate</code></td><td>Which of a group's staged lines goes to a machine in the group's turn</td><td>Allocation</td></tr>
+<tr><td><code>machine</code></td><td>Which of the lines waiting on a machine starts</td><td>Promotion</td></tr>
+</tbody></table>
+</div>
+<p>All four are <code>fifo</code> until an administrator changes them. Lines then go in
+the order they were queued, oldest run first, and on a machine the oldest
+waiting line holds back the others until it fits.</p>
+<h2 id="what-a-policy-can-be"><a class="header" href="#what-a-policy-can-be">What a policy can be</a></h2>
+<p>The first three policies choose before a line is on a machine. At that
+point there is no free space to fit the line into, so these policies only
+put lines in an order.</p>
+<div class="table-wrapper"><table><thead><tr><th>Policy</th><th>Serves first</th></tr></thead><tbody>
+<tr><td><code>fifo</code></td><td>The oldest</td></tr>
+<tr><td><code>lcfs</code></td><td>The newest</td></tr>
+<tr><td><code>siro</code></td><td>One at random. The same <code>seed</code> gives the same choices.</td></tr>
+<tr><td><code>pq</code></td><td>The one with the highest <a href="#the-score">score</a>. Among equal scores, the oldest.</td></tr>
+</tbody></table>
+</div>
+<p>The <code>machine</code> policy can be any of those four, and it also has four that
+look at the machine's free cores and memory.</p>
+<div class="table-wrapper"><table><thead><tr><th>Policy</th><th>Serves first, among the lines that fit now</th></tr></thead><tbody>
+<tr><td><code>fifo-skip</code></td><td>The oldest</td></tr>
+<tr><td><code>best-fit</code></td><td>The one that leaves the least free</td></tr>
+<tr><td><code>weighted-best-fit</code></td><td>As <code>best-fit</code>, with the time a line has waited counting in its favour by ω3. A line that fits badly still starts eventually.</td></tr>
+<tr><td><code>tetris</code></td><td>The one whose cores and memory are most like what the machine has free, so that less of either is stranded (Grandl et al., 2014)</td></tr>
+</tbody></table>
+</div>
+<p>On a machine, <code>fifo</code> and <code>lcfs</code> are strict. They start their first choice
+if it fits, and start nothing while it doesn't. <code>siro</code> and <code>pq</code> choose
+among the lines that fit now, as the four policies in the second table do.</p>
+<h2 id="the-score"><a class="header" href="#the-score">The score</a></h2>
+<p><code>pq</code> gives every candidate line a score and serves the highest.</p>
+<blockquote>
+<p>s = ω1·cores + ω2·memory + ω3·waiting + ω4·share</p>
+</blockquote>
+<div class="table-wrapper"><table><thead><tr><th>Term</th><th>What it is</th></tr></thead><tbody>
+<tr><td>cores</td><td>The line's <code>cpus</code>, as a fraction of the most cores any machine has</td></tr>
+<tr><td>memory</td><td>The line's <code>memory</code>, as a fraction of the most memory any machine has</td></tr>
+<tr><td>waiting</td><td>The time since the line's run was queued, divided by the horizon. The horizon is an hour unless <code>horizon_minutes</code> says otherwise.</td></tr>
+<tr><td>share</td><td>The user's share of the machines, as a fraction of every user's share added together</td></tr>
+</tbody></table>
+</div>
+<p>An administrator sets the four weights, and a weight can be negative.</p>
+<div class="table-wrapper"><table><thead><tr><th>Weight</th><th>Setting</th><th>Effect</th></tr></thead><tbody>
+<tr><td>ω1</td><td><code>cpu_weight</code></td><td>Below 0, lines that ask for few cores go first.</td></tr>
+<tr><td>ω2</td><td><code>memory_weight</code></td><td>Below 0, lines that ask for little memory go first.</td></tr>
+<tr><td>ω3</td><td><code>aging_weight</code></td><td>Above 0, a line's score grows while it waits, so no line waits forever.</td></tr>
+<tr><td>ω4</td><td><code>share_weight</code></td><td>Below 0, a user who holds less of the machines goes first.</td></tr>
+</tbody></table>
+</div>
+<h3 id="a-worked-example"><a class="header" href="#a-worked-example">A worked example</a></h3>
+<p>Take a lab whose largest machine has 16 cores, with <code>select = pq</code> and these
+weights: ω1 = −0.2, ω2 = 0, ω3 = 0.5 and ω4 = −1. The horizon is an hour.
+Two users each have a next line.</p>
+<div class="table-wrapper"><table><thead><tr><th></th><th>Ada's line</th><th>Bo's line</th></tr></thead><tbody>
+<tr><td>Cores asked for</td><td>4, so cores = 0.25</td><td>8, so cores = 0.5</td></tr>
+<tr><td>Run queued</td><td>30 minutes ago, so waiting = 0.5</td><td>6 minutes ago, so waiting = 0.1</td></tr>
+<tr><td>User's share</td><td>0.75</td><td>0.25</td></tr>
+<tr><td>ω1·cores</td><td>−0.05</td><td>−0.10</td></tr>
+<tr><td>ω3·waiting</td><td>+0.25</td><td>+0.05</td></tr>
+<tr><td>ω4·share</td><td>−0.75</td><td>−0.25</td></tr>
+<tr><td>Score</td><td>−0.55</td><td>−0.30</td></tr>
+</tbody></table>
+</div>
+<p>Bo's line has the higher score, so it is staged first. Ada's line has
+waited longer and is smaller, but Ada already holds three times what Bo
+holds, and with these weights the share outweighs the rest.</p>
+<p>Staging Bo's line raises Bo's share, because a staged line counts as held.
+The scheduler works the shares out again before it stages the next line.</p>
+<h2 id="a-users-share"><a class="header" href="#a-users-share">A user's share</a></h2>
+<p>The <code>share</code> setting chooses how a user's share is measured.</p>
+<div class="table-wrapper"><table><thead><tr><th>Measure</th><th>A user's share is</th></tr></thead><tbody>
+<tr><td><code>drf</code></td><td>The dominant share now. Take the cores the user's lines hold as a fraction of the cores the machines have for lines, and the same for memory. The share is the larger of the two fractions (Ghodsi et al., 2011).</td></tr>
+<tr><td><code>weighted-drf</code></td><td>As <code>drf</code>, with each fraction divided by the user's weight for that resource. An administrator sets the weights for each user, and a user without any has 1 for both.</td></tr>
+<tr><td><code>asset</code></td><td>The two fractions added together. It is there for comparison only, because it lacks the sharing-incentive property that <code>drf</code> has.</td></tr>
+<tr><td><code>decay</code></td><td>The dominant share of what the user's lines have used in the past. Usage counts half as much after each half-life, which is a week unless <code>half_life_hours</code> says otherwise. Slurm's fair-share works this way.</td></tr>
+</tbody></table>
+</div>
+<p>For <code>drf</code>, <code>weighted-drf</code> and <code>asset</code>, the lines a user holds are those that
+are staged, assigned, starting or running.</p>
+<p>Suppose the machines of the lab in the example have 32 cores and 96 GB for
+lines in total, and the measure is <code>drf</code>. Ada's lines hold 12 cores and
+16 GB. That is
+0.375 of the cores and 0.167 of the memory, so her dominant share is 0.375.
+Bo's lines hold 3 cores and 12 GB, which is 0.094 and 0.125, so his is
+0.125. The score uses each as a fraction of the two together, which gives
+0.75 for Ada and 0.25 for Bo.</p>
+<p>With <code>select = pq</code>, <code>share = drf</code> and ω4 = −1, the queue is the classic fair
+queue of DRF, in which the user who holds the least goes next.</p>
+<h2 id="the-limits"><a class="header" href="#the-limits">The limits</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Setting</th><th>What it limits</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>staged_capacity</code></td><td>How many lines of each group can be staged at once</td><td>Twice the number of machines</td></tr>
+<tr><td><code>depth</code></td><td>How many lines can wait on each machine</td><td>3</td></tr>
+</tbody></table>
+</div>
+<p>A smaller <code>depth</code> leaves the choice of whose line goes next until closer to
+the moment a machine has room.</p>
+<p>When allocation gives a line to a machine, it draws the machine at random
+among those the line may use that have room in their queue. It reserves
+nothing on the machine, and promotion decides later whether the line fits.
+The <code>seed</code> setting makes that draw, and <code>siro</code>, repeat the same choices.</p>
+<h2 id="seeing-the-settings"><a class="header" href="#seeing-the-settings">Seeing the settings</a></h2>
+<pre><code class="language-text">images per user                       10
+within a user                         fifo
+among users                           pq
+staged lines, in turn between groups  fifo
+on a machine                          best-fit
+staged at most                        twice the machines, per group
+waiting on a machine                  3
+score weights                         cpu 0 · memory 0 · waiting 0.5 · share -1
+waiting horizon                       60 min
+share measure                         drf
+half-life                             168 h
+seed (siro, machine draw)             0
+user weights                          everyone 1
+</code></pre>
+<p>The four rows after the image limit in <code>maestro settings</code> are the <code>user</code>,
+<code>select</code>, <code>allocate</code> and <code>machine</code> policies, in that order.
+<a href="../admin/policies.html">Choosing the policies</a> shows an administrator where
+to change them.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../how/queue.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../admin/deploy.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../how/queue.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../admin/deploy.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

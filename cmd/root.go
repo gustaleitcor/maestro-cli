@@ -256,12 +256,18 @@ func groupCommands() {
 
 // execute runs the command asked for, once every command has been added.
 func execute() (*cobra.Command, error) {
+	prepare()
+	return rootCmd.ExecuteC()
+}
+
+// prepare finishes the commands, once all are added, before anything runs
+// or describes them.
+func prepare() {
 	prepared.Do(func() {
 		groupCommands()
 		asUsage(rootCmd)
 		rootCmd.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return usageError(err) })
 	})
-	return rootCmd.ExecuteC()
 }
 
 // report says what went wrong, if there is anything to say, and returns

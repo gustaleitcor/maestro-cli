@@ -1,8 +1,9 @@
 #!/bin/sh
-# Builds the book and packs it as internal/book/site/book.tar.gz, which the
-# next `go build` embeds and `maestro docs` opens offline. goreleaser runs it
-# before every release; run it yourself before a `go build` that should
-# carry the book.
+# Builds the book into internal/book/site, which is committed, so that a
+# plain `go build` carries it and `maestro docs` opens it offline. Run it
+# after changing a page, book.toml or a command's help, and commit what it
+# writes: a test fails while the built book is older than any of them, by
+# internal/book/sources.sha256, the checksum of what it was built from.
 #
 # It uses mdbook and mdbook-mermaid from PATH when they are there, and else
 # downloads the versions below into ~/.cache/maestro-book, checked against
@@ -44,13 +45,13 @@ if ! command -v mdbook >/dev/null || ! command -v mdbook-mermaid >/dev/null; the
 	PATH="$tools:$PATH"
 fi
 
-go run . gen-docs book/src/reference/cli.md
+go run . gen-docs --stamp internal/book/sources.sha256 book/src/reference/cli.md
 mdbook-mermaid install book >/dev/null 2>&1
 rm -rf book/dist
 # mdbook-mermaid is built against an older mdbook, and says so on every build.
 mdbook build book 2>&1 | grep -v "built against version" >&2 || true
 [ -f book/dist/index.html ] || { echo "book/build.sh: the book didn't build" >&2; exit 1; }
 
-mkdir -p internal/book/site
-tar -C book/dist -czf internal/book/site/book.tar.gz .
-echo "book/build.sh: packed $(du -h internal/book/site/book.tar.gz | cut -f1) into internal/book/site/book.tar.gz" >&2
+rm -rf internal/book/site
+cp -R book/dist internal/book/site
+echo "book/build.sh: built $(du -sh internal/book/site | cut -f1) into internal/book/site; commit it" >&2

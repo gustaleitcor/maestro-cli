@@ -3,8 +3,6 @@ version: 2
 before:
   hooks:
     - go mod tidy
-    # The book maestro docs opens offline, packed for the builds to embed.
-    - sh book/build.sh
     # The shell completions the Linux packages install, from the CLI itself.
     - sh -c "mkdir -p completions && for sh in bash fish zsh; do go run . completion $sh > completions/maestro.$sh; done"
 

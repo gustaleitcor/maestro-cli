@@ -2,9 +2,9 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
 	"net/http"
 	"os"
@@ -77,10 +77,11 @@ var (
 	docsWeb       bool
 	docsTopicList bool
 
-	// bookDir is where the book maestro carries is on disk; tests replace it.
-	bookDir = book.Dir
-	// serveBook serves the book at dir until ctx ends; tests replace it.
-	serveBook = serveDir
+	// serveBook serves the book maestro carries until ctx ends; tests
+	// replace it.
+	serveBook = func(ctx context.Context, ready func(base string) error) error {
+		return serveSite(ctx, book.Site(), ready)
+	}
 
 	// openBrowser opens url in the user's browser; tests replace it.
 	openBrowser = startBrowser
@@ -100,11 +101,11 @@ Name a topic (maestro docs queue) to open its page, or a command
 (maestro docs runs logs) for what it takes.
 
 maestro carries the book, so it opens offline, without signing in: it is
-unpacked into your cache the first time, and served from this computer only
-(127.0.0.1), until ctrl-c, so that any browser opens it whole, a sandboxed
-one too. --web opens the copy your Maestro server serves instead, which can
-be opened on another machine, as when this one is reached over SSH.
-MAESTRO_DOCS_URL points at another copy still.`,
+served from this computer only (127.0.0.1), until ctrl-c, so that any
+browser opens it whole, a sandboxed one too. --web opens the copy your
+Maestro server serves instead, which can be opened on another machine, as
+when this one is reached over SSH. MAESTRO_DOCS_URL points at another copy
+still.`,
 	Example: "  maestro docs\n  maestro docs toml\n  maestro docs runs logs\n  maestro docs queue --web --url",
 	// What args name is checked before a server is asked for.
 	Args: func(cmd *cobra.Command, args []string) error {
@@ -132,11 +133,11 @@ func runDocs(cmd *cobra.Command, args []string) error {
 	if docsTopicList {
 		return writeTopics(out)
 	}
-	base, dir, err := docsBase(cmd.ErrOrStderr())
+	base, err := docsBase()
 	if err != nil {
 		return err
 	}
-	if dir == "" {
+	if base != "" {
 		return showDocs(out, base, args, "No browser opened here; open the link in one.")
 	}
 
@@ -147,7 +148,7 @@ func runDocs(cmd *cobra.Command, args []string) error {
 	// ctrl-c is how serving ends, so it isn't an interruption.
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
 	defer stop()
-	return serveBook(ctx, dir, func(base string) error {
+	return serveBook(ctx, func(base string) error {
 		if err := showDocs(out, base, args, "No browser opened here. `maestro docs --web --url` gives the server's copy, to open elsewhere."); err != nil {
 			return err
 		}
@@ -175,41 +176,33 @@ func showDocs(out io.Writer, base string, args []string, noBrowser string) error
 	return nil
 }
 
-// docsBase is where the book is: MAESTRO_DOCS_URL, then with --web the
-// server's /docs, beside its page, and else dir, the one maestro carries,
-// unpacked, for serveBook to serve. A maestro built without its book says
-// so and goes to the server's.
-func docsBase(notes io.Writer) (base, dir string, err error) {
+// docsBase is where the book is when it isn't the one maestro carries:
+// MAESTRO_DOCS_URL, or with --web the server's /docs, beside its page. It is
+// empty for the carried one, which serveBook serves.
+func docsBase() (string, error) {
 	if u := os.Getenv("MAESTRO_DOCS_URL"); u != "" {
-		return strings.TrimRight(u, "/"), "", nil
+		return strings.TrimRight(u, "/"), nil
 	}
 	if !docsWeb {
-		dir, err := bookDir()
-		if err == nil {
-			return "", dir, nil
-		}
-		if !errors.Is(err, book.ErrMissing) {
-			return "", "", err
-		}
-		fmt.Fprintln(notes, dimStyle.Render(err.Error()+" (book/build.sh adds it); opening the server's."))
+		return "", nil
 	}
 	if err := ensureServer(os.Stdin, os.Stderr); err != nil {
-		return "", "", err
+		return "", err
 	}
-	return maestroapi.BaseURL() + "/docs", "", nil
+	return maestroapi.BaseURL() + "/docs", nil
 }
 
-// serveDir serves dir on 127.0.0.1, on a port the system picks, until ctx
-// ends, calling ready with its address once it can be opened. A browser
-// opens a file:// page alone: a sandboxed one, as from Flatpak or Snap,
-// gets that one file and none of the styles and scripts beside it, so the
-// book is served instead, to this computer only.
-func serveDir(ctx context.Context, dir string, ready func(base string) error) error {
+// serveSite serves site on 127.0.0.1, on a port the system picks, until ctx
+// ends, calling ready with its address once it can be opened. The book is
+// served, and not written out for a file:// link, because a sandboxed
+// browser, as from Flatpak or Snap, is handed that one file and none of the
+// styles and scripts beside it. Only this computer can reach it.
+func serveSite(ctx context.Context, site fs.FS, ready func(base string) error) error {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return fmt.Errorf("serving the book: %w", err)
 	}
-	srv := &http.Server{Handler: http.FileServer(http.Dir(dir)), ReadHeaderTimeout: 10 * time.Second}
+	srv := &http.Server{Handler: http.FileServer(http.FS(site)), ReadHeaderTimeout: 10 * time.Second}
 	served := make(chan error, 1)
 	go func() { served <- srv.Serve(ln) }()
 	if err := ready("http://" + ln.Addr().String()); err != nil {

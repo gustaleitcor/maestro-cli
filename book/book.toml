@@ -15,7 +15,7 @@ create-missing = false
 command = "mdbook-mermaid"
 
 [output.html]
-# Opened from disk by `maestro docs`, which carries it; also served at
+# Served by `maestro docs`, which carries it, from 127.0.0.1; also served at
 # <view>/docs/, beside the Maestro page, which only the 404 page minds.
 site-url = "/docs/"
 default-theme = "light"

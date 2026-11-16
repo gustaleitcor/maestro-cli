@@ -1,46 +1,123 @@
 package cmd
 
 import (
-	"bufio"
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
 
+var genDocsStamp string
+
 var genDocsCmd = &cobra.Command{
-	Use:    "gen-docs <file>",
-	Short:  "Write the book's CLI reference, as Markdown",
-	Long:   `Writes every command, its flags and its help to one Markdown page, "-" for stdout. The book is built with it.`,
+	Use:   "gen-docs <file>",
+	Short: "Write the book's CLI reference, as Markdown",
+	Long: `Writes every command, its flags and its help to one Markdown page, "-" for stdout. The book is built with it.
+
+--stamp also writes the checksum of what the book is built from, the book
+being the one the page is in, as <book>/src/reference/cli.md.`,
 	Hidden: true,
 	Args:   cobra.ExactArgs(1),
 	RunE:   runGenDocs,
 }
 
 func init() {
+	genDocsCmd.Flags().StringVar(&genDocsStamp, "stamp", "", "the file to write the checksum of the book's sources to")
 	rootCmd.AddCommand(genDocsCmd)
 }
 
 func runGenDocs(cmd *cobra.Command, args []string) error {
-	if args[0] == "-" {
-		return writeCLIReference(cmd.OutOrStdout(), rootCmd)
-	}
-	f, err := os.Create(args[0])
+	reference, err := cliReference()
 	if err != nil {
 		return err
 	}
-	w := bufio.NewWriter(f)
-	if err := writeCLIReference(w, rootCmd); err != nil {
-		f.Close()
+	if args[0] == "-" {
+		_, err := cmd.OutOrStdout().Write(reference)
 		return err
 	}
-	if err := w.Flush(); err != nil {
-		f.Close()
+	if err := os.WriteFile(args[0], reference, 0o644); err != nil {
 		return err
 	}
-	return f.Close()
+	if genDocsStamp == "" {
+		return nil
+	}
+	sum, err := bookSources(filepath.Join(filepath.Dir(args[0]), "..", ".."), reference)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(genDocsStamp, []byte(sum+"\n"), 0o644)
+}
+
+// cliReference is the book's page of every command, as this maestro has
+// them. help, completion and every command's -h are cobra's own, added as
+// commands run: they are all added here, so that the page is the same
+// whatever ran before, in a test as in gen-docs.
+func cliReference() ([]byte, error) {
+	prepare()
+	rootCmd.InitDefaultHelpCmd()
+	rootCmd.InitDefaultCompletionCmd()
+	var helpFlags func(c *cobra.Command)
+	helpFlags = func(c *cobra.Command) {
+		c.InitDefaultHelpFlag()
+		for _, sub := range c.Commands() {
+			helpFlags(sub)
+		}
+	}
+	helpFlags(rootCmd)
+	var page bytes.Buffer
+	err := writeCLIReference(&page, rootCmd)
+	return page.Bytes(), err
+}
+
+// bookReference is the page gen-docs writes, from the book's src.
+const bookReference = "reference/cli.md"
+
+// bookSources is the checksum of what the book in dir is built from: its
+// book.toml, every file under its src, and reference, the page of commands
+// as written now. The copy of that page on disk is left out, since it is
+// only there once the book was built. book/build.sh keeps the checksum
+// beside the pages it built, and a test compares the two, so that the book
+// maestro carries is never older than a page or a command's help.
+//
+// A line ending counts as "\n", so that a checkout on Windows gives the
+// same checksum.
+func bookSources(dir string, reference []byte) (string, error) {
+	h := sha256.New()
+	add := func(name string, content []byte) {
+		content = bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
+		fmt.Fprintf(h, "%s\x00%d\x00", name, len(content))
+		h.Write(content)
+	}
+	config, err := os.ReadFile(filepath.Join(dir, "book.toml"))
+	if err != nil {
+		return "", err
+	}
+	add("book.toml", config)
+	// In the order of their names, which WalkDir keeps.
+	src := os.DirFS(filepath.Join(dir, "src"))
+	err = fs.WalkDir(src, ".", func(name string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || name == bookReference {
+			return err
+		}
+		content, err := fs.ReadFile(src, name)
+		if err != nil {
+			return err
+		}
+		add(name, content)
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	add(bookReference, reference)
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // writeCLIReference writes one heading per command, in the order help lists

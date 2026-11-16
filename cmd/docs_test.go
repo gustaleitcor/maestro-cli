@@ -69,14 +69,13 @@ func TestTopicNamesAreUnique(t *testing.T) {
 	}
 }
 
-// carriedBook makes the book maestro carries be dir, or err, served at
+// carriedBook makes the book maestro carries be served at
 // http://127.0.0.1:1 at once and no longer.
-func carriedBook(t *testing.T, dir string, err error) {
+func carriedBook(t *testing.T) {
 	t.Helper()
-	oldDir, oldServe := bookDir, serveBook
-	t.Cleanup(func() { bookDir, serveBook = oldDir, oldServe })
-	bookDir = func() (string, error) { return dir, err }
-	serveBook = func(_ context.Context, _ string, ready func(string) error) error {
+	old := serveBook
+	t.Cleanup(func() { serveBook = old })
+	serveBook = func(_ context.Context, ready func(string) error) error {
 		return ready("http://127.0.0.1:1")
 	}
 }
@@ -84,48 +83,51 @@ func carriedBook(t *testing.T, dir string, err error) {
 func TestDocsBase(t *testing.T) {
 	t.Setenv("MAESTRO_ORQ_URL", "http://localhost:8081/")
 	t.Cleanup(func() { docsWeb = false })
-	carriedBook(t, "/home/ada/.cache/maestro/book/abc", nil)
-	var notes bytes.Buffer
 
 	t.Setenv("MAESTRO_DOCS_URL", "http://localhost:3000/")
-	if base, dir, err := docsBase(&notes); err != nil || base != "http://localhost:3000" || dir != "" {
-		t.Errorf("MAESTRO_DOCS_URL: %s %s (%v)", base, dir, err)
+	if base, err := docsBase(); err != nil || base != "http://localhost:3000" {
+		t.Errorf("MAESTRO_DOCS_URL: %s (%v)", base, err)
 	}
 	t.Setenv("MAESTRO_DOCS_URL", "")
-	if base, dir, err := docsBase(&notes); err != nil || base != "" || dir != "/home/ada/.cache/maestro/book/abc" {
-		t.Errorf("the carried book: %s %s (%v)", base, dir, err)
+	if base, err := docsBase(); err != nil || base != "" {
+		t.Errorf("the carried book: %s (%v)", base, err)
 	}
 	docsWeb = true
-	if base, dir, err := docsBase(&notes); err != nil || base != "http://localhost:8081/docs" || dir != "" {
-		t.Errorf("--web: %s %s (%v)", base, dir, err)
+	if base, err := docsBase(); err != nil || base != "http://localhost:8081/docs" {
+		t.Errorf("--web: %s (%v)", base, err)
 	}
-	docsWeb = false
-	if notes.Len() > 0 {
-		t.Errorf("noted %q", notes.String())
-	}
+}
 
-	// Built without book/build.sh: the server's, saying why.
-	carriedBook(t, "", book.ErrMissing)
-	if base, _, err := docsBase(&notes); err != nil || base != "http://localhost:8081/docs" || !strings.Contains(notes.String(), "without its book") {
-		t.Errorf("no book: %s (%v), noted %q", base, err, notes.String())
+// The book maestro carries was built from the pages, book.toml and the
+// commands' help as they are now.
+func TestBookIsBuilt(t *testing.T) {
+	reference, err := cliReference()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := bookSources("../book", reference)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile("../internal/book/sources.sha256")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(string(got)) != want {
+		t.Error("internal/book/site is older than the book's pages or a command's help: run book/build.sh and commit what it writes")
 	}
 }
 
 // The carried book is served whole, styles and scripts included, until
 // ctrl-c, and only to this computer.
-func TestServeDir(t *testing.T) {
-	dir := t.TempDir()
-	os.WriteFile(dir+"/index.html", []byte("<h1>Maestro</h1>"), 0o644)
-	os.MkdirAll(dir+"/css", 0o755)
-	os.WriteFile(dir+"/css/general.css", []byte("body{}"), 0o644)
-
+func TestServeSite(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	var base string
 	go func() {
-		done <- serveDir(ctx, dir, func(b string) error {
+		done <- serveSite(ctx, book.Site(), func(b string) error {
 			base = b
-			for _, path := range []string{"/index.html", "/css/general.css"} {
+			for _, path := range []string{"/", "/start/quickstart.html", "/css/general.css"} {
 				resp, err := http.Get(b + path)
 				if err != nil {
 					return err
@@ -174,7 +176,7 @@ func TestDocsWithoutAServer(t *testing.T) {
 	signedIn(t, "")
 	t.Setenv("MAESTRO_ORQ_URL", "")
 	t.Setenv("MAESTRO_DOCS_URL", "http://docs.test")
-	carriedBook(t, t.TempDir(), nil)
+	carriedBook(t)
 	rootCmd.SetOut(io.Discard)
 	t.Cleanup(func() { rootCmd.SetOut(nil) })
 

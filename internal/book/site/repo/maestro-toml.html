@@ -1,0 +1,357 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>maestro.toml: how the image is run - Maestro</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="How Maestro builds your repos into images and runs them across shared machines, and how to set it up.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../introduction.html">What Maestro is</a></li><li class="chapter-item expanded affix "><li class="part-title">Start here</li><li class="chapter-item expanded "><a href="../start/quickstart.html"><strong aria-hidden="true">1.</strong> Quickstart: run the template</a></li><li class="chapter-item expanded "><a href="../start/your-copy.html"><strong aria-hidden="true">2.</strong> Your own copy of the template</a></li><li class="chapter-item expanded affix "><li class="part-title">Your repo, one piece at a time</li><li class="chapter-item expanded "><a href="../repo/dockerfile.html"><strong aria-hidden="true">3.</strong> The minimum: a Dockerfile</a></li><li class="chapter-item expanded "><a href="../repo/maestro-toml.html" class="active"><strong aria-hidden="true">4.</strong> maestro.toml: how the image is run</a></li><li class="chapter-item expanded "><a href="../repo/generator.html"><strong aria-hidden="true">5.</strong> Generating lines with Python</a></li><li class="chapter-item expanded "><a href="../repo/container.html"><strong aria-hidden="true">6.</strong> Inside the container</a></li><li class="chapter-item expanded "><a href="../repo/local-files.html"><strong aria-hidden="true">7.</strong> Trying a change without pushing it</a></li><li class="chapter-item expanded "><a href="../repo/examples.html"><strong aria-hidden="true">8.</strong> Fuller examples</a></li><li class="chapter-item expanded affix "><li class="part-title">Working with Maestro</li><li class="chapter-item expanded "><a href="../use/install.html"><strong aria-hidden="true">9.</strong> Installing the CLI</a></li><li class="chapter-item expanded "><a href="../use/login.html"><strong aria-hidden="true">10.</strong> Signing in</a></li><li class="chapter-item expanded "><a href="../use/forges.html"><strong aria-hidden="true">11.</strong> Git forges</a></li><li class="chapter-item expanded "><a href="../use/cli.html"><strong aria-hidden="true">12.</strong> How the CLI behaves</a></li><li class="chapter-item expanded "><a href="../use/builds.html"><strong aria-hidden="true">13.</strong> Builds and images</a></li><li class="chapter-item expanded "><a href="../use/runs.html"><strong aria-hidden="true">14.</strong> Runs and lines</a></li><li class="chapter-item expanded "><a href="../use/results.html"><strong aria-hidden="true">15.</strong> What a line leaves behind</a></li><li class="chapter-item expanded "><a href="../use/page.html"><strong aria-hidden="true">16.</strong> The Maestro page</a></li><li class="chapter-item expanded "><a href="../use/machines.html"><strong aria-hidden="true">17.</strong> Watching the machines</a></li><li class="chapter-item expanded "><a href="../use/usage.html"><strong aria-hidden="true">18.</strong> Usage and export</a></li><li class="chapter-item expanded affix "><li class="part-title">How Maestro works</li><li class="chapter-item expanded "><a href="../how/parts.html"><strong aria-hidden="true">19.</strong> The parts</a></li><li class="chapter-item expanded "><a href="../how/queue.html"><strong aria-hidden="true">20.</strong> The queue</a></li><li class="chapter-item expanded "><a href="../how/score.html"><strong aria-hidden="true">21.</strong> Policies and the score</a></li><li class="chapter-item expanded affix "><li class="part-title">Running a Maestro</li><li class="chapter-item expanded "><a href="../admin/deploy.html"><strong aria-hidden="true">22.</strong> Deploying Maestro</a></li><li class="chapter-item expanded "><a href="../admin/identity.html"><strong aria-hidden="true">23.</strong> The identity provider</a></li><li class="chapter-item expanded "><a href="../admin/machines.html"><strong aria-hidden="true">24.</strong> Adding machines</a></li><li class="chapter-item expanded "><a href="../admin/proxy.html"><strong aria-hidden="true">25.</strong> Machines behind a proxy</a></li><li class="chapter-item expanded "><a href="../admin/policies.html"><strong aria-hidden="true">26.</strong> Choosing the policies</a></li><li class="chapter-item expanded "><a href="../admin/groups.html"><strong aria-hidden="true">27.</strong> Groups</a></li><li class="chapter-item expanded "><a href="../admin/sim.html"><strong aria-hidden="true">28.</strong> Comparing policies offline</a></li><li class="chapter-item expanded "><a href="../admin/retention.html"><strong aria-hidden="true">29.</strong> What orq keeps, and for how long</a></li><li class="chapter-item expanded affix "><li class="part-title">Reference</li><li class="chapter-item expanded "><a href="../reference/cli.html"><strong aria-hidden="true">30.</strong> Every command</a></li><li class="chapter-item expanded "><a href="../reference/maestro-toml.html"><strong aria-hidden="true">31.</strong> maestro.toml keys</a></li><li class="chapter-item expanded "><a href="../reference/env.html"><strong aria-hidden="true">32.</strong> Environment variables</a></li><li class="chapter-item expanded "><a href="../reference/troubleshooting.html"><strong aria-hidden="true">33.</strong> When something goes wrong</a></li><li class="chapter-item expanded "><a href="../reference/glossary.html"><strong aria-hidden="true">34.</strong> Glossary</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><a href="../contributing.html">Contributing</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Maestro</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/gustaleitcor/maestro-cli" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/gustaleitcor/maestro-cli/edit/main/book/src/repo/maestro-toml.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="maestrotoml-how-the-image-is-run"><a class="header" href="#maestrotoml-how-the-image-is-run">maestro.toml: how the image is run</a></h1>
+<p><code>maestro.toml</code> is an optional file at the root of the repository, beside the
+Dockerfile. It says how many containers a run starts and with which
+arguments, how much of a machine each one may use, and which files to keep.</p>
+<p>Every key is optional. A key you leave out keeps the default from the
+<a href="dockerfile.html#what-a-dockerfile-alone-gets-you">previous chapter</a>: one
+container, the image's own command, 1 core, 512 MB, any machine, no files.</p>
+<p>This is the template's file, with its comments removed:</p>
+<pre><code class="language-toml">parameters = [
+  "-t 10 out.txt",
+  "-t 20 --label 'long run' out.txt",
+]
+
+outputs = ["out.txt"]
+</code></pre>
+<p>Maestro reads <code>maestro.toml</code> when it builds the repository and keeps the
+result with the build, so every run of a build has the same lines. To change
+them, push the change and build again, or
+<a href="local-files.html">send the file with a run</a>.</p>
+<p>The sections below add one key at a time. Each can be tried on your copy of
+the template: edit, push, and <code>maestro build &lt;your copy&gt; --watch</code>.</p>
+<h2 id="parameters"><a class="header" href="#parameters"><code>parameters</code></a></h2>
+<p>Each string is one line, and a run starts one container for each line. The
+line's words replace the image's <code>CMD</code>, so the program receives them as its
+arguments. The template's two lines start these two containers:</p>
+<pre><code class="language-text">python -u /app/main.py -t 10 out.txt
+python -u /app/main.py -t 20 --label 'long run' out.txt
+</code></pre>
+<p>Maestro splits a line into words at spaces. Single quotes, double quotes and
+backslashes keep words together the way they do in a shell, so <code>'long run'</code>
+reaches the program as one argument. Nothing else is special, because no
+shell runs the line. A <code>$HOME</code> or a <code>*</code> reaches the program as typed. A
+program that needs a shell can be a shell script.</p>
+<p>Add a third line, and the next build says <code>3 container(s)</code>:</p>
+<pre><code class="language-toml">parameters = [
+  "-t 10 out.txt",
+  "-t 20 --label 'long run' out.txt",
+  "-t 5 --label quick out.txt",
+]
+</code></pre>
+<p>A run has at most 1000 lines. When a list gets long or follows a pattern, a
+<a href="generator.html">generator</a> can compute it.</p>
+<h2 id="outputs"><a class="header" href="#outputs"><code>outputs</code></a></h2>
+<pre><code class="language-toml">outputs = ["out.txt", "results/", "plots/summary.png"]
+</code></pre>
+<p>These are the files Maestro copies out of each container when it ends,
+whether the program succeeded or failed. Each path is a path inside the
+container. A relative one starts at the image's <code>WORKDIR</code>, which is <code>/work</code>
+in the template. A directory is kept with everything in it.</p>
+<p>A file the program didn't write is listed as missing, and the line's status
+doesn't change because of it.</p>
+<p>What the container prints is always kept, as <code>stdout.log</code> and <code>stderr.log</code>,
+whatever <code>outputs</code> says. <a href="../use/results.html">What a line leaves behind</a> shows
+where everything ends up.</p>
+<h2 id="cpus-and-memory"><a class="header" href="#cpus-and-memory"><code>cpus</code> and <code>memory</code></a></h2>
+<pre><code class="language-toml">cpus   = 4      # whole cores; default 1
+memory = 8192   # MB; default 512
+</code></pre>
+<p>These two numbers do two jobs.</p>
+<p>They limit the container. It can use the processor time of <code>cpus</code> cores and
+no more. If it takes more memory than <code>memory</code>, the kernel kills it, and the
+line ends <code>failed</code>, usually with exit code 137.</p>
+<p>They also decide where and when the line starts. A machine starts a line
+only when that many cores and that much memory are free on it. A smaller
+request fits on more machines and starts sooner. Maestro refuses a run when
+one of its lines would not fit on any machine it may use, even an empty one:</p>
+<pre><code class="language-text">line 3 asks for 64 cpus and 512 MB, which no machine it may use has for lines even with nothing else on it (see `maestro machines list`)
+</code></pre>
+<p><code>maestro machines</code> shows what each machine has. A program doesn't learn its
+limit by counting the machine's cores, so read
+<a href="container.html#how-many-threads-to-start">how many threads to start</a> before
+giving a multithreaded program more than one core.</p>
+<h2 id="env"><a class="header" href="#env"><code>env</code></a></h2>
+<pre><code class="language-toml">env = { SEED = "42", MODE = "fast" }
+</code></pre>
+<p>These variables are set in every container's environment. A name is made of
+letters, digits and <code>_</code>, and can't start with a digit. It also can't start
+with <code>MAESTRO_</code>, which is reserved for the
+<a href="container.html#what-maestro-tells-the-program">variables Maestro sets itself</a>.</p>
+<p>Don't put secrets in <code>env</code>. Maestro stores the environment with the run and
+shows it on the line's page.</p>
+<h2 id="machines"><a class="header" href="#machines"><code>machines</code></a></h2>
+<pre><code class="language-toml">machines = ["Q1", "Q2"]
+</code></pre>
+<p>The lines run only on these machines. The names come from <code>maestro machines</code>,
+and upper or lower case doesn't matter. A name that doesn't exist refuses
+the run.</p>
+<p>Leave <code>machines</code> out unless the program needs particular hardware. With no
+<code>machines</code>, a line starts on whichever machine has room first.</p>
+<h2 id="outputs_layout"><a class="header" href="#outputs_layout"><code>outputs_layout</code></a></h2>
+<pre><code class="language-toml">outputs_layout = "shared"   # default: "per-line"
+</code></pre>
+<p>With <code>per-line</code>, each line's outputs go in a directory of its own,
+<code>&lt;run&gt;/&lt;line&gt;/&lt;path&gt;</code>. Two lines can both write <code>out.txt</code> and both files are
+kept.</p>
+<p>With <code>shared</code>, every line's outputs go into one tree for the whole run,
+<code>&lt;run&gt;/shared/&lt;path&gt;</code>. This suits a program whose lines each fill in part of
+one results directory, such as <code>results/&lt;instance&gt;/&lt;seed&gt;.json</code>. When two
+lines write the same path, the one Maestro collects last overwrites the
+other, so give each line paths of its own. Logs stay separate for each line
+in both layouts.</p>
+<h2 id="dockerfile"><a class="header" href="#dockerfile"><code>dockerfile</code></a></h2>
+<pre><code class="language-toml">dockerfile = "docker/Dockerfile"
+</code></pre>
+<p>Maestro builds the image from this file. The path starts at the root of the
+repository and must stay inside it. The root remains the build's context, so
+<code>COPY</code> paths in that Dockerfile still start at the root.</p>
+<h2 id="generator"><a class="header" href="#generator"><code>generator</code></a></h2>
+<pre><code class="language-toml">generator = "genvrs.py"
+</code></pre>
+<p>This names a Python script in the repository that computes lines. They come
+after the lines of <code>parameters</code>, and the script can give each of its lines
+its own <code>cpus</code>, <code>memory</code>, <code>env</code> and <code>outputs</code>. The
+<a href="generator.html">next chapter</a> is about it.</p>
+<h2 id="when-the-file-is-wrong"><a class="header" href="#when-the-file-is-wrong">When the file is wrong</a></h2>
+<p>An invalid <code>maestro.toml</code> fails the build, and the last lines of the build
+log say why. A misspelt key is an error too, so that a typo isn't silently
+ignored:</p>
+<pre><code class="language-text">maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env)
+</code></pre>
+<p><a href="../reference/maestro-toml.html">maestro.toml keys</a> lists every key with its
+default and its limits on one page.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../repo/dockerfile.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../repo/generator.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../repo/dockerfile.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../repo/generator.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>
