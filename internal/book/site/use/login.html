@@ -218,12 +218,31 @@ nowhere else. If you point a command at a different server, the CLI tells
 you to sign in there.</p>
 <p><code>maestro</code> with no arguments shows who is signed in, on which server, and on
 which forges.</p>
+<h2 id="your-keys"><a class="header" href="#your-keys">Your keys</a></h2>
+<p>Each <code>maestro login</code> issues a new Maestro key, for the computer you run it
+on. To see the keys you have:</p>
+<pre><code class="language-sh">maestro keys
+</code></pre>
+<p>It lists each key by its prefix, the first 10 characters, and when it was
+created. It marks the key this computer uses.</p>
+<p>If you no longer trust a computer you signed in on, revoke its key from
+another one:</p>
+<pre><code class="language-sh">maestro keys rm mk_Q3xv9aZ
+</code></pre>
+<p>The key stops working at once, on every computer that holds it. The command
+asks first. With --yes it doesn't ask.</p>
+<p>An administrator can revoke every key of a user, from Admin › Groups on the
+Maestro page.</p>
 <h2 id="signing-out"><a class="header" href="#signing-out">Signing out</a></h2>
 <pre><code class="language-sh">maestro logout
 </code></pre>
-<p>This removes the key, the server address and every forge token from this
-computer. It changes nothing on the forges, so revoke a token there if you
-no longer trust the computer it was on.</p>
+<p>This revokes the key on the server that issued it. Then it removes the key,
+the server address and every forge token from this computer.</p>
+<p>If the server can't be reached, <code>maestro logout</code> still forgets the key, and
+says that the key is still valid on the server. Revoke it later with
+<code>maestro keys rm</code> from a computer that is signed in.</p>
+<p><code>maestro logout</code> changes nothing on the forges, so revoke a token there if
+you no longer trust the computer it was on.</p>
 
                     </main>
 

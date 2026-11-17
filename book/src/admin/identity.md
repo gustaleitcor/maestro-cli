@@ -61,6 +61,15 @@ in at the provider. Signing out at the provider leaves an open Maestro
 session running until it expires.
 
 The CLI doesn't use sessions. `maestro login` has the user approve a code on
-the page, and orq then gives the CLI a Maestro key of its own. A key doesn't
-expire, and Maestro has no screen for revoking one. `maestro logout` removes
-the key from the user's computer.
+the page, and orq then gives the CLI a Maestro key of its own. orq stores
+only the key's hash.
+
+A key can be revoked three ways. Its owner revokes it with `maestro keys rm`,
+`maestro logout` revokes the key it holds, and an administrator revokes every
+key of a user with Revoke keys in Admin › Groups. A revoked key stops working
+at once.
+
+Whether a user is an administrator is read from their row in `users` on every
+request. That row is as fresh as their last sign-in on the page. A user
+removed at the identity provider keeps a working key until it is revoked, so
+revoke their keys when you remove them.

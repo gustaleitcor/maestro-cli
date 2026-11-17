@@ -395,6 +395,31 @@ func VerifyKey(ctx context.Context, key string) (string, error) {
 	return result.Email, nil
 }
 
+// Key is one of the caller's Maestro keys, shown by its prefix.
+type Key struct {
+	Prefix    string    `json:"prefix"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// ListKeys returns the caller's Maestro keys, newest first.
+func ListKeys(ctx context.Context, maestroKey string) ([]Key, error) {
+	var keys []Key
+	if err := doWithKey(ctx, maestroKey, http.MethodGet, "/api/keys", nil, http.StatusOK, &keys); err != nil {
+		return nil, err
+	}
+	return keys, nil
+}
+
+// RevokeKey revokes the caller's key that starts with prefix.
+func RevokeKey(ctx context.Context, maestroKey, prefix string) error {
+	return doWithKey(ctx, maestroKey, http.MethodDelete, "/api/keys/"+url.PathEscape(prefix), nil, http.StatusNoContent, nil)
+}
+
+// RevokeCurrentKey revokes maestroKey itself.
+func RevokeCurrentKey(ctx context.Context, maestroKey string) error {
+	return do(ctx, maestroKey, http.MethodDelete, "/api/keys/current", nil, http.StatusNoContent, nil, 10*time.Second, nil)
+}
+
 func ListImages(ctx context.Context, maestroKey string) ([]Image, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, BaseURL()+"/api/images", nil)
 	if err != nil {

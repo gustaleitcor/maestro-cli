@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -12,16 +13,24 @@ import (
 	"golang.org/x/term"
 
 	"maestro-cli/internal/config"
+	"maestro-cli/internal/maestroapi"
+	"maestro-cli/internal/netfail"
 )
 
 var logoutYes bool
 
 var logoutCmd = &cobra.Command{
 	Use:   "logout",
-	Short: "Sign out and forget everything the CLI has stored",
-	Long: `Forgets the Maestro key and the server it is for, every forge and its
-token, on this machine only. A token stays valid on its forge: revoke it
-there if you no longer trust this machine.`,
+	Short: "Revoke your Maestro key and forget everything the CLI has stored",
+	Long: `Revokes the Maestro key on the server that issued it, then forgets the
+key, the server and every forge with its token on your computer.
+
+If the server can't be reached, it still forgets the key, and says that the
+key is still valid there. Revoke it later with ` + "`maestro keys rm <prefix>`" + ` from
+a computer that is signed in.
+
+A forge token stays valid on its forge. Revoke it there if you no longer
+trust this computer.`,
 	Args:              cobra.NoArgs,
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE:              runLogout,
@@ -63,7 +72,7 @@ func runLogout(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	_, keyErr := config.LoadMaestroKey("")
+	key, keyErr := config.LoadMaestroKey("")
 	if keyErr != nil && len(forges) == 0 {
 		fmt.Println(dimStyle.Render("Nothing to forget: not signed in and no forges configured."))
 		return nil
@@ -72,7 +81,7 @@ func runLogout(cmd *cobra.Command, args []string) error {
 	if !logoutYes {
 		fmt.Println(warnStyle.Render("This forgets:"))
 		if keyErr == nil {
-			fmt.Println("  - the Maestro key")
+			fmt.Println("  - the Maestro key, which is revoked on the server first")
 		}
 		if len(forges) > 0 {
 			fmt.Printf("  - %d forge(s) and their tokens: %s\n", len(forges), forgeNames(forges))
@@ -87,9 +96,41 @@ func runLogout(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if keyErr == nil {
+		revokeOnLogout(cmd.Context(), os.Stdout, key)
+	}
 	if err := config.Reset(); err != nil {
 		return err
 	}
 	fmt.Println(successStyle.Render("Logged out.") + " Run `maestro login` to sign in again.")
 	return nil
+}
+
+// revokeOnLogout revokes key on the server that issued it, and says so when
+// it couldn't. Logging out goes on either way.
+func revokeOnLogout(ctx context.Context, out io.Writer, key string) {
+	// The key goes only to the server that issued it, whatever --server or
+	// MAESTRO_ORQ_URL say.
+	if stored, err := config.Server(); err == nil && stored != "" {
+		defer func(old string) { serverFlag = old }(serverFlag)
+		serverFlag = stored
+	}
+	server := maestroapi.BaseURL()
+	prefix := key[:min(len(key), 10)]
+	later := fmt.Sprintf("Revoke it with `maestro keys rm %s` from a computer that is signed in.", prefix)
+
+	var err error
+	if server == "" {
+		err = netfail.ErrUnreachable
+	} else {
+		err = maestroapi.RevokeCurrentKey(ctx, key)
+	}
+	switch {
+	case err == nil:
+		fmt.Fprintf(out, "Revoked key %s on %s.\n", prefix, server)
+	case errors.Is(err, netfail.ErrUnreachable):
+		fmt.Fprintln(out, warnStyle.Render(fmt.Sprintf("The server couldn't be reached, so key %s is still valid there.", prefix))+" "+later)
+	default:
+		fmt.Fprintln(out, warnStyle.Render(fmt.Sprintf("The server didn't revoke key %s: %v", prefix, err))+"\n"+later)
+	}
 }

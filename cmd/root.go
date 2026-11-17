@@ -232,7 +232,7 @@ var commandGroups = []struct {
 	{"work", "Follow your work:", []string{"runs", "builds", "queue", "usage"}},
 	{"forges", "Forges and repos:", []string{"forges", "repos"}},
 	{"cluster", "Machines and scheduling:", []string{"top", "machines", "settings", "export"}},
-	{"setup", "Setup:", []string{"logout", "completion", "help"}},
+	{"setup", "Setup:", []string{"keys", "logout", "completion", "help"}},
 }
 
 // groupCommands puts each command in its group, once all are added.

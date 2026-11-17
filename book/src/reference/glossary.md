@@ -16,6 +16,7 @@ terminal.
 | Generator | A Python script in the repository whose `genvrs` function yields lines. | [Generating lines with Python](../repo/generator.md) |
 | Outputs | The files `maestro.toml` names, copied out of each container when it ends. They are kept beside what the container printed, `stdout.log` and `stderr.log`. `maestro runs get` downloads all of it. | [What a line leaves behind](../use/results.md) |
 | Machine | A computer whose Podman runs the containers. Maestro reaches it over SSH. A line runs on one machine, the first allowed one that has room for its cores and memory. | [Watching the machines](../use/machines.md) |
+| Maestro key | What the CLI signs in with. `maestro login` has the server issue one for your computer, and the CLI sends it with every command. A key is shown by its prefix, its first 10 characters, such as `mk_Q3xv9aZ`. `maestro keys rm` revokes one, `maestro logout` revokes the one it holds, and an administrator can revoke all of a user's. A revoked key stops working at once. | [Signing in](../use/login.md#your-keys) |
 | Group | A set of users. Groups take turns at the machines, so a lab of ten doesn't crowd out a lab of two. Everyone is in one group until an administrator makes more. | [Groups](../admin/groups.md) |
 
 ## The statuses of a line

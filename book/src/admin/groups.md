@@ -19,6 +19,9 @@ Admin › Groups on the Maestro page lists the groups and their members.
 - Remove deletes a group and sends its users back to the default group. The
   default group itself can't be removed.
 
+Under the groups, "Maestro keys" lists every user. "Revoke keys" revokes
+all of a user's [Maestro keys](identity.md#sessions-and-keys) after it asks.
+
 Moving a user affects the lines assigned from then on. Their queued lines
 wait in the new group's dispatcher queue. Lines already assigned keep the
 group they were assigned in.

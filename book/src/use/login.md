@@ -60,12 +60,43 @@ you to sign in there.
 `maestro` with no arguments shows who is signed in, on which server, and on
 which forges.
 
+## Your keys
+
+Each `maestro login` issues a new Maestro key, for the computer you run it
+on. To see the keys you have:
+
+```sh
+maestro keys
+```
+
+It lists each key by its prefix, the first 10 characters, and when it was
+created. It marks the key this computer uses.
+
+If you no longer trust a computer you signed in on, revoke its key from
+another one:
+
+```sh
+maestro keys rm mk_Q3xv9aZ
+```
+
+The key stops working at once, on every computer that holds it. The command
+asks first. With --yes it doesn't ask.
+
+An administrator can revoke every key of a user, from Admin › Groups on the
+Maestro page.
+
 ## Signing out
 
 ```sh
 maestro logout
 ```
 
-This removes the key, the server address and every forge token from this
-computer. It changes nothing on the forges, so revoke a token there if you
-no longer trust the computer it was on.
+This revokes the key on the server that issued it. Then it removes the key,
+the server address and every forge token from this computer.
+
+If the server can't be reached, `maestro logout` still forgets the key, and
+says that the key is still valid on the server. Revoke it later with
+`maestro keys rm` from a computer that is signed in.
+
+`maestro logout` changes nothing on the forges, so revoke a token there if
+you no longer trust the computer it was on.

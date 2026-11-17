@@ -44,7 +44,7 @@ var topics = []docTopic{
 	{[]string{"local"}, "repo/local-files.html", "Trying a change without pushing it"},
 	{[]string{"examples", "example"}, "repo/examples.html", "Fuller examples"},
 	{[]string{"install", "completion"}, "use/install.html", "Installing the CLI"},
-	{[]string{"login", "logout"}, "use/login.html", "Signing in"},
+	{[]string{"login", "logout", "keys"}, "use/login.html", "Signing in"},
 	{[]string{"forges", "repos"}, "use/forges.html", "Git forges"},
 	{[]string{"conventions"}, "use/cli.html", "How the CLI behaves"},
 	{[]string{"builds", "build"}, "use/builds.html", "Builds and images"},

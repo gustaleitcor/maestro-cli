@@ -481,6 +481,41 @@ maestro forges add work --kind forgejo --url https://git.example.com
 <p>Flags:</p>
 <pre><code class="language-text">  -y, --yes    don't ask first
 </code></pre>
+<h2 id="maestro-keys"><a class="header" href="#maestro-keys">maestro keys</a></h2>
+<p>List and revoke your Maestro keys.</p>
+<pre><code class="language-text">maestro keys [flags]
+</code></pre>
+<p>Lists the Maestro keys you have on the server, newest first. Each
+<code>maestro login</code> issues one, on whichever computer you run it. A key is shown by
+its prefix, the first 10 characters, and never in full. The one this
+computer uses is marked.</p>
+<p>Examples:</p>
+<pre><code class="language-sh">maestro keys
+maestro keys rm mk_Q3xv9aZ
+</code></pre>
+<p>Flags:</p>
+<pre><code class="language-text">      --json   print the keys as JSON
+</code></pre>
+<p>Commands:</p>
+<ul>
+<li><a href="#maestro-keys-rm">maestro keys rm</a>: Revoke one of your Maestro keys</li>
+</ul>
+<h2 id="maestro-keys-rm"><a class="header" href="#maestro-keys-rm">maestro keys rm</a></h2>
+<p>Revoke one of your Maestro keys.</p>
+<pre><code class="language-text">maestro keys rm &lt;prefix&gt; [flags]
+</code></pre>
+<p>Revokes the key that starts with &lt;prefix&gt;, as <code>maestro keys</code> shows it. The
+key stops working at once, on every computer that holds it. It asks first.</p>
+<p>Revoke a key this way when you no longer trust a computer you signed in on.
+To end the key of the computer you are on, <code>maestro logout</code> does it and
+forgets the key too.</p>
+<p>Also: <code>revoke</code>.</p>
+<p>Examples:</p>
+<pre><code class="language-sh">maestro keys rm mk_Q3xv9aZ
+</code></pre>
+<p>Flags:</p>
+<pre><code class="language-text">  -y, --yes    don't ask first
+</code></pre>
 <h2 id="maestro-login"><a class="header" href="#maestro-login">maestro login</a></h2>
 <p>Sign the CLI in to Maestro.</p>
 <pre><code class="language-text">maestro login [flags]
@@ -498,12 +533,16 @@ instead.</p>
 <pre><code class="language-text">      --store-in-file   keep secrets in the config file instead of the system keyring, for good
 </code></pre>
 <h2 id="maestro-logout"><a class="header" href="#maestro-logout">maestro logout</a></h2>
-<p>Sign out and forget everything the CLI has stored.</p>
+<p>Revoke your Maestro key and forget everything the CLI has stored.</p>
 <pre><code class="language-text">maestro logout [flags]
 </code></pre>
-<p>Forgets the Maestro key and the server it is for, every forge and its
-token, on this machine only. A token stays valid on its forge: revoke it
-there if you no longer trust this machine.</p>
+<p>Revokes the Maestro key on the server that issued it, then forgets the
+key, the server and every forge with its token on your computer.</p>
+<p>If the server can't be reached, it still forgets the key, and says that the
+key is still valid there. Revoke it later with <code>maestro keys rm &lt;prefix&gt;</code> from
+a computer that is signed in.</p>
+<p>A forge token stays valid on its forge. Revoke it there if you no longer
+trust this computer.</p>
 <p>Flags:</p>
 <pre><code class="language-text">  -y, --yes    don't ask for confirmation
 </code></pre>
