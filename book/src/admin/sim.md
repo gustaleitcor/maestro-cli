@@ -109,6 +109,38 @@ queued              12677.507  12269.348     -408.159
 It takes the same flags as `sim evaluate`. Times are in seconds. The
 utilizations, Φ_J and Φ_O are fractions between 0 and 1.
 
+## Running every combination
+
+`sim grid` runs one workload under many settings and writes a CSV with one
+row for each. You give it lists, separated by commas, and it runs every
+combination of them:
+
+| Flag | A list of |
+| --- | --- |
+| `-user` | user queue policies |
+| `-dispatcher` | dispatcher queue policies |
+| `-machine` | machine queue policies |
+| `-share` | share measures |
+| `-seed` | seeds |
+
+A list you leave out keeps the value in the `-config` file. It also takes
+`-machines`, `-config` and `-tick` as `sim run` does, and `-theta`,
+`-lambda-j` and `-lambda-o` as `sim evaluate` does.
+
+```sh
+go run ./cmd/sim grid -machines Q1:32:65536:2:4096 -config base.json \
+  -dispatcher fifo,pq -share drf,decay -seed 1,2,3,4,5 < workload.csv > grid.csv
+```
+
+This runs 2 × 2 × 5 = 20 simulations. Each row starts with the settings
+`user`, `dispatcher`, `machine`, `share` and `seed`. Every measure
+`sim compare` names follows, under the same name. The cores and memory that
+utilization is measured against are what the machines have for lines.
+
+On the same commit, the same arguments write the same file, byte for byte.
+The simulations run at once, but the rows always come in the same order:
+the user policy changes slowest and the seed fastest.
+
 ## Checking the simulator against a real week
 
 `sim replay` reads an export and runs its lines again. Each line that ran

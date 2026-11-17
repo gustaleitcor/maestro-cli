@@ -2292,6 +2292,31 @@ queued              12677.507  12269.348     -408.159
 </code></pre>
 <p>It takes the same flags as <code>sim evaluate</code>. Times are in seconds. The
 utilizations, Φ_J and Φ_O are fractions between 0 and 1.</p>
+<h2 id="running-every-combination"><a class="header" href="#running-every-combination">Running every combination</a></h2>
+<p><code>sim grid</code> runs one workload under many settings and writes a CSV with one
+row for each. You give it lists, separated by commas, and it runs every
+combination of them:</p>
+<div class="table-wrapper"><table><thead><tr><th>Flag</th><th>A list of</th></tr></thead><tbody>
+<tr><td><code>-user</code></td><td>user queue policies</td></tr>
+<tr><td><code>-dispatcher</code></td><td>dispatcher queue policies</td></tr>
+<tr><td><code>-machine</code></td><td>machine queue policies</td></tr>
+<tr><td><code>-share</code></td><td>share measures</td></tr>
+<tr><td><code>-seed</code></td><td>seeds</td></tr>
+</tbody></table>
+</div>
+<p>A list you leave out keeps the value in the <code>-config</code> file. It also takes
+<code>-machines</code>, <code>-config</code> and <code>-tick</code> as <code>sim run</code> does, and <code>-theta</code>,
+<code>-lambda-j</code> and <code>-lambda-o</code> as <code>sim evaluate</code> does.</p>
+<pre><code class="language-sh">go run ./cmd/sim grid -machines Q1:32:65536:2:4096 -config base.json \
+  -dispatcher fifo,pq -share drf,decay -seed 1,2,3,4,5 &lt; workload.csv &gt; grid.csv
+</code></pre>
+<p>This runs 2 × 2 × 5 = 20 simulations. Each row starts with the settings
+<code>user</code>, <code>dispatcher</code>, <code>machine</code>, <code>share</code> and <code>seed</code>. Every measure
+<code>sim compare</code> names follows, under the same name. The cores and memory that
+utilization is measured against are what the machines have for lines.</p>
+<p>On the same commit, the same arguments write the same file, byte for byte.
+The simulations run at once, but the rows always come in the same order:
+the user policy changes slowest and the seed fastest.</p>
 <h2 id="checking-the-simulator-against-a-real-week"><a class="header" href="#checking-the-simulator-against-a-real-week">Checking the simulator against a real week</a></h2>
 <p><code>sim replay</code> reads an export and runs its lines again. Each line that ran
 becomes a line of the workload, with its user, group, cores and memory.
