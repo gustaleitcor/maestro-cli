@@ -19,17 +19,18 @@ import (
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Sign the CLI in to Maestro",
-	Long: `Prints a link to the Maestro page and a short code to approve there.
-The link can be opened in any browser, on this machine or another.
+	Long: `Prints a link to the Maestro page and a short code for you to approve
+there. You can open the link in any browser, on your computer or another one.
 
-With --server, signs in to that Maestro server, which every command then
-talks to; without it, to the one kept, which is asked for the first time.
-The key is only ever sent to the server that minted it.
+With --server, it signs you in to that Maestro server, and every later
+command talks to it. Without --server, it uses the server the CLI has kept,
+and asks for one the first time. The CLI sends your key only to the server
+that issued it.
 
-The key is kept in the system keyring, and a login without --store-in-file goes
-back to it. If yours asks for a password, or has none,
-pass --store-in-file to keep secrets in the config file (readable only by you)
-instead.`,
+The CLI keeps your key in the system keyring. Without --store-in-file,
+` + "`maestro login`" + ` goes back to the keyring. If your keyring asks for a
+password, or you have none, pass --store-in-file to keep secrets in the
+config file instead. Only you can read that file.`,
 	RunE: runLogin,
 }
 
@@ -37,7 +38,7 @@ var storeInFile bool
 
 // addStoreFlag adds --store-in-file to the commands that save a secret.
 func addStoreFlag(cmd *cobra.Command) {
-	cmd.Flags().BoolVar(&storeInFile, "store-in-file", false, "keep secrets in the config file instead of the system keyring, for good")
+	cmd.Flags().BoolVar(&storeInFile, "store-in-file", false, "keep secrets in the config file from now on, instead of the system keyring")
 }
 
 // applyStoreFlag must run before anything is saved. Logging in and adding a
@@ -75,29 +76,29 @@ func offerForge(ctx context.Context, stdin *bufio.Reader) error {
 		return nil
 	}
 
-	fmt.Println("\n" + warnStyle.Render("No git forge is configured yet.") + " Maestro reads your repositories from one")
-	fmt.Println("(GitHub, a Forgejo instance such as Codeberg, or GitLab) with a read-only token.")
+	fmt.Println("\n" + warnStyle.Render("You have no git forge yet.") + " Maestro reads your repositories from a forge")
+	fmt.Println("(GitHub, GitLab, or a Forgejo server such as Codeberg) with a read-only token of yours.")
 	answer, err := readLine(stdin, "Add one now? (y/n)", "y")
 	if err != nil {
 		return err
 	}
 	if !strings.HasPrefix(strings.ToLower(answer), "y") {
-		fmt.Println(dimStyle.Render("Skipped. Add one later with: maestro forges add"))
+		fmt.Println(dimStyle.Render("Skipped. Add one later with `maestro forges add`."))
 		return nil
 	}
 	return addForge(ctx, stdin, "", "", "")
 }
 
 // loginMaestroInBrowser has the user approve a short code on the Maestro
-// page, then receives a key minted for this CLI.
+// page, then receives a key issued for this CLI.
 func loginMaestroInBrowser(ctx context.Context) error {
 	login, err := maestroapi.StartCLILogin(ctx)
 	if err != nil {
-		return fmt.Errorf("starting Maestro login: %w", err)
+		return fmt.Errorf("couldn't start signing in: %w", err)
 	}
 
 	fmt.Printf("\nTo sign in to Maestro, open:\n\n  %s\n\nand approve this code:\n\n  %s\n\n", accentStyle.Render(login.VerificationURL), accentStyle.Render(login.UserCode))
-	fmt.Println(dimStyle.Render("Waiting for approval..."))
+	fmt.Println(dimStyle.Render("Waiting for you to approve the code..."))
 
 	interval := time.Duration(login.Interval) * time.Second
 	if interval <= 0 {
@@ -122,23 +123,23 @@ func loginMaestroInBrowser(ctx context.Context) error {
 		case "pending":
 		case "approved":
 			if err := config.SaveMaestroKey(maestroapi.BaseURL(), result.Key); err != nil {
-				return fmt.Errorf("saving Maestro key: %w", err)
+				return fmt.Errorf("couldn't save your Maestro key: %w", err)
 			}
-			fmt.Println(successStyle.Render("Maestro: logged in to " + maestroapi.BaseURL() + " as " + result.Email + "."))
+			fmt.Println(successStyle.Render("Signed in to " + maestroapi.BaseURL() + " as " + result.Email + "."))
 			return nil
 		case "denied":
-			return fmt.Errorf("the login was denied on the Maestro page")
+			return fmt.Errorf("the code was denied on the Maestro page; run `maestro login` to get a new one")
 		default:
-			return fmt.Errorf("the login expired; run `maestro login` again")
+			return fmt.Errorf("the code expired; run `maestro login` again")
 		}
 	}
-	return fmt.Errorf("the login expired; run `maestro login` again")
+	return fmt.Errorf("the code expired; run `maestro login` again")
 }
 
 // If hasExisting, a blank answer returns "" instead of erroring.
 func readSecret(stdin *bufio.Reader, label string, hasExisting bool) (string, error) {
 	if hasExisting {
-		fmt.Printf("%s (leave blank to keep current): ", label)
+		fmt.Printf("%s (leave it blank to keep the current one): ", label)
 	} else {
 		fmt.Printf("%s: ", label)
 	}
@@ -147,19 +148,19 @@ func readSecret(stdin *bufio.Reader, label string, hasExisting bool) (string, er
 	if term.IsTerminal(int(os.Stdin.Fd())) {
 		masked, err := readMasked()
 		if err != nil {
-			return "", fmt.Errorf("reading input: %w", err)
+			return "", fmt.Errorf("couldn't read what you typed: %w", err)
 		}
 		value = strings.TrimSpace(masked)
 	} else {
 		line, err := stdin.ReadString('\n')
 		if err != nil && err != io.EOF {
-			return "", fmt.Errorf("reading input: %w", err)
+			return "", fmt.Errorf("couldn't read what you typed: %w", err)
 		}
 		value = strings.TrimSpace(line)
 	}
 
 	if value == "" && !hasExisting {
-		return "", fmt.Errorf("no value provided")
+		return "", fmt.Errorf("nothing was typed")
 	}
 	return value, nil
 }

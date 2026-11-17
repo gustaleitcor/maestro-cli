@@ -37,7 +37,7 @@ trust this computer.`,
 }
 
 func init() {
-	logoutCmd.Flags().BoolVarP(&logoutYes, "yes", "y", false, "don't ask for confirmation")
+	logoutCmd.Flags().BoolVarP(&logoutYes, "yes", "y", false, "don't ask first")
 	rootCmd.AddCommand(logoutCmd)
 }
 
@@ -57,12 +57,12 @@ func confirm(question string) (bool, error) {
 		return true, nil
 	}
 	if !term.IsTerminal(int(os.Stdin.Fd())) {
-		return false, usageError(errors.New("there is no terminal to ask at: add --yes to go on without asking"))
+		return false, usageError(errors.New("there is no terminal to ask at; add --yes to go on without asking"))
 	}
 	fmt.Printf("%s [y/N] ", question)
 	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
 	if err != nil && err != io.EOF {
-		return false, fmt.Errorf("reading input: %w", err)
+		return false, fmt.Errorf("couldn't read what you typed: %w", err)
 	}
 	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(line)), "y"), nil
 }
@@ -74,14 +74,14 @@ func runLogout(cmd *cobra.Command, args []string) error {
 	}
 	key, keyErr := config.LoadMaestroKey("")
 	if keyErr != nil && len(forges) == 0 {
-		fmt.Println(dimStyle.Render("Nothing to forget: not signed in and no forges configured."))
+		fmt.Println(dimStyle.Render("Nothing to forget. You aren't signed in and have no forges."))
 		return nil
 	}
 
 	if !logoutYes {
 		fmt.Println(warnStyle.Render("This forgets:"))
 		if keyErr == nil {
-			fmt.Println("  - the Maestro key, which is revoked on the server first")
+			fmt.Println("  - your Maestro key, after the server revokes it")
 		}
 		if len(forges) > 0 {
 			fmt.Printf("  - %d forge(s) and their tokens: %s\n", len(forges), forgeNames(forges))
@@ -102,7 +102,7 @@ func runLogout(cmd *cobra.Command, args []string) error {
 	if err := config.Reset(); err != nil {
 		return err
 	}
-	fmt.Println(successStyle.Render("Logged out.") + " Run `maestro login` to sign in again.")
+	fmt.Println(successStyle.Render("Signed out.") + " Run `maestro login` to sign in again.")
 	return nil
 }
 

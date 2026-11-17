@@ -20,7 +20,7 @@ var keysCmd = &cobra.Command{
 	Long: `Lists the Maestro keys you have on the server, newest first. Each
 ` + "`maestro login`" + ` issues one, on whichever computer you run it. A key is shown by
 its prefix, the first 10 characters, and never in full, with when it was
-created and when it expires. The one this computer uses is marked.
+created and when it expires. It marks the one this computer uses.
 
 A key expires 90 days after it was issued, unless your administrator set
 another length. Run ` + "`maestro login`" + ` again for a new one.`,

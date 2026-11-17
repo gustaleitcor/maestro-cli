@@ -262,12 +262,12 @@ and approve this code:
 
   KQ7M-W2HX
 
-Waiting for approval...
+Waiting for you to approve the code...
 </code></pre>
 <p>Open the link in any browser, sign in with your lab account if the page asks,
 and approve the code. The browser can be on another computer, which helps
 when you reach this one over SSH. The terminal then confirms:</p>
-<pre><code class="language-text">Maestro: logged in to https://maestro.example.org as ada@example.com.
+<pre><code class="language-text">Signed in to https://maestro.example.org as ada@example.com.
 </code></pre>
 <p><code>maestro login</code> ends by offering to add a git forge. Answer <code>n</code> for now. The
 template is public, and Maestro needs a forge only to read private
@@ -2629,7 +2629,7 @@ maestro forges add work --kind forgejo --url https://git.example.com
 </code></pre>
 <p>Flags:</p>
 <pre><code class="language-text">      --kind string     forge kind: github, forgejo, gitlab
-      --store-in-file   keep secrets in the config file instead of the system keyring, for good
+      --store-in-file   keep secrets in the config file from now on, instead of the system keyring
       --url string      Forgejo instance URL (default: https://codeberg.org)
 </code></pre>
 <h2 id="maestro-forges-list"><a class="header" href="#maestro-forges-list">maestro forges list</a></h2>
@@ -2654,7 +2654,7 @@ maestro forges add work --kind forgejo --url https://git.example.com
 <p>Lists the Maestro keys you have on the server, newest first. Each
 <code>maestro login</code> issues one, on whichever computer you run it. A key is shown by
 its prefix, the first 10 characters, and never in full, with when it was
-created and when it expires. The one this computer uses is marked.</p>
+created and when it expires. It marks the one this computer uses.</p>
 <p>A key expires 90 days after it was issued, unless your administrator set
 another length. Run <code>maestro login</code> again for a new one.</p>
 <p>Examples:</p>
@@ -2688,17 +2688,18 @@ forgets the key too.</p>
 <p>Sign the CLI in to Maestro.</p>
 <pre><code class="language-text">maestro login [flags]
 </code></pre>
-<p>Prints a link to the Maestro page and a short code to approve there.
-The link can be opened in any browser, on this machine or another.</p>
-<p>With --server, signs in to that Maestro server, which every command then
-talks to; without it, to the one kept, which is asked for the first time.
-The key is only ever sent to the server that minted it.</p>
-<p>The key is kept in the system keyring, and a login without --store-in-file goes
-back to it. If yours asks for a password, or has none,
-pass --store-in-file to keep secrets in the config file (readable only by you)
-instead.</p>
+<p>Prints a link to the Maestro page and a short code for you to approve
+there. You can open the link in any browser, on your computer or another one.</p>
+<p>With --server, it signs you in to that Maestro server, and every later
+command talks to it. Without --server, it uses the server the CLI has kept,
+and asks for one the first time. The CLI sends your key only to the server
+that issued it.</p>
+<p>The CLI keeps your key in the system keyring. Without --store-in-file,
+<code>maestro login</code> goes back to the keyring. If your keyring asks for a
+password, or you have none, pass --store-in-file to keep secrets in the
+config file instead. Only you can read that file.</p>
 <p>Flags:</p>
-<pre><code class="language-text">      --store-in-file   keep secrets in the config file instead of the system keyring, for good
+<pre><code class="language-text">      --store-in-file   keep secrets in the config file from now on, instead of the system keyring
 </code></pre>
 <h2 id="maestro-logout"><a class="header" href="#maestro-logout">maestro logout</a></h2>
 <p>Revoke your Maestro key and forget everything the CLI has stored.</p>
@@ -2712,7 +2713,7 @@ a computer that is signed in.</p>
 <p>A forge token stays valid on its forge. Revoke it there if you no longer
 trust this computer.</p>
 <p>Flags:</p>
-<pre><code class="language-text">  -y, --yes    don't ask for confirmation
+<pre><code class="language-text">  -y, --yes    don't ask first
 </code></pre>
 <h2 id="maestro-machines"><a class="header" href="#maestro-machines">maestro machines</a></h2>
 <p>Commands for the machines containers run on.</p>

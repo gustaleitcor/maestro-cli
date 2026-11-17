@@ -45,7 +45,7 @@ and approve this code:
 
   KQ7M-W2HX
 
-Waiting for approval...
+Waiting for you to approve the code...
 ```
 
 Open the link in any browser, sign in with your lab account if the page asks,
@@ -53,7 +53,7 @@ and approve the code. The browser can be on another computer, which helps
 when you reach this one over SSH. The terminal then confirms:
 
 ```text
-Maestro: logged in to https://maestro.example.org as ada@example.com.
+Signed in to https://maestro.example.org as ada@example.com.
 ```
 
 `maestro login` ends by offering to add a git forge. Answer `n` for now. The
