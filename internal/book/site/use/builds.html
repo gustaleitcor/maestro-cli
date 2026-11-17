@@ -203,6 +203,9 @@ why. The usual causes are a step of the Dockerfile, an invalid
 <code>maestro.toml</code>, and a generator that raised an exception.</p>
 <p>A finished build has a number, written <code>#12</code>. <code>maestro run 12</code> starts a run
 of its image.</p>
+<p>You can have 2 builds running at once, unless your administrator set
+another number. Maestro refuses a third with "you already have 2 builds
+running; wait for one to end".</p>
 <h2 id="your-builds"><a class="header" href="#your-builds">Your builds</a></h2>
 <pre><code class="language-text">BUILD  REPO                           REF   STATUS   IMAGE  CREATED
 #14    ada/maestro-template           main  success  152M   2026-11-16 10:01

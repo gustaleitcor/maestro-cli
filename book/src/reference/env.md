@@ -11,6 +11,7 @@
 | `VIEW_URL` | The first of `ALLOWED_ORIGINS` | Where the Maestro page is served. Sign-ins return there. |
 | `PODMAN_SOCKET` | `unix:///run/podman/podman.sock` | orq's own Podman, which builds images |
 | `BUILD_TIMEOUT` | `30m` | How long a build may take |
+| `BUILDS_AT_ONCE` | `2` | How many builds each user may have running at once. `0` means no limit. |
 | `ALLOWED_FORGE_HOSTS` | `github.com,codeberg.org,gitlab.com` | The only hosts orq clones from. The list keeps anyone from pointing orq at a host on its own network. |
 | `DATA_DIR` | `/maestro/data` | Where the logs and outputs of runs are kept |
 | `RUN_OUTPUT_MAX_MB` | `1024` | The logs and outputs kept for each line. orq drops the rest and leaves a note on the line. |

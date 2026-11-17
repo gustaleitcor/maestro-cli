@@ -1094,6 +1094,9 @@ why. The usual causes are a step of the Dockerfile, an invalid
 <code>maestro.toml</code>, and a generator that raised an exception.</p>
 <p>A finished build has a number, written <code>#12</code>. <code>maestro run 12</code> starts a run
 of its image.</p>
+<p>You can have 2 builds running at once, unless your administrator set
+another number. Maestro refuses a third with "you already have 2 builds
+running; wait for one to end".</p>
 <h2 id="your-builds"><a class="header" href="#your-builds">Your builds</a></h2>
 <pre><code class="language-text">BUILD  REPO                           REF   STATUS   IMAGE  CREATED
 #14    ada/maestro-template           main  success  152M   2026-11-16 10:01
@@ -3058,6 +3061,7 @@ maestro.toml: outputs_layout "merged" must be "per-line" (each line's outputs ap
 <tr><td><code>VIEW_URL</code></td><td>The first of <code>ALLOWED_ORIGINS</code></td><td>Where the Maestro page is served. Sign-ins return there.</td></tr>
 <tr><td><code>PODMAN_SOCKET</code></td><td><code>unix:///run/podman/podman.sock</code></td><td>orq's own Podman, which builds images</td></tr>
 <tr><td><code>BUILD_TIMEOUT</code></td><td><code>30m</code></td><td>How long a build may take</td></tr>
+<tr><td><code>BUILDS_AT_ONCE</code></td><td><code>2</code></td><td>How many builds each user may have running at once. <code>0</code> means no limit.</td></tr>
 <tr><td><code>ALLOWED_FORGE_HOSTS</code></td><td><code>github.com,codeberg.org,gitlab.com</code></td><td>The only hosts orq clones from. The list keeps anyone from pointing orq at a host on its own network.</td></tr>
 <tr><td><code>DATA_DIR</code></td><td><code>/maestro/data</code></td><td>Where the logs and outputs of runs are kept</td></tr>
 <tr><td><code>RUN_OUTPUT_MAX_MB</code></td><td><code>1024</code></td><td>The logs and outputs kept for each line. orq drops the rest and leaves a note on the line.</td></tr>

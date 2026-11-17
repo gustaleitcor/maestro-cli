@@ -28,6 +28,10 @@ why. The usual causes are a step of the Dockerfile, an invalid
 A finished build has a number, written `#12`. `maestro run 12` starts a run
 of its image.
 
+You can have 2 builds running at once, unless your administrator set
+another number. Maestro refuses a third with "you already have 2 builds
+running; wait for one to end".
+
 ## Your builds
 
 ```text
