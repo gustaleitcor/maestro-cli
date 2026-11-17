@@ -941,7 +941,9 @@ keyring, or one whose keyring asks for a password each time, sign in with:</p>
 <h2 id="which-server-the-cli-talks-to"><a class="header" href="#which-server-the-cli-talks-to">Which server the CLI talks to</a></h2>
 <p>The CLI has no built-in server. The first time a command needs one, <code>maestro</code>
 asks for its address and keeps it. An address without a scheme gets
-<code>https://</code>.</p>
+<code>https://</code>. A script has no terminal to answer at, so there the command
+stops and tells you to pass <code>--server &lt;url&gt;</code>, set <code>MAESTRO_ORQ_URL</code>, or run
+<code>maestro login --server &lt;url&gt;</code> once.</p>
 <p>To use another Maestro, sign in to it:</p>
 <pre><code class="language-sh">maestro login --server https://maestro.example.org
 </code></pre>
@@ -1053,6 +1055,8 @@ only the number of what they made. With either flag, standard output holds
 the answer alone, and progress messages go to standard error:</p>
 <pre><code class="language-sh">run=$(maestro run 12 -q) &amp;&amp; maestro runs show "$run" --watch
 </code></pre>
+<p><code>--json</code> and <code>-q</code> print once, so neither works with <code>--watch</code>. A command
+takes only one of the two.</p>
 <h2 id="exit-status"><a class="header" href="#exit-status">Exit status</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Status</th><th>Meaning</th></tr></thead><tbody>
 <tr><td>0</td><td>The command did what it was asked.</td></tr>
@@ -1171,7 +1175,8 @@ standard error. Redirect one away to read the other:</p>
 <p>A run with a single line doesn't need the line number.</p>
 <p><code>-f</code> follows the line the way <code>tail -f</code> follows a file. It waits for a line
 that hasn't started, prints what a running line prints as it comes, and
-returns when the line ends.</p>
+returns when the line ends. A server older than <code>-f</code> can't follow. The CLI
+then prints what the line had printed so far and says so.</p>
 <p>For a line that has ended, all of its standard output comes before all of
 its standard error. Maestro stores the two apart and doesn't record how they
 were interleaved.</p>
@@ -2058,6 +2063,8 @@ container of orq's own that no line has on that machine, and an image of
 orq's own that orq no longer has and no line needs there.</p>
 <p>The sweep touches nothing else on the machine. The machine's own images and
 containers stay, and so do those of another orq that uses the same machine.</p>
+<p>Images and containers that an orq made before it labelled what it made have
+no <code>maestro.orq</code> label. Every orq takes them for its own, as it did then.</p>
 <h2 id="when-a-machine-cant-be-reached"><a class="header" href="#when-a-machine-cant-be-reached">When a machine can't be reached</a></h2>
 <p>A machine orq can't reach gets no new lines. The lines waiting on it, or
 about to start there, go back to <code>queued</code> so another machine can take them.

@@ -209,7 +209,9 @@ keyring, or one whose keyring asks for a password each time, sign in with:</p>
 <h2 id="which-server-the-cli-talks-to"><a class="header" href="#which-server-the-cli-talks-to">Which server the CLI talks to</a></h2>
 <p>The CLI has no built-in server. The first time a command needs one, <code>maestro</code>
 asks for its address and keeps it. An address without a scheme gets
-<code>https://</code>.</p>
+<code>https://</code>. A script has no terminal to answer at, so there the command
+stops and tells you to pass <code>--server &lt;url&gt;</code>, set <code>MAESTRO_ORQ_URL</code>, or run
+<code>maestro login --server &lt;url&gt;</code> once.</p>
 <p>To use another Maestro, sign in to it:</p>
 <pre><code class="language-sh">maestro login --server https://maestro.example.org
 </code></pre>

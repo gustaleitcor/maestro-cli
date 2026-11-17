@@ -203,6 +203,8 @@ only the number of what they made. With either flag, standard output holds
 the answer alone, and progress messages go to standard error:</p>
 <pre><code class="language-sh">run=$(maestro run 12 -q) &amp;&amp; maestro runs show "$run" --watch
 </code></pre>
+<p><code>--json</code> and <code>-q</code> print once, so neither works with <code>--watch</code>. A command
+takes only one of the two.</p>
 <h2 id="exit-status"><a class="header" href="#exit-status">Exit status</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Status</th><th>Meaning</th></tr></thead><tbody>
 <tr><td>0</td><td>The command did what it was asked.</td></tr>

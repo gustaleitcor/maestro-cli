@@ -67,7 +67,8 @@ A run with a single line doesn't need the line number.
 
 `-f` follows the line the way `tail -f` follows a file. It waits for a line
 that hasn't started, prints what a running line prints as it comes, and
-returns when the line ends.
+returns when the line ends. A server older than `-f` can't follow. The CLI
+then prints what the line had printed so far and says so.
 
 For a line that has ended, all of its standard output comes before all of
 its standard error. Maestro stores the two apart and doesn't record how they

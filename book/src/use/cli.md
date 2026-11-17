@@ -35,6 +35,9 @@ the answer alone, and progress messages go to standard error:
 run=$(maestro run 12 -q) && maestro runs show "$run" --watch
 ```
 
+`--json` and `-q` print once, so neither works with `--watch`. A command
+takes only one of the two.
+
 ## Exit status
 
 | Status | Meaning |

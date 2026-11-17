@@ -228,7 +228,8 @@ standard error. Redirect one away to read the other:</p>
 <p>A run with a single line doesn't need the line number.</p>
 <p><code>-f</code> follows the line the way <code>tail -f</code> follows a file. It waits for a line
 that hasn't started, prints what a running line prints as it comes, and
-returns when the line ends.</p>
+returns when the line ends. A server older than <code>-f</code> can't follow. The CLI
+then prints what the line had printed so far and says so.</p>
 <p>For a line that has ended, all of its standard output comes before all of
 its standard error. Maestro stores the two apart and doesn't record how they
 were interleaved.</p>

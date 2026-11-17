@@ -112,6 +112,9 @@ orq's own that orq no longer has and no line needs there.
 The sweep touches nothing else on the machine. The machine's own images and
 containers stay, and so do those of another orq that uses the same machine.
 
+Images and containers that an orq made before it labelled what it made have
+no `maestro.orq` label. Every orq takes them for its own, as it did then.
+
 ## When a machine can't be reached
 
 A machine orq can't reach gets no new lines. The lines waiting on it, or

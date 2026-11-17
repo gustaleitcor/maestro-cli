@@ -45,7 +45,9 @@ The key then goes into the CLI's config file, which only your user can read.
 
 The CLI has no built-in server. The first time a command needs one, `maestro`
 asks for its address and keeps it. An address without a scheme gets
-`https://`.
+`https://`. A script has no terminal to answer at, so there the command
+stops and tells you to pass `--server <url>`, set `MAESTRO_ORQ_URL`, or run
+`maestro login --server <url>` once.
 
 To use another Maestro, sign in to it:
 
