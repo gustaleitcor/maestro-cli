@@ -8,7 +8,7 @@ them.
 
 | Part | What it is | How it runs |
 | --- | --- | --- |
-| `maestro-orq` | The server, written in Go, with SQLite and its own Podman for builds | A container that stays up, on port 3005 |
+| `maestro-orq` | The server, written in Go, with SQLite and its own Podman for builds | A container that stays up, on port 3005 of 127.0.0.1 |
 | `maestro-view` | The Maestro page, a Vue app | Built once into `maestro-view/dist`, then served as files |
 | `maestro-cli/book` | This book, which `maestro` also carries | Optionally built once into `maestro-cli/book/dist`, then served as files |
 | Redis | Sessions, and answers cached for a few seconds | Any Redis, Valkey or KeyDB |
@@ -81,6 +81,32 @@ to the lines that were running.
 | `MACHINE_SECRET` | At least 32 characters. It encrypts the machines' SSH keys. See [Adding machines](machines.md). |
 
 [Environment variables](../reference/env.md) lists every variable.
+
+## The network
+
+orq is reached through the reverse proxy and nothing else. The compose file
+publishes its port 3005 on 127.0.0.1, so only the host itself reaches it.
+
+A reverse proxy in a container of its own reaches the host through Podman's
+bridge, at `host.containers.internal`, and a port published on 127.0.0.1
+may not answer there. Try it on your host. If the proxy can't reach orq,
+do one of two things:
+
+- Set `ORQ_BIND` in `.env` to an address of the host that the proxy reaches
+  and other hosts don't.
+- Put the proxy and orq on one Podman network, have the proxy reach orq by
+  its name, and remove the `ports` entry from the compose file.
+
+The host also needs a firewall that lets in SSH and the ports the reverse
+proxy listens on, usually 80 and 443, and nothing else. A port that rootful
+Docker or Podman publishes can get past some firewalls' rules, so publish
+orq on 127.0.0.1 even behind one. With firewalld:
+
+```sh
+firewall-cmd --permanent --add-service=http --add-service=https
+firewall-cmd --permanent --list-services   # remove any other with --remove-service
+firewall-cmd --reload
+```
 
 ## Redis
 

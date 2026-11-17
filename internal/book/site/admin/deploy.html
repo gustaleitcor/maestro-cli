@@ -186,7 +186,7 @@ Maestro page beside it, plus the machines orq drives. The
 together. Each part is a git submodule of it, and its compose files run
 them.</p>
 <div class="table-wrapper"><table><thead><tr><th>Part</th><th>What it is</th><th>How it runs</th></tr></thead><tbody>
-<tr><td><code>maestro-orq</code></td><td>The server, written in Go, with SQLite and its own Podman for builds</td><td>A container that stays up, on port 3005</td></tr>
+<tr><td><code>maestro-orq</code></td><td>The server, written in Go, with SQLite and its own Podman for builds</td><td>A container that stays up, on port 3005 of 127.0.0.1</td></tr>
 <tr><td><code>maestro-view</code></td><td>The Maestro page, a Vue app</td><td>Built once into <code>maestro-view/dist</code>, then served as files</td></tr>
 <tr><td><code>maestro-cli/book</code></td><td>This book, which <code>maestro</code> also carries</td><td>Optionally built once into <code>maestro-cli/book/dist</code>, then served as files</td></tr>
 <tr><td>Redis</td><td>Sessions, and answers cached for a few seconds</td><td>Any Redis, Valkey or KeyDB</td></tr>
@@ -247,6 +247,27 @@ to the lines that were running.</p>
 </tbody></table>
 </div>
 <p><a href="../reference/env.html">Environment variables</a> lists every variable.</p>
+<h2 id="the-network"><a class="header" href="#the-network">The network</a></h2>
+<p>orq is reached through the reverse proxy and nothing else. The compose file
+publishes its port 3005 on 127.0.0.1, so only the host itself reaches it.</p>
+<p>A reverse proxy in a container of its own reaches the host through Podman's
+bridge, at <code>host.containers.internal</code>, and a port published on 127.0.0.1
+may not answer there. Try it on your host. If the proxy can't reach orq,
+do one of two things:</p>
+<ul>
+<li>Set <code>ORQ_BIND</code> in <code>.env</code> to an address of the host that the proxy reaches
+and other hosts don't.</li>
+<li>Put the proxy and orq on one Podman network, have the proxy reach orq by
+its name, and remove the <code>ports</code> entry from the compose file.</li>
+</ul>
+<p>The host also needs a firewall that lets in SSH and the ports the reverse
+proxy listens on, usually 80 and 443, and nothing else. A port that rootful
+Docker or Podman publishes can get past some firewalls' rules, so publish
+orq on 127.0.0.1 even behind one. With firewalld:</p>
+<pre><code class="language-sh">firewall-cmd --permanent --add-service=http --add-service=https
+firewall-cmd --permanent --list-services   # remove any other with --remove-service
+firewall-cmd --reload
+</code></pre>
 <h2 id="redis"><a class="header" href="#redis">Redis</a></h2>
 <p>Redis holds the sessions of the Maestro page, so whoever can write to it can
 make a session and sign in as anyone, administrators included. Builds run on
