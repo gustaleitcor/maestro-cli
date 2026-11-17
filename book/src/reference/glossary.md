@@ -20,12 +20,12 @@ terminal.
 
 ## The statuses of a line
 
-A line waits at three levels before it runs.
+A line waits in three queues before it runs: its user's queue, its group's
+dispatcher queue as its user's head, and a machine's queue.
 
 | Status | The line is |
 | --- | --- |
-| `queued` | Waiting to be chosen from among its user's lines |
-| `staged` | Chosen, and waiting for a machine |
+| `queued` | In its user's queue. The first of a user's queued lines is their head, which waits in the dispatcher queue for a machine. |
 | `assigned` | Given to a machine, and waiting for room on it while its image is copied there |
 | `starting`, `running` | In a container on the machine |
 
@@ -38,7 +38,7 @@ It then ends in one of four ways.
 | `error` | The line couldn't run, for a reason on Maestro's side and outside your program. |
 | `cancelled` | Its run was cancelled before it ended. |
 
-[The queue](../how/queue.md) explains the waiting levels, and
+[The queue](../how/queue.md) explains the three queues, and
 [How a line ends](../use/runs.md#how-a-line-ends) the endings.
 
 ## The programs
@@ -55,8 +55,12 @@ It then ends in one of four ways.
 
 | Word | Meaning |
 | --- | --- |
-| Policy | The rule that makes one of the scheduler's four choices, such as `fifo` or `pq` |
+| User queue | A user's queued lines, in the order the `user` policy gives them |
+| Head | The first line of a user's queue, the one their group's dispatcher queue holds for them |
+| Dispatcher queue | The heads of a group's users. In the group's turn, the `dispatcher` policy gives one of them a machine. |
+| Machine queue | The lines assigned to a machine that wait for room on it, at most `depth` of them |
+| Policy | The rule that picks who leaves one of the three queues, such as `fifo` or `pq` |
 | Score | The number `pq` ranks lines by, built from a line's cores, memory and waiting time and its user's share |
 | Share | How much of the machines a user holds or has used, as the chosen measure counts it |
 
-[Policies and the score](../how/score.md) defines all three.
+[The queue](../how/queue.md) describes the queues, and [Policies and the score](../how/score.md) the policies, the score and the share.

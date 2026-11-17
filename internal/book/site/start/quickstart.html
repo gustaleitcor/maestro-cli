@@ -249,8 +249,8 @@ LINE  PARAMETERS                        MACHINE  STATUS    FILES
 2     -t 20 --label 'long run' out.txt  Q2       assigned  -
 </code></pre>
 <p>The numbers and machine names will be your server's. A line's status goes
-from <code>queued</code> through <code>staged</code> and <code>assigned</code> while it waits, then <code>running</code>,
-then <code>succeeded</code>. <a href="../how/queue.html">The queue</a> explains the waiting ones. The
+from <code>queued</code> to <code>assigned</code> while it waits, then <code>running</code>, then
+<code>succeeded</code>. <a href="../how/queue.html">The queue</a> explains the waiting ones. The
 template's program sleeps for the number of seconds after <code>-t</code>, so the run
 takes under a minute once its lines start. The command returns when both
 lines have ended:</p>

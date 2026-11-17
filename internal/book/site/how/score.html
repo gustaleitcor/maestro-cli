@@ -180,24 +180,23 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="policies-and-the-score"><a class="header" href="#policies-and-the-score">Policies and the score</a></h1>
-<p><a href="queue.html">The queue</a> described three steps that move a line toward a
-machine. Each step makes a choice, and a policy makes it. An administrator
+<p><a href="queue.html">The queue</a> described the three queues a line passes on its way
+to a machine. A policy picks who leaves each one. An administrator
 picks the policies, and <code>maestro settings</code> shows the ones in force.</p>
-<h2 id="the-four-policies"><a class="header" href="#the-four-policies">The four policies</a></h2>
-<div class="table-wrapper"><table><thead><tr><th>Setting</th><th>The choice it makes</th><th>When</th></tr></thead><tbody>
-<tr><td><code>user</code></td><td>Which of one user's queued lines is that user's next</td><td>Selection</td></tr>
-<tr><td><code>select</code></td><td>Which user's next line is staged, among the users of a group</td><td>Selection</td></tr>
-<tr><td><code>allocate</code></td><td>Which of a group's staged lines goes to a machine in the group's turn</td><td>Allocation</td></tr>
-<tr><td><code>machine</code></td><td>Which of the lines waiting on a machine starts</td><td>Promotion</td></tr>
+<h2 id="the-three-policies"><a class="header" href="#the-three-policies">The three policies</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Setting</th><th>The choice it makes</th><th>Queue</th></tr></thead><tbody>
+<tr><td><code>user</code></td><td>Which of one user's queued lines is that user's head</td><td>User queue</td></tr>
+<tr><td><code>dispatcher</code></td><td>Which of a group's heads goes to a machine in the group's turn</td><td>Dispatcher queue</td></tr>
+<tr><td><code>machine</code></td><td>Which of the lines waiting on a machine starts</td><td>Machine queue</td></tr>
 </tbody></table>
 </div>
-<p>All four are <code>fifo</code> until an administrator changes them. Lines then go in
+<p>All three are <code>fifo</code> until an administrator changes them. Lines then go in
 the order they were queued, oldest run first, and on a machine the oldest
 waiting line holds back the others until it fits.</p>
 <h2 id="what-a-policy-can-be"><a class="header" href="#what-a-policy-can-be">What a policy can be</a></h2>
-<p>The first three policies choose before a line is on a machine. At that
-point there is no free space to fit the line into, so these policies only
-put lines in an order.</p>
+<p>The <code>user</code> and <code>dispatcher</code> policies choose before a line is on a machine.
+At that point there is no free space to fit the line into, so these
+policies only put lines in an order.</p>
 <div class="table-wrapper"><table><thead><tr><th>Policy</th><th>Serves first</th></tr></thead><tbody>
 <tr><td><code>fifo</code></td><td>The oldest</td></tr>
 <tr><td><code>lcfs</code></td><td>The newest</td></tr>
@@ -223,12 +222,15 @@ among the lines that fit now, as the four policies in the second table do.</p>
 <p>s = ω1·cores + ω2·memory + ω3·waiting + ω4·share</p>
 </blockquote>
 <div class="table-wrapper"><table><thead><tr><th>Term</th><th>What it is</th></tr></thead><tbody>
-<tr><td>cores</td><td>The line's <code>cpus</code>, as a fraction of the most cores any machine has</td></tr>
-<tr><td>memory</td><td>The line's <code>memory</code>, as a fraction of the most memory any machine has</td></tr>
+<tr><td>cores</td><td>The line's <code>cpus</code>, as a fraction of the cores all machines have for lines, summed</td></tr>
+<tr><td>memory</td><td>The line's <code>memory</code>, as a fraction of the memory all machines have for lines, summed</td></tr>
 <tr><td>waiting</td><td>The time since the line's run was queued, divided by the horizon. The horizon is an hour unless <code>horizon_minutes</code> says otherwise.</td></tr>
 <tr><td>share</td><td>The user's share of the machines, as a fraction of every user's share added together</td></tr>
 </tbody></table>
 </div>
+<p>The cores and memory are fractions of all the machines together, so they
+are small when there are many machines. ω1 and ω2 then need to be larger
+to weigh as much as waiting and share do.</p>
 <p>An administrator sets the four weights, and a weight can be negative.</p>
 <div class="table-wrapper"><table><thead><tr><th>Weight</th><th>Setting</th><th>Effect</th></tr></thead><tbody>
 <tr><td>ω1</td><td><code>cpu_weight</code></td><td>Below 0, lines that ask for few cores go first.</td></tr>
@@ -238,11 +240,11 @@ among the lines that fit now, as the four policies in the second table do.</p>
 </tbody></table>
 </div>
 <h3 id="a-worked-example"><a class="header" href="#a-worked-example">A worked example</a></h3>
-<p>Take a lab whose largest machine has 16 cores, with <code>select = pq</code> and these
-weights: ω1 = −0.2, ω2 = 0, ω3 = 0.5 and ω4 = −1. The horizon is an hour.
-Two users each have a next line.</p>
+<p>Take a lab whose machines have 32 cores for lines in all, with
+<code>dispatcher = pq</code> and these weights: ω1 = −0.4, ω2 = 0, ω3 = 0.5 and
+ω4 = −1. The horizon is an hour. Two users of a group each have a head.</p>
 <div class="table-wrapper"><table><thead><tr><th></th><th>Ada's line</th><th>Bo's line</th></tr></thead><tbody>
-<tr><td>Cores asked for</td><td>4, so cores = 0.25</td><td>8, so cores = 0.5</td></tr>
+<tr><td>Cores asked for</td><td>4, so cores = 0.125</td><td>8, so cores = 0.25</td></tr>
 <tr><td>Run queued</td><td>30 minutes ago, so waiting = 0.5</td><td>6 minutes ago, so waiting = 0.1</td></tr>
 <tr><td>User's share</td><td>0.75</td><td>0.25</td></tr>
 <tr><td>ω1·cores</td><td>−0.05</td><td>−0.10</td></tr>
@@ -251,11 +253,12 @@ Two users each have a next line.</p>
 <tr><td>Score</td><td>−0.55</td><td>−0.30</td></tr>
 </tbody></table>
 </div>
-<p>Bo's line has the higher score, so it is staged first. Ada's line has
+<p>Bo's line has the higher score, so it goes to a machine first. Ada's line has
 waited longer and is smaller, but Ada already holds three times what Bo
 holds, and with these weights the share outweighs the rest.</p>
-<p>Staging Bo's line raises Bo's share, because a staged line counts as held.
-The scheduler works the shares out again before it stages the next line.</p>
+<p>Giving Bo's line a machine raises Bo's share, because an assigned line
+counts as held. The scheduler works the shares out again before the next
+turn.</p>
 <h2 id="a-users-share"><a class="header" href="#a-users-share">A user's share</a></h2>
 <p>The <code>share</code> setting chooses how a user's share is measured.</p>
 <div class="table-wrapper"><table><thead><tr><th>Measure</th><th>A user's share is</th></tr></thead><tbody>
@@ -266,7 +269,7 @@ The scheduler works the shares out again before it stages the next line.</p>
 </tbody></table>
 </div>
 <p>For <code>drf</code>, <code>weighted-drf</code> and <code>asset</code>, the lines a user holds are those that
-are staged, assigned, starting or running.</p>
+are assigned, starting or running.</p>
 <p>Suppose the machines of the lab in the example have 32 cores and 96 GB for
 lines in total, and the measure is <code>drf</code>. Ada's lines hold 12 cores and
 16 GB. That is
@@ -274,37 +277,35 @@ lines in total, and the measure is <code>drf</code>. Ada's lines hold 12 cores a
 Bo's lines hold 3 cores and 12 GB, which is 0.094 and 0.125, so his is
 0.125. The score uses each as a fraction of the two together, which gives
 0.75 for Ada and 0.25 for Bo.</p>
-<p>With <code>select = pq</code>, <code>share = drf</code> and ω4 = −1, the queue is the classic fair
+<p>With <code>dispatcher = pq</code>, <code>share = drf</code> and ω4 = −1, the queue is the classic fair
 queue of DRF, in which the user who holds the least goes next.</p>
-<h2 id="the-limits"><a class="header" href="#the-limits">The limits</a></h2>
+<h2 id="the-machine-queues-length"><a class="header" href="#the-machine-queues-length">The machine queue's length</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Setting</th><th>What it limits</th><th>Default</th></tr></thead><tbody>
-<tr><td><code>staged_capacity</code></td><td>How many lines of each group can be staged at once</td><td>Twice the number of machines</td></tr>
 <tr><td><code>depth</code></td><td>How many lines can wait on each machine</td><td>3</td></tr>
 </tbody></table>
 </div>
 <p>A smaller <code>depth</code> leaves the choice of whose line goes next until closer to
 the moment a machine has room.</p>
-<p>When allocation gives a line to a machine, it draws the machine at random
-among those the line may use that have room in their queue. It reserves
-nothing on the machine, and promotion decides later whether the line fits.
-The <code>seed</code> setting makes that draw, and <code>siro</code>, repeat the same choices.</p>
+<p>When the dispatcher policy gives a line to a machine, the scheduler draws
+the machine at random among those the line may use that have room in their
+queue. It reserves nothing on the machine, and the machine policy decides
+later whether the line fits. The <code>seed</code> setting makes that draw, and
+<code>siro</code>, repeat the same choices.</p>
 <h2 id="seeing-the-settings"><a class="header" href="#seeing-the-settings">Seeing the settings</a></h2>
-<pre><code class="language-text">images per user                       10
-within a user                         fifo
-among users                           pq
-staged lines, in turn between groups  fifo
-on a machine                          best-fit
-staged at most                        twice the machines, per group
-waiting on a machine                  3
-score weights                         cpu 0 · memory 0 · waiting 0.5 · share -1
-waiting horizon                       60 min
-share measure                         drf
-half-life                             168 h
-seed (siro, machine draw)             0
-user weights                          everyone 1
+<pre><code class="language-text">images per user            10
+a user's head              fifo
+among a group's heads      pq
+on a machine               best-fit
+waiting on a machine       3
+score weights              cpu 0 · memory 0 · waiting 0.5 · share -1
+waiting horizon            60 min
+share measure              drf
+half-life                  168 h
+seed (siro, machine draw)  0
+user weights               everyone 1
 </code></pre>
-<p>The four rows after the image limit in <code>maestro settings</code> are the <code>user</code>,
-<code>select</code>, <code>allocate</code> and <code>machine</code> policies, in that order.
+<p>The three rows after the image limit in <code>maestro settings</code> are the <code>user</code>,
+<code>dispatcher</code> and <code>machine</code> policies, in that order.
 <a href="../admin/policies.html">Choosing the policies</a> shows an administrator where
 to change them.</p>
 

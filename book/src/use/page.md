@@ -50,7 +50,7 @@ line's container ran with:
 - the files kept from it
 - the name of its container, its image and the commit the image was built
   from
-- when it was queued, staged, assigned, started and finished, and how long
+- when it was queued, assigned, started and finished, and how long
   it waited and ran
 
 The page shows files as folders. Paths that share a prefix go under one
@@ -95,9 +95,9 @@ therefore be read on the page without a download.
 ## Queue and Usage
 
 Queue shows what `maestro queue` prints, and reads it again every 5 seconds:
-how many lines wait at each level, yours and everyone's, your group, and
-your share of the machines. [The queue](../how/queue.md) explains the
-levels.
+how many lines wait in each queue, yours and everyone's, your group with
+the heads in its dispatcher queue, and your share of the machines.
+[The queue](../how/queue.md) explains the queues.
 
 Usage charts the core-hours and memory GB-hours your lines used each day.
 Its "Lines over a period" section downloads the file `maestro export`

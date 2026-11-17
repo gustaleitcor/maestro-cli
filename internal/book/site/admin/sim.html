@@ -205,17 +205,19 @@ without that column has every user in group 1.</p>
 <h2 id="the-schedulers-settings"><a class="header" href="#the-schedulers-settings">The scheduler's settings</a></h2>
 <p><code>-config</code> names a JSON file with the scheduler's settings, in the form
 <code>GET /api/settings</code> returns them under <code>scheduler</code>. This one is DRF:</p>
-<pre><code class="language-json">{"select": "pq", "share_weight": -1}
+<pre><code class="language-json">{"dispatcher": "pq", "share_weight": -1}
 </code></pre>
-<p>Without <code>-config</code>, every level is FIFO. The names are the settings of
+<p>Without <code>-config</code>, every queue is FIFO. The names are the settings of
 <a href="../how/score.html">Policies and the score</a>:</p>
 <div class="table-wrapper"><table><thead><tr><th>Kind</th><th>Names</th></tr></thead><tbody>
-<tr><td>Policies</td><td><code>user</code>, <code>select</code>, <code>allocate</code>, <code>machine</code></td></tr>
+<tr><td>Policies</td><td><code>user</code>, <code>dispatcher</code>, <code>machine</code></td></tr>
 <tr><td>Score</td><td><code>cpu_weight</code>, <code>memory_weight</code>, <code>aging_weight</code>, <code>share_weight</code>, <code>horizon_minutes</code></td></tr>
 <tr><td>Share</td><td><code>share</code>, <code>half_life_hours</code></td></tr>
-<tr><td>Limits and the draw</td><td><code>staged_capacity</code>, <code>depth</code>, <code>seed</code></td></tr>
+<tr><td>The machine queue and the draw</td><td><code>depth</code>, <code>seed</code></td></tr>
 </tbody></table>
 </div>
+<p>A file from before the three queues still works. Its <code>select</code> is read as
+<code>dispatcher</code>, and its <code>allocate</code> and <code>staged_capacity</code> are ignored.</p>
 <p>A simulated line starts the moment it is chosen. A real line first waits
 for its image to be copied and its container to be created, which the
 simulation leaves out.</p>
@@ -223,13 +225,16 @@ simulation leaves out.</p>
 <p><code>sim evaluate</code> reads lines from <code>sim run</code> or from
 <a href="../use/usage.html#maestro-export"><code>maestro export</code></a> and reports:</p>
 <ul>
-<li>the mean wait, and how much of it was spent at each level</li>
+<li>the mean wait, and how much of it was spent queued and assigned</li>
 <li>the mean time in the system</li>
 <li>the mean bounded slowdown</li>
 <li>the utilization of cores and of memory</li>
 <li>Jain's index of the users' slowdowns</li>
 <li>the objective Z = F + λ_J·Φ_J + λ_O·Φ_O</li>
 </ul>
+<p>An export from before the three queues has a <code>staged</code> column, which
+<code>sim evaluate</code> skips. Its lines' time queued then runs to when they were
+assigned.</p>
 <p>The objective has three parts.</p>
 <div class="table-wrapper"><table><thead><tr><th>Part</th><th>What it is</th></tr></thead><tbody>
 <tr><td>F</td><td>The mean time from a run's submission to the end of its last line</td></tr>

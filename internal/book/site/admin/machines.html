@@ -263,7 +263,7 @@ orq's own that orq no longer has and no line needs there.</p>
 containers stay, and so do those of another orq that uses the same machine.</p>
 <h2 id="when-a-machine-cant-be-reached"><a class="header" href="#when-a-machine-cant-be-reached">When a machine can't be reached</a></h2>
 <p>A machine orq can't reach gets no new lines. The lines waiting on it, or
-about to start there, go back to <code>staged</code> so another machine can take them.
+about to start there, go back to <code>queued</code> so another machine can take them.
 orq tries the machine again every 30 seconds. Lines already running on it
 are left alone.</p>
 <p>orq doesn't keep SSH connections open. The runner, a check of the machine,

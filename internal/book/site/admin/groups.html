@@ -181,8 +181,8 @@
                     <main>
                         <h1 id="groups"><a class="header" href="#groups">Groups</a></h1>
 <p>Every user is in one group, and groups take turns at the machines. Each
-group's lines are staged separately, a limited number at a time, so a group
-with many users can't crowd out a group with few.</p>
+group has a dispatcher queue of its own, made of its users' heads, so a
+group with many users can't crowd out a group with few.</p>
 <p>A new Maestro has one group, the default group, and everyone is in it. New
 users start there. It stays the only group until an administrator makes
 more.</p>
@@ -196,15 +196,19 @@ so this takes the user out of the group they were in.</li>
 <li>Remove deletes a group and sends its users back to the default group. The
 default group itself can't be removed.</li>
 </ul>
-<p>Moving a user affects the lines staged from then on. Lines already staged
-keep the group they were staged in.</p>
+<p>Moving a user affects the lines assigned from then on. Their queued lines
+wait in the new group's dispatcher queue. Lines already assigned keep the
+group they were assigned in.</p>
 <h2 id="how-groups-affect-the-queue"><a class="header" href="#how-groups-affect-the-queue">How groups affect the queue</a></h2>
-<p>Inside a group, the <code>select</code> policy chooses whose line is staged next.
-Between groups no policy chooses. The groups take turns, one line a turn. <a href="../how/queue.html#allocation-from-staged-to-assigned">The queue</a>
+<p>Inside a group, the <code>dispatcher</code> policy chooses whose head goes to a
+machine next. Between groups no policy chooses. The groups take turns, one
+line a turn.
+<a href="../how/queue.html#the-dispatcher-queue-from-queued-to-assigned">The queue</a>
 describes a turn.</p>
-<p><code>maestro queue</code> shows each user their group, how many of its lines are
-staged, and how many it may have staged at once.</p>
-<p>Each line records the group its user was in when the line was staged.
+<p><code>maestro queue</code> shows each user their group: how many of its lines are
+queued, how many of those are heads in its dispatcher queue, and how many
+are assigned.</p>
+<p>Each line records the group its user was in when the line was assigned.
 <a href="../use/usage.html#maestro-export"><code>maestro export</code></a> writes it, so moving a
 user later doesn't change what the export says about earlier lines.</p>
 

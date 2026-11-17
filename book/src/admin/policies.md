@@ -5,7 +5,7 @@ Settings. [Policies and the score](../how/score.md) explains what each
 policy and weight does.
 
 A saved change applies from the scheduler's next pass, to lines that
-haven't moved yet. Lines already staged or assigned stay where they are.
+haven't moved yet. Lines already assigned stay where they are.
 
 ## Starting from a preset
 
@@ -15,22 +15,21 @@ until you press "Save changes", and Discard puts back what was saved last.
 
 | Preset | What it sets | The queue it gives |
 | --- | --- | --- |
-| FIFO (baseline) | All four policies to `fifo`, all four weights to 0 | Lines go in the order they were queued. This is how a new Maestro starts. |
-| DRF | `select = pq`, `share = drf`, ω4 = −1, the other weights 0 | The user who holds the least of the machines now goes next. |
-| Fair-share | `select = pq`, `share = decay`, ω4 = −1, the other weights 0 | The user who used the least recently goes next. |
-| Fair, with aging | `select = pq`, `share = drf`, ω3 = 1, ω4 = −1, the other weights 0 | As DRF, and a line gains on the others the longer it waits. |
+| FIFO (baseline) | All three policies to `fifo`, all four weights to 0 | Lines go in the order they were queued. This is how a new Maestro starts. |
+| DRF | `dispatcher = pq`, `share = drf`, ω4 = −1, the other weights 0 | The user who holds the least of the machines now goes next. |
+| Fair-share | `dispatcher = pq`, `share = decay`, ω4 = −1, the other weights 0 | The user who used the least recently goes next. |
+| Fair, with aging | `dispatcher = pq`, `share = drf`, ω3 = 1, ω4 = −1, the other weights 0 | As DRF, and a line gains on the others the longer it waits. |
 
 ## The sections of the page
 
 ### Scheduler
 
-This section holds the policy of each level.
+This section holds the policy of each of the three queues.
 
 | Label | Setting | Can be |
 | --- | --- | --- |
-| Within a user | `user` | `fifo`, `lcfs`, `siro`, `pq` |
-| Among a group's users | `select` | `fifo`, `lcfs`, `siro`, `pq` |
-| A group's staged lines | `allocate` | `fifo`, `lcfs`, `siro`, `pq` |
+| A user's head | `user` | `fifo`, `lcfs`, `siro`, `pq` |
+| Among a group's heads | `dispatcher` | `fifo`, `lcfs`, `siro`, `pq` |
 | On a machine | `machine` | Those four, and `fifo-skip`, `best-fit`, `weighted-best-fit`, `tetris` |
 
 It also holds "Waiting on a machine" (`depth`, 3 by default) and the seed
@@ -52,7 +51,6 @@ for both. `maestro queue` shows an administrator each user's number, as in
 | Label | Setting | Default |
 | --- | --- | --- |
 | Images per user | `images_per_user` | 10, and at most 1000 |
-| Staged at most, per group | `staged_capacity` | 0, which means twice the number of machines |
 
 Lowering "Images per user" removes nobody's images at that moment. A user
 who is over the new number loses images at their next build, which removes
@@ -65,12 +63,17 @@ left.
 `maestro settings` prints the saved settings for any user, and
 `maestro queue` ends with a one-line summary of them.
 
-Each line records the settings it was staged under and the group its user
+Each line records the settings it was assigned under and the group its user
 was in. An export that spans a change of settings therefore still says which
 settings served which line.
 
+Settings saved before orq had three queues had a `select` policy, which
+chose among a group's users. orq reads it as the `dispatcher` policy, so a
+`pq` there stays `pq`. Their `allocate` and `staged_capacity` no longer set
+anything.
+
 If orq can't read the saved settings after an upgrade, it falls back to
-FIFO at every level so that lines keep starting, and its log says why. Save
+FIFO in every queue so that lines keep starting, and its log says why. Save
 the settings again to fix it.
 
 ## Trying policies before choosing

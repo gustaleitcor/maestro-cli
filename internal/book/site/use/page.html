@@ -219,7 +219,7 @@ variables</li>
 <li>the files kept from it</li>
 <li>the name of its container, its image and the commit the image was built
 from</li>
-<li>when it was queued, staged, assigned, started and finished, and how long
+<li>when it was queued, assigned, started and finished, and how long
 it waited and ran</li>
 </ul>
 <p>The page shows files as folders. Paths that share a prefix go under one
@@ -254,9 +254,9 @@ included.</p>
 therefore be read on the page without a download.</p>
 <h2 id="queue-and-usage"><a class="header" href="#queue-and-usage">Queue and Usage</a></h2>
 <p>Queue shows what <code>maestro queue</code> prints, and reads it again every 5 seconds:
-how many lines wait at each level, yours and everyone's, your group, and
-your share of the machines. <a href="../how/queue.html">The queue</a> explains the
-levels.</p>
+how many lines wait in each queue, yours and everyone's, your group with
+the heads in its dispatcher queue, and your share of the machines.
+<a href="../how/queue.html">The queue</a> explains the queues.</p>
 <p>Usage charts the core-hours and memory GB-hours your lines used each day.
 Its "Lines over a period" section downloads the file <code>maestro export</code>
 writes and measures how the queue served those lines, as

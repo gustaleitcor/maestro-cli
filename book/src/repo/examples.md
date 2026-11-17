@@ -55,6 +55,6 @@ It is a good run to have going while you read
 [The queue](../how/queue.md):
 
 ```sh
-maestro queue     # how many lines wait at each level
+maestro queue     # how many lines wait in each queue
 maestro top       # each machine as it fills
 ```

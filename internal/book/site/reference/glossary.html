@@ -197,10 +197,10 @@ terminal.</p>
 </tbody></table>
 </div>
 <h2 id="the-statuses-of-a-line"><a class="header" href="#the-statuses-of-a-line">The statuses of a line</a></h2>
-<p>A line waits at three levels before it runs.</p>
+<p>A line waits in three queues before it runs: its user's queue, its group's
+dispatcher queue as its user's head, and a machine's queue.</p>
 <div class="table-wrapper"><table><thead><tr><th>Status</th><th>The line is</th></tr></thead><tbody>
-<tr><td><code>queued</code></td><td>Waiting to be chosen from among its user's lines</td></tr>
-<tr><td><code>staged</code></td><td>Chosen, and waiting for a machine</td></tr>
+<tr><td><code>queued</code></td><td>In its user's queue. The first of a user's queued lines is their head, which waits in the dispatcher queue for a machine.</td></tr>
 <tr><td><code>assigned</code></td><td>Given to a machine, and waiting for room on it while its image is copied there</td></tr>
 <tr><td><code>starting</code>, <code>running</code></td><td>In a container on the machine</td></tr>
 </tbody></table>
@@ -213,7 +213,7 @@ terminal.</p>
 <tr><td><code>cancelled</code></td><td>Its run was cancelled before it ended.</td></tr>
 </tbody></table>
 </div>
-<p><a href="../how/queue.html">The queue</a> explains the waiting levels, and
+<p><a href="../how/queue.html">The queue</a> explains the three queues, and
 <a href="../use/runs.html#how-a-line-ends">How a line ends</a> the endings.</p>
 <h2 id="the-programs"><a class="header" href="#the-programs">The programs</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Name</th><th>What it is</th></tr></thead><tbody>
@@ -225,12 +225,16 @@ terminal.</p>
 <p><a href="../how/parts.html">The parts</a> shows how they connect.</p>
 <h2 id="the-schedulers-words"><a class="header" href="#the-schedulers-words">The scheduler's words</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Word</th><th>Meaning</th></tr></thead><tbody>
-<tr><td>Policy</td><td>The rule that makes one of the scheduler's four choices, such as <code>fifo</code> or <code>pq</code></td></tr>
+<tr><td>User queue</td><td>A user's queued lines, in the order the <code>user</code> policy gives them</td></tr>
+<tr><td>Head</td><td>The first line of a user's queue, the one their group's dispatcher queue holds for them</td></tr>
+<tr><td>Dispatcher queue</td><td>The heads of a group's users. In the group's turn, the <code>dispatcher</code> policy gives one of them a machine.</td></tr>
+<tr><td>Machine queue</td><td>The lines assigned to a machine that wait for room on it, at most <code>depth</code> of them</td></tr>
+<tr><td>Policy</td><td>The rule that picks who leaves one of the three queues, such as <code>fifo</code> or <code>pq</code></td></tr>
 <tr><td>Score</td><td>The number <code>pq</code> ranks lines by, built from a line's cores, memory and waiting time and its user's share</td></tr>
 <tr><td>Share</td><td>How much of the machines a user holds or has used, as the chosen measure counts it</td></tr>
 </tbody></table>
 </div>
-<p><a href="../how/score.html">Policies and the score</a> defines all three.</p>
+<p><a href="../how/queue.html">The queue</a> describes the queues, and <a href="../how/score.html">Policies and the score</a> the policies, the score and the share.</p>
 
                     </main>
 

@@ -300,8 +300,8 @@ LINE  PARAMETERS                        MACHINE  STATUS    FILES
 2     -t 20 --label 'long run' out.txt  Q2       assigned  -
 </code></pre>
 <p>The numbers and machine names will be your server's. A line's status goes
-from <code>queued</code> through <code>staged</code> and <code>assigned</code> while it waits, then <code>running</code>,
-then <code>succeeded</code>. <a href="start/../how/queue.html">The queue</a> explains the waiting ones. The
+from <code>queued</code> to <code>assigned</code> while it waits, then <code>running</code>, then
+<code>succeeded</code>. <a href="start/../how/queue.html">The queue</a> explains the waiting ones. The
 template's program sleeps for the number of seconds after <code>-t</code>, so the run
 takes under a minute once its lines start. The command returns when both
 lines have ended:</p>
@@ -873,7 +873,7 @@ that every build yields the same lines. One line in ten also keeps a
 run has failed lines to look at.</p>
 <p>It is a good run to have going while you read
 <a href="repo/../how/queue.html">The queue</a>:</p>
-<pre><code class="language-sh">maestro queue     # how many lines wait at each level
+<pre><code class="language-sh">maestro queue     # how many lines wait in each queue
 maestro top       # each machine as it fills
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installing-the-cli"><a class="header" href="#installing-the-cli">Installing the CLI</a></h1>
@@ -1172,7 +1172,7 @@ first.</p>
 Maestro page shows such lines in amber with the reason, and you can run them
 again.</p>
 <p>A machine that stops answering doesn't turn its waiting lines into errors.
-Maestro moves them back to <code>staged</code> so another machine can take them. Lines
+Maestro moves them back to <code>queued</code> so another machine can take them. Lines
 already running on that machine are left alone and checked again when it
 returns.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="what-a-line-leaves-behind"><a class="header" href="#what-a-line-leaves-behind">What a line leaves behind</a></h1>
@@ -1268,7 +1268,7 @@ variables</li>
 <li>the files kept from it</li>
 <li>the name of its container, its image and the commit the image was built
 from</li>
-<li>when it was queued, staged, assigned, started and finished, and how long
+<li>when it was queued, assigned, started and finished, and how long
 it waited and ran</li>
 </ul>
 <p>The page shows files as folders. Paths that share a prefix go under one
@@ -1303,9 +1303,9 @@ included.</p>
 therefore be read on the page without a download.</p>
 <h2 id="queue-and-usage"><a class="header" href="#queue-and-usage">Queue and Usage</a></h2>
 <p>Queue shows what <code>maestro queue</code> prints, and reads it again every 5 seconds:
-how many lines wait at each level, yours and everyone's, your group, and
-your share of the machines. <a href="use/../how/queue.html">The queue</a> explains the
-levels.</p>
+how many lines wait in each queue, yours and everyone's, your group with
+the heads in its dispatcher queue, and your share of the machines.
+<a href="use/../how/queue.html">The queue</a> explains the queues.</p>
 <p>Usage charts the core-hours and memory GB-hours your lines used each day.
 Its "Lines over a period" section downloads the file <code>maestro export</code>
 writes and measures how the queue served those lines, as
@@ -1400,8 +1400,8 @@ goes next, with older usage counting less. This is the <code>decay</code> measur
 <p><code>maestro export</code> writes a CSV with one row for each line of the runs you
 queued over a period. A row has the line's run and number, its cores and
 memory, the machine it ran on, its status, and the times it was submitted,
-staged, assigned, started and finished. It also records the scheduler
-settings the line was staged under and the group you were in then.</p>
+assigned, started and finished. It also records the scheduler settings the
+line was assigned under and the group you were in then.</p>
 <pre><code class="language-sh">maestro export --since 2026-11-01 --until 2026-11-08 &gt; lines.csv
 maestro export --since 30d -o month.csv
 </code></pre>
@@ -1486,75 +1486,101 @@ without copying it again.</p>
 <p>The machines are shared, so a line usually waits before it runs. It waits
 in three places in turn, and <code>maestro queue</code> shows how many lines are in
 each.</p>
-<pre><code class="language-sh">maestro queue      # how many lines wait at each level, yours and everyone's
+<pre><code class="language-sh">maestro queue      # how many lines wait in each queue, yours and everyone's
 </code></pre>
-<h2 id="the-levels-a-line-passes"><a class="header" href="#the-levels-a-line-passes">The levels a line passes</a></h2>
+<h2 id="the-three-queues-a-line-passes"><a class="header" href="#the-three-queues-a-line-passes">The three queues a line passes</a></h2>
 <pre class="mermaid">flowchart LR
-    q[queued] -- &quot;selection&quot; --&gt; s[staged]
-    s -- &quot;allocation&quot; --&gt; a[assigned]
-    a -- &quot;promotion&quot; --&gt; r[running]
+    u[&quot;user queue&lt;br/&gt;queued&quot;] -- &quot;the user policy&lt;br/&gt;picks your head&quot; --&gt; d[&quot;dispatcher queue&lt;br/&gt;queued, as a head&quot;]
+    d -- &quot;the dispatcher policy&lt;br/&gt;gives it a machine&quot; --&gt; m[&quot;machine queue&lt;br/&gt;assigned&quot;]
+    m -- &quot;the machine policy&lt;br/&gt;starts it&quot; --&gt; r[starting, running]
     r --&gt; e([&quot;succeeded, failed,&lt;br/&gt;error or cancelled&quot;])
 </pre>
-<p>A line moves through three waiting statuses, and a step of the scheduler
-moves it from each one to the next.</p>
-<div class="table-wrapper"><table><thead><tr><th>Status</th><th>Where the line is</th><th>What moves it on</th></tr></thead><tbody>
-<tr><td><code>queued</code></td><td>Among your own lines</td><td>Selection stages it.</td></tr>
-<tr><td><code>staged</code></td><td>Among the lines chosen from your group</td><td>Allocation gives it to a machine.</td></tr>
-<tr><td><code>assigned</code></td><td>In the short queue of one machine</td><td>Promotion starts it.</td></tr>
-<tr><td><code>starting</code>, <code>running</code></td><td>In a container on that machine</td><td>The program ends.</td></tr>
+<p>A line waits in three queues in turn, and a policy picks who leaves each
+one.</p>
+<div class="table-wrapper"><table><thead><tr><th>Queue</th><th>Status</th><th>What is in it</th><th>What moves a line on</th></tr></thead><tbody>
+<tr><td>User queue</td><td><code>queued</code></td><td>Your own lines</td><td>The user policy picks your head.</td></tr>
+<tr><td>Dispatcher queue</td><td><code>queued</code></td><td>The head of each user of your group</td><td>In your group's turn, the dispatcher policy gives one head a machine.</td></tr>
+<tr><td>Machine queue</td><td><code>assigned</code></td><td>The lines given to one machine</td><td>The machine policy starts one when it fits.</td></tr>
+<tr><td></td><td><code>starting</code>, <code>running</code></td><td>A container on that machine</td><td>The program ends.</td></tr>
 </tbody></table>
 </div>
-<h3 id="selection-from-queued-to-staged"><a class="header" href="#selection-from-queued-to-staged">Selection: from queued to staged</a></h3>
-<p><code>maestro run</code> queues every line of the run among your own lines. Each group
-of users may have a limited number of lines staged at once, by default twice
-the number of machines. While your group is under that limit, the scheduler
-takes the next line of each of its users as a candidate and stages one of
-them.</p>
-<p>Two policies make that choice. The first picks which of your own lines is
-your next. By default it is the oldest run first, line by line. The second
-picks among the users' candidates. It can be as simple as the oldest, or it
-can weigh how much of the machines each user already holds.</p>
-<h3 id="allocation-from-staged-to-assigned"><a class="header" href="#allocation-from-staged-to-assigned">Allocation: from staged to assigned</a></h3>
-<p>Groups take turns at the machines, one line a turn. In its turn, a group
-gives one of its staged lines to a machine. The machine has to be one the
-line may run on, by its <a href="how/../repo/maestro-toml.html#machines"><code>machines</code></a>, and
-it has to have room in its queue. Only three lines wait on each machine by
-default. When several machines qualify, the scheduler draws one at random.
-A group with no line that can go anywhere passes its turn.</p>
+<p>A line in the dispatcher queue is still <code>queued</code>. Being a head isn't a
+status: the scheduler works your head out again on every pass.</p>
+<h3 id="the-user-queue-your-head"><a class="header" href="#the-user-queue-your-head">The user queue: your head</a></h3>
+<p><code>maestro run</code> puts every line of the run in your user queue. The user
+policy puts your queued lines in an order, and the first of them is your
+head. By default it is the oldest run first, line by line. With <code>lcfs</code> or
+<code>pq</code>, a line you queue later can take your head's place.</p>
+<p>A line that no machine could hold, even an empty one, is never your head.
+It waits without holding back your other lines.</p>
+<h3 id="the-dispatcher-queue-from-queued-to-assigned"><a class="header" href="#the-dispatcher-queue-from-queued-to-assigned">The dispatcher queue: from queued to assigned</a></h3>
+<pre class="mermaid">flowchart LR
+    subgraph lab[&quot;group lab&quot;]
+        a[&quot;Ada's queue&quot;] --&gt; ah((&quot;Ada's head&quot;))
+        b[&quot;Bo's queue&quot;] --&gt; bh((&quot;Bo's head&quot;))
+    end
+    subgraph physics[&quot;group physics&quot;]
+        c[&quot;Cy's queue&quot;] --&gt; ch((&quot;Cy's head&quot;))
+    end
+    ah --&gt; dl[&quot;lab's dispatcher queue&quot;]
+    bh --&gt; dl
+    ch --&gt; dp[&quot;physics' dispatcher queue&quot;]
+    dl -- &quot;in turn&quot; --&gt; q1[&quot;Q1's queue&quot;]
+    dp -- &quot;in turn&quot; --&gt; q1
+    dl -- &quot;in turn&quot; --&gt; q2[&quot;Q2's queue&quot;]
+    dp -- &quot;in turn&quot; --&gt; q2
+</pre>
+<p>Each group has a dispatcher queue, made of the heads of its users and
+nothing else. It has no size of its own: it holds one line for each user
+who has lines waiting.</p>
+<p>Groups take turns at the machines, one line a turn. In its turn, a group's
+dispatcher policy picks one of its heads and gives it to a machine. The
+machine has to be one the line may run on, by its
+<a href="how/../repo/maestro-toml.html#machines"><code>machines</code></a>, and it has to have room in
+its queue. Only three lines wait on each machine by default. When several
+machines qualify, the scheduler draws one at random. A group with no head
+that can go anywhere passes its turn.</p>
+<p>Once your head is given a machine, your next line is your head. The
+dispatcher policy can be as simple as the oldest head, or it can weigh how
+much of the machines each user already holds.</p>
 <p>While the line waits on the machine, the server copies the line's image
 there if the machine doesn't have it yet.</p>
-<h3 id="promotion-from-assigned-to-running"><a class="header" href="#promotion-from-assigned-to-running">Promotion: from assigned to running</a></h3>
+<h3 id="the-machine-queue-from-assigned-to-running"><a class="header" href="#the-machine-queue-from-assigned-to-running">The machine queue: from assigned to running</a></h3>
 <p>A machine starts a waiting line when the line's cores and memory fit in
-what the machine has free. A fourth policy picks which of the lines waiting
-on the machine starts first.</p>
+what the machine has free. The machine policy picks which of the lines
+waiting on the machine starts first.</p>
 <h3 id="why-the-queues-on-machines-are-short"><a class="header" href="#why-the-queues-on-machines-are-short">Why the queues on machines are short</a></h3>
 <p>A machine holds only three waiting lines, so the scheduler decides whose
 line goes next as late as it can. Someone who queues a single line behind
-another user's thousand doesn't wait for the thousand, because nearly all
-of those are still <code>queued</code> or <code>staged</code> when the single line arrives.</p>
+another user's thousand doesn't wait for the thousand. Nearly all of those
+are still in their user queue, and the single line is its user's head at
+once.</p>
 <h2 id="reading-maestro-queue"><a class="header" href="#reading-maestro-queue">Reading <code>maestro queue</code></a></h2>
-<pre><code class="language-text">      USER     GROUP  QUEUED  STAGED  ASSIGNED  STARTING  RUNNING  SHARE
-    Ada #7  everyone      38       2         3         0        5    25%
-  everyone               412       6         9         1       14
+<pre><code class="language-text">      USER     GROUP  QUEUED  HEADS  ASSIGNED  STARTING  RUNNING  SHARE
+    Ada #7  everyone      38      1         3         0        5    25%
+  everyone               412                9         1       14
 
-     GROUP  STAGED
-  everyone     6/6
+     GROUP  QUEUED  HEADS  ASSIGNED
+  everyone     412      6         9
 
-Lines are chosen by fifo among each group's users (fifo within each), given in turn between groups by fifo to a machine with room, drawn, and start by fifo on each machine.
+Each user's head is chosen by fifo. In a group's turn, fifo picks one of its heads and gives it to a machine drawn among those with room. Lines start by fifo on each machine.
 </code></pre>
-<p>The first row is yours and the <code>everyone</code> row is the total. <code>SHARE</code> is how
-much of what all users hold is yours, as the scheduler measures it. The
-second table shows your group, with how many of its lines are staged out of
-how many it may have. <code>6/6</code> means the group is at its limit. The last line
-names the four policies in force.</p>
+<p>The first row is yours and the <code>everyone</code> row is the total. <code>HEADS</code> is how
+many of the <code>QUEUED</code> lines are heads, in the dispatcher queue: yours is 1
+while you have a line some machine could hold. <code>SHARE</code> is how much of what
+all users hold is yours, as the scheduler measures it. The second table
+shows your group: its queued lines, the heads among them, which make its
+dispatcher queue, and its assigned lines. The last line names the three
+policies in force.</p>
 <p>The Maestro page shows the same under Queue and reads it again every 5
 seconds.</p>
 <h2 id="why-a-line-is-waiting"><a class="header" href="#why-a-line-is-waiting">Why a line is waiting</a></h2>
-<h3 id="many-lines-queued-and-few-staged"><a class="header" href="#many-lines-queued-and-few-staged">Many lines queued and few staged</a></h3>
-<p>Your group is at its limit of staged lines, and the policy chose other
-users' lines for the places it had. Under a policy that weighs shares, a
-user who holds less of the machines than you goes first.</p>
-<h3 id="many-lines-staged"><a class="header" href="#many-lines-staged">Many lines staged</a></h3>
+<h3 id="many-lines-queued"><a class="header" href="#many-lines-queued">Many lines queued</a></h3>
+<p>Only your head competes for a machine, and the dispatcher policy chose
+other users' heads before it. Under a policy that weighs shares, a user who
+holds less of the machines than you goes first. Your other lines wait their
+turn behind your head.</p>
+<h3 id="your-head-waits-in-the-dispatcher-queue"><a class="header" href="#your-head-waits-in-the-dispatcher-queue">Your head waits in the dispatcher queue</a></h3>
 <p>Either the machines' queues are full or it is another group's turn. A line
 with <code>machines = [...]</code> waits for room on those machines only.</p>
 <h3 id="a-line-assigned-for-a-long-time"><a class="header" href="#a-line-assigned-for-a-long-time">A line assigned for a long time</a></h3>
@@ -1581,38 +1607,38 @@ while the image is copied.</li>
 <h2 id="when-a-machine-goes-away"><a class="header" href="#when-a-machine-goes-away">When a machine goes away</a></h2>
 <p>A machine the server can't reach, over SSH or at its Podman socket, gets no
 new lines. The lines that were waiting on it, or about to start there, go
-back to <code>staged</code> so another machine can take them. They don't end in an
+back to <code>queued</code>, in their place in their user's queue, so another machine
+can take them. They don't end in an
 error. The server tries the machine again every 30 seconds.</p>
 <p>Lines already running on the machine are left alone. The server checks on
 them when the machine is back.</p>
 <h2 id="the-settings-in-force"><a class="header" href="#the-settings-in-force">The settings in force</a></h2>
 <pre><code class="language-sh">maestro settings
 </code></pre>
-<p><code>maestro settings</code> shows how the scheduler is set up: the four policies,
-the weights of the score, and the limits above.
+<p><code>maestro settings</code> shows how the scheduler is set up: the three policies,
+the weights of the score, and how many lines wait on a machine.
 <a href="how/score.html">Policies and the score</a> explains each of them.</p>
-<p>Each line records the settings it was staged under and the group its user
-was in. <a href="how/../use/usage.html#maestro-export"><code>maestro export</code></a> writes both, so
+<p>Each line records the settings it was assigned under and the group its
+user was in. <a href="how/../use/usage.html#maestro-export"><code>maestro export</code></a> writes both, so
 you can tell later how each line was served.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="policies-and-the-score"><a class="header" href="#policies-and-the-score">Policies and the score</a></h1>
-<p><a href="how/queue.html">The queue</a> described three steps that move a line toward a
-machine. Each step makes a choice, and a policy makes it. An administrator
+<p><a href="how/queue.html">The queue</a> described the three queues a line passes on its way
+to a machine. A policy picks who leaves each one. An administrator
 picks the policies, and <code>maestro settings</code> shows the ones in force.</p>
-<h2 id="the-four-policies"><a class="header" href="#the-four-policies">The four policies</a></h2>
-<div class="table-wrapper"><table><thead><tr><th>Setting</th><th>The choice it makes</th><th>When</th></tr></thead><tbody>
-<tr><td><code>user</code></td><td>Which of one user's queued lines is that user's next</td><td>Selection</td></tr>
-<tr><td><code>select</code></td><td>Which user's next line is staged, among the users of a group</td><td>Selection</td></tr>
-<tr><td><code>allocate</code></td><td>Which of a group's staged lines goes to a machine in the group's turn</td><td>Allocation</td></tr>
-<tr><td><code>machine</code></td><td>Which of the lines waiting on a machine starts</td><td>Promotion</td></tr>
+<h2 id="the-three-policies"><a class="header" href="#the-three-policies">The three policies</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Setting</th><th>The choice it makes</th><th>Queue</th></tr></thead><tbody>
+<tr><td><code>user</code></td><td>Which of one user's queued lines is that user's head</td><td>User queue</td></tr>
+<tr><td><code>dispatcher</code></td><td>Which of a group's heads goes to a machine in the group's turn</td><td>Dispatcher queue</td></tr>
+<tr><td><code>machine</code></td><td>Which of the lines waiting on a machine starts</td><td>Machine queue</td></tr>
 </tbody></table>
 </div>
-<p>All four are <code>fifo</code> until an administrator changes them. Lines then go in
+<p>All three are <code>fifo</code> until an administrator changes them. Lines then go in
 the order they were queued, oldest run first, and on a machine the oldest
 waiting line holds back the others until it fits.</p>
 <h2 id="what-a-policy-can-be"><a class="header" href="#what-a-policy-can-be">What a policy can be</a></h2>
-<p>The first three policies choose before a line is on a machine. At that
-point there is no free space to fit the line into, so these policies only
-put lines in an order.</p>
+<p>The <code>user</code> and <code>dispatcher</code> policies choose before a line is on a machine.
+At that point there is no free space to fit the line into, so these
+policies only put lines in an order.</p>
 <div class="table-wrapper"><table><thead><tr><th>Policy</th><th>Serves first</th></tr></thead><tbody>
 <tr><td><code>fifo</code></td><td>The oldest</td></tr>
 <tr><td><code>lcfs</code></td><td>The newest</td></tr>
@@ -1638,12 +1664,15 @@ among the lines that fit now, as the four policies in the second table do.</p>
 <p>s = ω1·cores + ω2·memory + ω3·waiting + ω4·share</p>
 </blockquote>
 <div class="table-wrapper"><table><thead><tr><th>Term</th><th>What it is</th></tr></thead><tbody>
-<tr><td>cores</td><td>The line's <code>cpus</code>, as a fraction of the most cores any machine has</td></tr>
-<tr><td>memory</td><td>The line's <code>memory</code>, as a fraction of the most memory any machine has</td></tr>
+<tr><td>cores</td><td>The line's <code>cpus</code>, as a fraction of the cores all machines have for lines, summed</td></tr>
+<tr><td>memory</td><td>The line's <code>memory</code>, as a fraction of the memory all machines have for lines, summed</td></tr>
 <tr><td>waiting</td><td>The time since the line's run was queued, divided by the horizon. The horizon is an hour unless <code>horizon_minutes</code> says otherwise.</td></tr>
 <tr><td>share</td><td>The user's share of the machines, as a fraction of every user's share added together</td></tr>
 </tbody></table>
 </div>
+<p>The cores and memory are fractions of all the machines together, so they
+are small when there are many machines. ω1 and ω2 then need to be larger
+to weigh as much as waiting and share do.</p>
 <p>An administrator sets the four weights, and a weight can be negative.</p>
 <div class="table-wrapper"><table><thead><tr><th>Weight</th><th>Setting</th><th>Effect</th></tr></thead><tbody>
 <tr><td>ω1</td><td><code>cpu_weight</code></td><td>Below 0, lines that ask for few cores go first.</td></tr>
@@ -1653,11 +1682,11 @@ among the lines that fit now, as the four policies in the second table do.</p>
 </tbody></table>
 </div>
 <h3 id="a-worked-example"><a class="header" href="#a-worked-example">A worked example</a></h3>
-<p>Take a lab whose largest machine has 16 cores, with <code>select = pq</code> and these
-weights: ω1 = −0.2, ω2 = 0, ω3 = 0.5 and ω4 = −1. The horizon is an hour.
-Two users each have a next line.</p>
+<p>Take a lab whose machines have 32 cores for lines in all, with
+<code>dispatcher = pq</code> and these weights: ω1 = −0.4, ω2 = 0, ω3 = 0.5 and
+ω4 = −1. The horizon is an hour. Two users of a group each have a head.</p>
 <div class="table-wrapper"><table><thead><tr><th></th><th>Ada's line</th><th>Bo's line</th></tr></thead><tbody>
-<tr><td>Cores asked for</td><td>4, so cores = 0.25</td><td>8, so cores = 0.5</td></tr>
+<tr><td>Cores asked for</td><td>4, so cores = 0.125</td><td>8, so cores = 0.25</td></tr>
 <tr><td>Run queued</td><td>30 minutes ago, so waiting = 0.5</td><td>6 minutes ago, so waiting = 0.1</td></tr>
 <tr><td>User's share</td><td>0.75</td><td>0.25</td></tr>
 <tr><td>ω1·cores</td><td>−0.05</td><td>−0.10</td></tr>
@@ -1666,11 +1695,12 @@ Two users each have a next line.</p>
 <tr><td>Score</td><td>−0.55</td><td>−0.30</td></tr>
 </tbody></table>
 </div>
-<p>Bo's line has the higher score, so it is staged first. Ada's line has
+<p>Bo's line has the higher score, so it goes to a machine first. Ada's line has
 waited longer and is smaller, but Ada already holds three times what Bo
 holds, and with these weights the share outweighs the rest.</p>
-<p>Staging Bo's line raises Bo's share, because a staged line counts as held.
-The scheduler works the shares out again before it stages the next line.</p>
+<p>Giving Bo's line a machine raises Bo's share, because an assigned line
+counts as held. The scheduler works the shares out again before the next
+turn.</p>
 <h2 id="a-users-share"><a class="header" href="#a-users-share">A user's share</a></h2>
 <p>The <code>share</code> setting chooses how a user's share is measured.</p>
 <div class="table-wrapper"><table><thead><tr><th>Measure</th><th>A user's share is</th></tr></thead><tbody>
@@ -1681,7 +1711,7 @@ The scheduler works the shares out again before it stages the next line.</p>
 </tbody></table>
 </div>
 <p>For <code>drf</code>, <code>weighted-drf</code> and <code>asset</code>, the lines a user holds are those that
-are staged, assigned, starting or running.</p>
+are assigned, starting or running.</p>
 <p>Suppose the machines of the lab in the example have 32 cores and 96 GB for
 lines in total, and the measure is <code>drf</code>. Ada's lines hold 12 cores and
 16 GB. That is
@@ -1689,37 +1719,35 @@ lines in total, and the measure is <code>drf</code>. Ada's lines hold 12 cores a
 Bo's lines hold 3 cores and 12 GB, which is 0.094 and 0.125, so his is
 0.125. The score uses each as a fraction of the two together, which gives
 0.75 for Ada and 0.25 for Bo.</p>
-<p>With <code>select = pq</code>, <code>share = drf</code> and ω4 = −1, the queue is the classic fair
+<p>With <code>dispatcher = pq</code>, <code>share = drf</code> and ω4 = −1, the queue is the classic fair
 queue of DRF, in which the user who holds the least goes next.</p>
-<h2 id="the-limits"><a class="header" href="#the-limits">The limits</a></h2>
+<h2 id="the-machine-queues-length"><a class="header" href="#the-machine-queues-length">The machine queue's length</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Setting</th><th>What it limits</th><th>Default</th></tr></thead><tbody>
-<tr><td><code>staged_capacity</code></td><td>How many lines of each group can be staged at once</td><td>Twice the number of machines</td></tr>
 <tr><td><code>depth</code></td><td>How many lines can wait on each machine</td><td>3</td></tr>
 </tbody></table>
 </div>
 <p>A smaller <code>depth</code> leaves the choice of whose line goes next until closer to
 the moment a machine has room.</p>
-<p>When allocation gives a line to a machine, it draws the machine at random
-among those the line may use that have room in their queue. It reserves
-nothing on the machine, and promotion decides later whether the line fits.
-The <code>seed</code> setting makes that draw, and <code>siro</code>, repeat the same choices.</p>
+<p>When the dispatcher policy gives a line to a machine, the scheduler draws
+the machine at random among those the line may use that have room in their
+queue. It reserves nothing on the machine, and the machine policy decides
+later whether the line fits. The <code>seed</code> setting makes that draw, and
+<code>siro</code>, repeat the same choices.</p>
 <h2 id="seeing-the-settings"><a class="header" href="#seeing-the-settings">Seeing the settings</a></h2>
-<pre><code class="language-text">images per user                       10
-within a user                         fifo
-among users                           pq
-staged lines, in turn between groups  fifo
-on a machine                          best-fit
-staged at most                        twice the machines, per group
-waiting on a machine                  3
-score weights                         cpu 0 · memory 0 · waiting 0.5 · share -1
-waiting horizon                       60 min
-share measure                         drf
-half-life                             168 h
-seed (siro, machine draw)             0
-user weights                          everyone 1
+<pre><code class="language-text">images per user            10
+a user's head              fifo
+among a group's heads      pq
+on a machine               best-fit
+waiting on a machine       3
+score weights              cpu 0 · memory 0 · waiting 0.5 · share -1
+waiting horizon            60 min
+share measure              drf
+half-life                  168 h
+seed (siro, machine draw)  0
+user weights               everyone 1
 </code></pre>
-<p>The four rows after the image limit in <code>maestro settings</code> are the <code>user</code>,
-<code>select</code>, <code>allocate</code> and <code>machine</code> policies, in that order.
+<p>The three rows after the image limit in <code>maestro settings</code> are the <code>user</code>,
+<code>dispatcher</code> and <code>machine</code> policies, in that order.
 <a href="how/../admin/policies.html">Choosing the policies</a> shows an administrator where
 to change them.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="deploying-maestro"><a class="header" href="#deploying-maestro">Deploying Maestro</a></h1>
@@ -1948,7 +1976,7 @@ orq's own that orq no longer has and no line needs there.</p>
 containers stay, and so do those of another orq that uses the same machine.</p>
 <h2 id="when-a-machine-cant-be-reached"><a class="header" href="#when-a-machine-cant-be-reached">When a machine can't be reached</a></h2>
 <p>A machine orq can't reach gets no new lines. The lines waiting on it, or
-about to start there, go back to <code>staged</code> so another machine can take them.
+about to start there, go back to <code>queued</code> so another machine can take them.
 orq tries the machine again every 30 seconds. Lines already running on it
 are left alone.</p>
 <p>orq doesn't keep SSH connections open. The runner, a check of the machine,
@@ -2000,25 +2028,24 @@ every couple of seconds while someone is watching.</p>
 Settings. <a href="admin/../how/score.html">Policies and the score</a> explains what each
 policy and weight does.</p>
 <p>A saved change applies from the scheduler's next pass, to lines that
-haven't moved yet. Lines already staged or assigned stay where they are.</p>
+haven't moved yet. Lines already assigned stay where they are.</p>
 <h2 id="starting-from-a-preset"><a class="header" href="#starting-from-a-preset">Starting from a preset</a></h2>
 <p>The Scheduler section has four buttons under "Start from". Each one fills
 in the fields listed for it and leaves the others alone. Nothing is saved
 until you press "Save changes", and Discard puts back what was saved last.</p>
 <div class="table-wrapper"><table><thead><tr><th>Preset</th><th>What it sets</th><th>The queue it gives</th></tr></thead><tbody>
-<tr><td>FIFO (baseline)</td><td>All four policies to <code>fifo</code>, all four weights to 0</td><td>Lines go in the order they were queued. This is how a new Maestro starts.</td></tr>
-<tr><td>DRF</td><td><code>select = pq</code>, <code>share = drf</code>, ω4 = −1, the other weights 0</td><td>The user who holds the least of the machines now goes next.</td></tr>
-<tr><td>Fair-share</td><td><code>select = pq</code>, <code>share = decay</code>, ω4 = −1, the other weights 0</td><td>The user who used the least recently goes next.</td></tr>
-<tr><td>Fair, with aging</td><td><code>select = pq</code>, <code>share = drf</code>, ω3 = 1, ω4 = −1, the other weights 0</td><td>As DRF, and a line gains on the others the longer it waits.</td></tr>
+<tr><td>FIFO (baseline)</td><td>All three policies to <code>fifo</code>, all four weights to 0</td><td>Lines go in the order they were queued. This is how a new Maestro starts.</td></tr>
+<tr><td>DRF</td><td><code>dispatcher = pq</code>, <code>share = drf</code>, ω4 = −1, the other weights 0</td><td>The user who holds the least of the machines now goes next.</td></tr>
+<tr><td>Fair-share</td><td><code>dispatcher = pq</code>, <code>share = decay</code>, ω4 = −1, the other weights 0</td><td>The user who used the least recently goes next.</td></tr>
+<tr><td>Fair, with aging</td><td><code>dispatcher = pq</code>, <code>share = drf</code>, ω3 = 1, ω4 = −1, the other weights 0</td><td>As DRF, and a line gains on the others the longer it waits.</td></tr>
 </tbody></table>
 </div>
 <h2 id="the-sections-of-the-page"><a class="header" href="#the-sections-of-the-page">The sections of the page</a></h2>
 <h3 id="scheduler"><a class="header" href="#scheduler">Scheduler</a></h3>
-<p>This section holds the policy of each level.</p>
+<p>This section holds the policy of each of the three queues.</p>
 <div class="table-wrapper"><table><thead><tr><th>Label</th><th>Setting</th><th>Can be</th></tr></thead><tbody>
-<tr><td>Within a user</td><td><code>user</code></td><td><code>fifo</code>, <code>lcfs</code>, <code>siro</code>, <code>pq</code></td></tr>
-<tr><td>Among a group's users</td><td><code>select</code></td><td><code>fifo</code>, <code>lcfs</code>, <code>siro</code>, <code>pq</code></td></tr>
-<tr><td>A group's staged lines</td><td><code>allocate</code></td><td><code>fifo</code>, <code>lcfs</code>, <code>siro</code>, <code>pq</code></td></tr>
+<tr><td>A user's head</td><td><code>user</code></td><td><code>fifo</code>, <code>lcfs</code>, <code>siro</code>, <code>pq</code></td></tr>
+<tr><td>Among a group's heads</td><td><code>dispatcher</code></td><td><code>fifo</code>, <code>lcfs</code>, <code>siro</code>, <code>pq</code></td></tr>
 <tr><td>On a machine</td><td><code>machine</code></td><td>Those four, and <code>fifo-skip</code>, <code>best-fit</code>, <code>weighted-best-fit</code>, <code>tetris</code></td></tr>
 </tbody></table>
 </div>
@@ -2035,7 +2062,6 @@ for both. <code>maestro queue</code> shows an administrator each user's number, 
 <h3 id="limits"><a class="header" href="#limits">Limits</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Label</th><th>Setting</th><th>Default</th></tr></thead><tbody>
 <tr><td>Images per user</td><td><code>images_per_user</code></td><td>10, and at most 1000</td></tr>
-<tr><td>Staged at most, per group</td><td><code>staged_capacity</code></td><td>0, which means twice the number of machines</td></tr>
 </tbody></table>
 </div>
 <p>Lowering "Images per user" removes nobody's images at that moment. A user
@@ -2046,11 +2072,15 @@ left.</p>
 <h2 id="checking-what-is-in-force"><a class="header" href="#checking-what-is-in-force">Checking what is in force</a></h2>
 <p><code>maestro settings</code> prints the saved settings for any user, and
 <code>maestro queue</code> ends with a one-line summary of them.</p>
-<p>Each line records the settings it was staged under and the group its user
+<p>Each line records the settings it was assigned under and the group its user
 was in. An export that spans a change of settings therefore still says which
 settings served which line.</p>
+<p>Settings saved before orq had three queues had a <code>select</code> policy, which
+chose among a group's users. orq reads it as the <code>dispatcher</code> policy, so a
+<code>pq</code> there stays <code>pq</code>. Their <code>allocate</code> and <code>staged_capacity</code> no longer set
+anything.</p>
 <p>If orq can't read the saved settings after an upgrade, it falls back to
-FIFO at every level so that lines keep starting, and its log says why. Save
+FIFO in every queue so that lines keep starting, and its log says why. Save
 the settings again to fix it.</p>
 <h2 id="trying-policies-before-choosing"><a class="header" href="#trying-policies-before-choosing">Trying policies before choosing</a></h2>
 <p><a href="admin/sim.html">Comparing policies offline</a> runs the same scheduler over a recorded
@@ -2058,8 +2088,8 @@ or generated workload, so you can compare two setups without waiting for the
 lab to live through them.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="groups"><a class="header" href="#groups">Groups</a></h1>
 <p>Every user is in one group, and groups take turns at the machines. Each
-group's lines are staged separately, a limited number at a time, so a group
-with many users can't crowd out a group with few.</p>
+group has a dispatcher queue of its own, made of its users' heads, so a
+group with many users can't crowd out a group with few.</p>
 <p>A new Maestro has one group, the default group, and everyone is in it. New
 users start there. It stays the only group until an administrator makes
 more.</p>
@@ -2073,15 +2103,19 @@ so this takes the user out of the group they were in.</li>
 <li>Remove deletes a group and sends its users back to the default group. The
 default group itself can't be removed.</li>
 </ul>
-<p>Moving a user affects the lines staged from then on. Lines already staged
-keep the group they were staged in.</p>
+<p>Moving a user affects the lines assigned from then on. Their queued lines
+wait in the new group's dispatcher queue. Lines already assigned keep the
+group they were assigned in.</p>
 <h2 id="how-groups-affect-the-queue"><a class="header" href="#how-groups-affect-the-queue">How groups affect the queue</a></h2>
-<p>Inside a group, the <code>select</code> policy chooses whose line is staged next.
-Between groups no policy chooses. The groups take turns, one line a turn. <a href="admin/../how/queue.html#allocation-from-staged-to-assigned">The queue</a>
+<p>Inside a group, the <code>dispatcher</code> policy chooses whose head goes to a
+machine next. Between groups no policy chooses. The groups take turns, one
+line a turn.
+<a href="admin/../how/queue.html#the-dispatcher-queue-from-queued-to-assigned">The queue</a>
 describes a turn.</p>
-<p><code>maestro queue</code> shows each user their group, how many of its lines are
-staged, and how many it may have staged at once.</p>
-<p>Each line records the group its user was in when the line was staged.
+<p><code>maestro queue</code> shows each user their group: how many of its lines are
+queued, how many of those are heads in its dispatcher queue, and how many
+are assigned.</p>
+<p>Each line records the group its user was in when the line was assigned.
 <a href="admin/../use/usage.html#maestro-export"><code>maestro export</code></a> writes it, so moving a
 user later doesn't change what the export says about earlier lines.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="comparing-policies-offline"><a class="header" href="#comparing-policies-offline">Comparing policies offline</a></h1>
@@ -2110,17 +2144,19 @@ without that column has every user in group 1.</p>
 <h2 id="the-schedulers-settings"><a class="header" href="#the-schedulers-settings">The scheduler's settings</a></h2>
 <p><code>-config</code> names a JSON file with the scheduler's settings, in the form
 <code>GET /api/settings</code> returns them under <code>scheduler</code>. This one is DRF:</p>
-<pre><code class="language-json">{"select": "pq", "share_weight": -1}
+<pre><code class="language-json">{"dispatcher": "pq", "share_weight": -1}
 </code></pre>
-<p>Without <code>-config</code>, every level is FIFO. The names are the settings of
+<p>Without <code>-config</code>, every queue is FIFO. The names are the settings of
 <a href="admin/../how/score.html">Policies and the score</a>:</p>
 <div class="table-wrapper"><table><thead><tr><th>Kind</th><th>Names</th></tr></thead><tbody>
-<tr><td>Policies</td><td><code>user</code>, <code>select</code>, <code>allocate</code>, <code>machine</code></td></tr>
+<tr><td>Policies</td><td><code>user</code>, <code>dispatcher</code>, <code>machine</code></td></tr>
 <tr><td>Score</td><td><code>cpu_weight</code>, <code>memory_weight</code>, <code>aging_weight</code>, <code>share_weight</code>, <code>horizon_minutes</code></td></tr>
 <tr><td>Share</td><td><code>share</code>, <code>half_life_hours</code></td></tr>
-<tr><td>Limits and the draw</td><td><code>staged_capacity</code>, <code>depth</code>, <code>seed</code></td></tr>
+<tr><td>The machine queue and the draw</td><td><code>depth</code>, <code>seed</code></td></tr>
 </tbody></table>
 </div>
+<p>A file from before the three queues still works. Its <code>select</code> is read as
+<code>dispatcher</code>, and its <code>allocate</code> and <code>staged_capacity</code> are ignored.</p>
 <p>A simulated line starts the moment it is chosen. A real line first waits
 for its image to be copied and its container to be created, which the
 simulation leaves out.</p>
@@ -2128,13 +2164,16 @@ simulation leaves out.</p>
 <p><code>sim evaluate</code> reads lines from <code>sim run</code> or from
 <a href="admin/../use/usage.html#maestro-export"><code>maestro export</code></a> and reports:</p>
 <ul>
-<li>the mean wait, and how much of it was spent at each level</li>
+<li>the mean wait, and how much of it was spent queued and assigned</li>
 <li>the mean time in the system</li>
 <li>the mean bounded slowdown</li>
 <li>the utilization of cores and of memory</li>
 <li>Jain's index of the users' slowdowns</li>
 <li>the objective Z = F + λ_J·Φ_J + λ_O·Φ_O</li>
 </ul>
+<p>An export from before the three queues has a <code>staged</code> column, which
+<code>sim evaluate</code> skips. Its lines' time queued then runs to when they were
+assigned.</p>
 <p>The objective has three parts.</p>
 <div class="table-wrapper"><table><thead><tr><th>Part</th><th>What it is</th></tr></thead><tbody>
 <tr><td>F</td><td>The mean time from a run's submission to the end of its last line</td></tr>
@@ -3056,10 +3095,10 @@ terminal.</p>
 </tbody></table>
 </div>
 <h2 id="the-statuses-of-a-line"><a class="header" href="#the-statuses-of-a-line">The statuses of a line</a></h2>
-<p>A line waits at three levels before it runs.</p>
+<p>A line waits in three queues before it runs: its user's queue, its group's
+dispatcher queue as its user's head, and a machine's queue.</p>
 <div class="table-wrapper"><table><thead><tr><th>Status</th><th>The line is</th></tr></thead><tbody>
-<tr><td><code>queued</code></td><td>Waiting to be chosen from among its user's lines</td></tr>
-<tr><td><code>staged</code></td><td>Chosen, and waiting for a machine</td></tr>
+<tr><td><code>queued</code></td><td>In its user's queue. The first of a user's queued lines is their head, which waits in the dispatcher queue for a machine.</td></tr>
 <tr><td><code>assigned</code></td><td>Given to a machine, and waiting for room on it while its image is copied there</td></tr>
 <tr><td><code>starting</code>, <code>running</code></td><td>In a container on the machine</td></tr>
 </tbody></table>
@@ -3072,7 +3111,7 @@ terminal.</p>
 <tr><td><code>cancelled</code></td><td>Its run was cancelled before it ended.</td></tr>
 </tbody></table>
 </div>
-<p><a href="reference/../how/queue.html">The queue</a> explains the waiting levels, and
+<p><a href="reference/../how/queue.html">The queue</a> explains the three queues, and
 <a href="reference/../use/runs.html#how-a-line-ends">How a line ends</a> the endings.</p>
 <h2 id="the-programs"><a class="header" href="#the-programs">The programs</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Name</th><th>What it is</th></tr></thead><tbody>
@@ -3084,12 +3123,16 @@ terminal.</p>
 <p><a href="reference/../how/parts.html">The parts</a> shows how they connect.</p>
 <h2 id="the-schedulers-words"><a class="header" href="#the-schedulers-words">The scheduler's words</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Word</th><th>Meaning</th></tr></thead><tbody>
-<tr><td>Policy</td><td>The rule that makes one of the scheduler's four choices, such as <code>fifo</code> or <code>pq</code></td></tr>
+<tr><td>User queue</td><td>A user's queued lines, in the order the <code>user</code> policy gives them</td></tr>
+<tr><td>Head</td><td>The first line of a user's queue, the one their group's dispatcher queue holds for them</td></tr>
+<tr><td>Dispatcher queue</td><td>The heads of a group's users. In the group's turn, the <code>dispatcher</code> policy gives one of them a machine.</td></tr>
+<tr><td>Machine queue</td><td>The lines assigned to a machine that wait for room on it, at most <code>depth</code> of them</td></tr>
+<tr><td>Policy</td><td>The rule that picks who leaves one of the three queues, such as <code>fifo</code> or <code>pq</code></td></tr>
 <tr><td>Score</td><td>The number <code>pq</code> ranks lines by, built from a line's cores, memory and waiting time and its user's share</td></tr>
 <tr><td>Share</td><td>How much of the machines a user holds or has used, as the chosen measure counts it</td></tr>
 </tbody></table>
 </div>
-<p><a href="reference/../how/score.html">Policies and the score</a> defines all three.</p>
+<p><a href="reference/../how/queue.html">The queue</a> describes the queues, and <a href="reference/../how/score.html">Policies and the score</a> the policies, the score and the share.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="contributing"><a class="header" href="#contributing">Contributing</a></h1>
 <p>Each part of Maestro lives in its own repository and is developed and
 versioned on its own. The

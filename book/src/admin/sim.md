@@ -36,18 +36,21 @@ With `@speed`, how long a line runs depends on the machine it lands on.
 `GET /api/settings` returns them under `scheduler`. This one is DRF:
 
 ```json
-{"select": "pq", "share_weight": -1}
+{"dispatcher": "pq", "share_weight": -1}
 ```
 
-Without `-config`, every level is FIFO. The names are the settings of
+Without `-config`, every queue is FIFO. The names are the settings of
 [Policies and the score](../how/score.md):
 
 | Kind | Names |
 | --- | --- |
-| Policies | `user`, `select`, `allocate`, `machine` |
+| Policies | `user`, `dispatcher`, `machine` |
 | Score | `cpu_weight`, `memory_weight`, `aging_weight`, `share_weight`, `horizon_minutes` |
 | Share | `share`, `half_life_hours` |
-| Limits and the draw | `staged_capacity`, `depth`, `seed` |
+| The machine queue and the draw | `depth`, `seed` |
+
+A file from before the three queues still works. Its `select` is read as
+`dispatcher`, and its `allocate` and `staged_capacity` are ignored.
 
 A simulated line starts the moment it is chosen. A real line first waits
 for its image to be copied and its container to be created, which the
@@ -58,12 +61,16 @@ simulation leaves out.
 `sim evaluate` reads lines from `sim run` or from
 [`maestro export`](../use/usage.md#maestro-export) and reports:
 
-- the mean wait, and how much of it was spent at each level
+- the mean wait, and how much of it was spent queued and assigned
 - the mean time in the system
 - the mean bounded slowdown
 - the utilization of cores and of memory
 - Jain's index of the users' slowdowns
 - the objective Z = F + λ_J·Φ_J + λ_O·Φ_O
+
+An export from before the three queues has a `staged` column, which
+`sim evaluate` skips. Its lines' time queued then runs to when they were
+assigned.
 
 The objective has three parts.
 

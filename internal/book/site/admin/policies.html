@@ -184,25 +184,24 @@
 Settings. <a href="../how/score.html">Policies and the score</a> explains what each
 policy and weight does.</p>
 <p>A saved change applies from the scheduler's next pass, to lines that
-haven't moved yet. Lines already staged or assigned stay where they are.</p>
+haven't moved yet. Lines already assigned stay where they are.</p>
 <h2 id="starting-from-a-preset"><a class="header" href="#starting-from-a-preset">Starting from a preset</a></h2>
 <p>The Scheduler section has four buttons under "Start from". Each one fills
 in the fields listed for it and leaves the others alone. Nothing is saved
 until you press "Save changes", and Discard puts back what was saved last.</p>
 <div class="table-wrapper"><table><thead><tr><th>Preset</th><th>What it sets</th><th>The queue it gives</th></tr></thead><tbody>
-<tr><td>FIFO (baseline)</td><td>All four policies to <code>fifo</code>, all four weights to 0</td><td>Lines go in the order they were queued. This is how a new Maestro starts.</td></tr>
-<tr><td>DRF</td><td><code>select = pq</code>, <code>share = drf</code>, ω4 = −1, the other weights 0</td><td>The user who holds the least of the machines now goes next.</td></tr>
-<tr><td>Fair-share</td><td><code>select = pq</code>, <code>share = decay</code>, ω4 = −1, the other weights 0</td><td>The user who used the least recently goes next.</td></tr>
-<tr><td>Fair, with aging</td><td><code>select = pq</code>, <code>share = drf</code>, ω3 = 1, ω4 = −1, the other weights 0</td><td>As DRF, and a line gains on the others the longer it waits.</td></tr>
+<tr><td>FIFO (baseline)</td><td>All three policies to <code>fifo</code>, all four weights to 0</td><td>Lines go in the order they were queued. This is how a new Maestro starts.</td></tr>
+<tr><td>DRF</td><td><code>dispatcher = pq</code>, <code>share = drf</code>, ω4 = −1, the other weights 0</td><td>The user who holds the least of the machines now goes next.</td></tr>
+<tr><td>Fair-share</td><td><code>dispatcher = pq</code>, <code>share = decay</code>, ω4 = −1, the other weights 0</td><td>The user who used the least recently goes next.</td></tr>
+<tr><td>Fair, with aging</td><td><code>dispatcher = pq</code>, <code>share = drf</code>, ω3 = 1, ω4 = −1, the other weights 0</td><td>As DRF, and a line gains on the others the longer it waits.</td></tr>
 </tbody></table>
 </div>
 <h2 id="the-sections-of-the-page"><a class="header" href="#the-sections-of-the-page">The sections of the page</a></h2>
 <h3 id="scheduler"><a class="header" href="#scheduler">Scheduler</a></h3>
-<p>This section holds the policy of each level.</p>
+<p>This section holds the policy of each of the three queues.</p>
 <div class="table-wrapper"><table><thead><tr><th>Label</th><th>Setting</th><th>Can be</th></tr></thead><tbody>
-<tr><td>Within a user</td><td><code>user</code></td><td><code>fifo</code>, <code>lcfs</code>, <code>siro</code>, <code>pq</code></td></tr>
-<tr><td>Among a group's users</td><td><code>select</code></td><td><code>fifo</code>, <code>lcfs</code>, <code>siro</code>, <code>pq</code></td></tr>
-<tr><td>A group's staged lines</td><td><code>allocate</code></td><td><code>fifo</code>, <code>lcfs</code>, <code>siro</code>, <code>pq</code></td></tr>
+<tr><td>A user's head</td><td><code>user</code></td><td><code>fifo</code>, <code>lcfs</code>, <code>siro</code>, <code>pq</code></td></tr>
+<tr><td>Among a group's heads</td><td><code>dispatcher</code></td><td><code>fifo</code>, <code>lcfs</code>, <code>siro</code>, <code>pq</code></td></tr>
 <tr><td>On a machine</td><td><code>machine</code></td><td>Those four, and <code>fifo-skip</code>, <code>best-fit</code>, <code>weighted-best-fit</code>, <code>tetris</code></td></tr>
 </tbody></table>
 </div>
@@ -219,7 +218,6 @@ for both. <code>maestro queue</code> shows an administrator each user's number, 
 <h3 id="limits"><a class="header" href="#limits">Limits</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Label</th><th>Setting</th><th>Default</th></tr></thead><tbody>
 <tr><td>Images per user</td><td><code>images_per_user</code></td><td>10, and at most 1000</td></tr>
-<tr><td>Staged at most, per group</td><td><code>staged_capacity</code></td><td>0, which means twice the number of machines</td></tr>
 </tbody></table>
 </div>
 <p>Lowering "Images per user" removes nobody's images at that moment. A user
@@ -230,11 +228,15 @@ left.</p>
 <h2 id="checking-what-is-in-force"><a class="header" href="#checking-what-is-in-force">Checking what is in force</a></h2>
 <p><code>maestro settings</code> prints the saved settings for any user, and
 <code>maestro queue</code> ends with a one-line summary of them.</p>
-<p>Each line records the settings it was staged under and the group its user
+<p>Each line records the settings it was assigned under and the group its user
 was in. An export that spans a change of settings therefore still says which
 settings served which line.</p>
+<p>Settings saved before orq had three queues had a <code>select</code> policy, which
+chose among a group's users. orq reads it as the <code>dispatcher</code> policy, so a
+<code>pq</code> there stays <code>pq</code>. Their <code>allocate</code> and <code>staged_capacity</code> no longer set
+anything.</p>
 <p>If orq can't read the saved settings after an upgrade, it falls back to
-FIFO at every level so that lines keep starting, and its log says why. Save
+FIFO in every queue so that lines keep starting, and its log says why. Save
 the settings again to fix it.</p>
 <h2 id="trying-policies-before-choosing"><a class="header" href="#trying-policies-before-choosing">Trying policies before choosing</a></h2>
 <p><a href="sim.html">Comparing policies offline</a> runs the same scheduler over a recorded

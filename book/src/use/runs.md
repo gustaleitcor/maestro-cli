@@ -102,6 +102,6 @@ Maestro page shows such lines in amber with the reason, and you can run them
 again.
 
 A machine that stops answering doesn't turn its waiting lines into errors.
-Maestro moves them back to `staged` so another machine can take them. Lines
+Maestro moves them back to `queued` so another machine can take them. Lines
 already running on that machine are left alone and checked again when it
 returns.

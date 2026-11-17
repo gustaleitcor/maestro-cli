@@ -5,98 +5,129 @@ in three places in turn, and `maestro queue` shows how many lines are in
 each.
 
 ```sh
-maestro queue      # how many lines wait at each level, yours and everyone's
+maestro queue      # how many lines wait in each queue, yours and everyone's
 ```
 
-## The levels a line passes
+## The three queues a line passes
 
 ```mermaid
 flowchart LR
-    q[queued] -- "selection" --> s[staged]
-    s -- "allocation" --> a[assigned]
-    a -- "promotion" --> r[running]
+    u["user queue<br/>queued"] -- "the user policy<br/>picks your head" --> d["dispatcher queue<br/>queued, as a head"]
+    d -- "the dispatcher policy<br/>gives it a machine" --> m["machine queue<br/>assigned"]
+    m -- "the machine policy<br/>starts it" --> r[starting, running]
     r --> e(["succeeded, failed,<br/>error or cancelled"])
 ```
 
-A line moves through three waiting statuses, and a step of the scheduler
-moves it from each one to the next.
+A line waits in three queues in turn, and a policy picks who leaves each
+one.
 
-| Status | Where the line is | What moves it on |
-| --- | --- | --- |
-| `queued` | Among your own lines | Selection stages it. |
-| `staged` | Among the lines chosen from your group | Allocation gives it to a machine. |
-| `assigned` | In the short queue of one machine | Promotion starts it. |
-| `starting`, `running` | In a container on that machine | The program ends. |
+| Queue | Status | What is in it | What moves a line on |
+| --- | --- | --- | --- |
+| User queue | `queued` | Your own lines | The user policy picks your head. |
+| Dispatcher queue | `queued` | The head of each user of your group | In your group's turn, the dispatcher policy gives one head a machine. |
+| Machine queue | `assigned` | The lines given to one machine | The machine policy starts one when it fits. |
+| | `starting`, `running` | A container on that machine | The program ends. |
 
-### Selection: from queued to staged
+A line in the dispatcher queue is still `queued`. Being a head isn't a
+status: the scheduler works your head out again on every pass.
 
-`maestro run` queues every line of the run among your own lines. Each group
-of users may have a limited number of lines staged at once, by default twice
-the number of machines. While your group is under that limit, the scheduler
-takes the next line of each of its users as a candidate and stages one of
-them.
+### The user queue: your head
 
-Two policies make that choice. The first picks which of your own lines is
-your next. By default it is the oldest run first, line by line. The second
-picks among the users' candidates. It can be as simple as the oldest, or it
-can weigh how much of the machines each user already holds.
+`maestro run` puts every line of the run in your user queue. The user
+policy puts your queued lines in an order, and the first of them is your
+head. By default it is the oldest run first, line by line. With `lcfs` or
+`pq`, a line you queue later can take your head's place.
 
-### Allocation: from staged to assigned
+A line that no machine could hold, even an empty one, is never your head.
+It waits without holding back your other lines.
 
-Groups take turns at the machines, one line a turn. In its turn, a group
-gives one of its staged lines to a machine. The machine has to be one the
-line may run on, by its [`machines`](../repo/maestro-toml.md#machines), and
-it has to have room in its queue. Only three lines wait on each machine by
-default. When several machines qualify, the scheduler draws one at random.
-A group with no line that can go anywhere passes its turn.
+### The dispatcher queue: from queued to assigned
+
+```mermaid
+flowchart LR
+    subgraph lab["group lab"]
+        a["Ada's queue"] --> ah(("Ada's head"))
+        b["Bo's queue"] --> bh(("Bo's head"))
+    end
+    subgraph physics["group physics"]
+        c["Cy's queue"] --> ch(("Cy's head"))
+    end
+    ah --> dl["lab's dispatcher queue"]
+    bh --> dl
+    ch --> dp["physics' dispatcher queue"]
+    dl -- "in turn" --> q1["Q1's queue"]
+    dp -- "in turn" --> q1
+    dl -- "in turn" --> q2["Q2's queue"]
+    dp -- "in turn" --> q2
+```
+
+Each group has a dispatcher queue, made of the heads of its users and
+nothing else. It has no size of its own: it holds one line for each user
+who has lines waiting.
+
+Groups take turns at the machines, one line a turn. In its turn, a group's
+dispatcher policy picks one of its heads and gives it to a machine. The
+machine has to be one the line may run on, by its
+[`machines`](../repo/maestro-toml.md#machines), and it has to have room in
+its queue. Only three lines wait on each machine by default. When several
+machines qualify, the scheduler draws one at random. A group with no head
+that can go anywhere passes its turn.
+
+Once your head is given a machine, your next line is your head. The
+dispatcher policy can be as simple as the oldest head, or it can weigh how
+much of the machines each user already holds.
 
 While the line waits on the machine, the server copies the line's image
 there if the machine doesn't have it yet.
 
-### Promotion: from assigned to running
+### The machine queue: from assigned to running
 
 A machine starts a waiting line when the line's cores and memory fit in
-what the machine has free. A fourth policy picks which of the lines waiting
-on the machine starts first.
+what the machine has free. The machine policy picks which of the lines
+waiting on the machine starts first.
 
 ### Why the queues on machines are short
 
 A machine holds only three waiting lines, so the scheduler decides whose
 line goes next as late as it can. Someone who queues a single line behind
-another user's thousand doesn't wait for the thousand, because nearly all
-of those are still `queued` or `staged` when the single line arrives.
+another user's thousand doesn't wait for the thousand. Nearly all of those
+are still in their user queue, and the single line is its user's head at
+once.
 
 ## Reading `maestro queue`
 
 ```text
-      USER     GROUP  QUEUED  STAGED  ASSIGNED  STARTING  RUNNING  SHARE
-    Ada #7  everyone      38       2         3         0        5    25%
-  everyone               412       6         9         1       14
+      USER     GROUP  QUEUED  HEADS  ASSIGNED  STARTING  RUNNING  SHARE
+    Ada #7  everyone      38      1         3         0        5    25%
+  everyone               412                9         1       14
 
-     GROUP  STAGED
-  everyone     6/6
+     GROUP  QUEUED  HEADS  ASSIGNED
+  everyone     412      6         9
 
-Lines are chosen by fifo among each group's users (fifo within each), given in turn between groups by fifo to a machine with room, drawn, and start by fifo on each machine.
+Each user's head is chosen by fifo. In a group's turn, fifo picks one of its heads and gives it to a machine drawn among those with room. Lines start by fifo on each machine.
 ```
 
-The first row is yours and the `everyone` row is the total. `SHARE` is how
-much of what all users hold is yours, as the scheduler measures it. The
-second table shows your group, with how many of its lines are staged out of
-how many it may have. `6/6` means the group is at its limit. The last line
-names the four policies in force.
+The first row is yours and the `everyone` row is the total. `HEADS` is how
+many of the `QUEUED` lines are heads, in the dispatcher queue: yours is 1
+while you have a line some machine could hold. `SHARE` is how much of what
+all users hold is yours, as the scheduler measures it. The second table
+shows your group: its queued lines, the heads among them, which make its
+dispatcher queue, and its assigned lines. The last line names the three
+policies in force.
 
 The Maestro page shows the same under Queue and reads it again every 5
 seconds.
 
 ## Why a line is waiting
 
-### Many lines queued and few staged
+### Many lines queued
 
-Your group is at its limit of staged lines, and the policy chose other
-users' lines for the places it had. Under a policy that weighs shares, a
-user who holds less of the machines than you goes first.
+Only your head competes for a machine, and the dispatcher policy chose
+other users' heads before it. Under a policy that weighs shares, a user who
+holds less of the machines than you goes first. Your other lines wait their
+turn behind your head.
 
-### Many lines staged
+### Your head waits in the dispatcher queue
 
 Either the machines' queues are full or it is another group's turn. A line
 with `machines = [...]` waits for room on those machines only.
@@ -131,7 +162,8 @@ lines wait there, as in `6/14 +3`.
 
 A machine the server can't reach, over SSH or at its Podman socket, gets no
 new lines. The lines that were waiting on it, or about to start there, go
-back to `staged` so another machine can take them. They don't end in an
+back to `queued`, in their place in their user's queue, so another machine
+can take them. They don't end in an
 error. The server tries the machine again every 30 seconds.
 
 Lines already running on the machine are left alone. The server checks on
@@ -143,10 +175,10 @@ them when the machine is back.
 maestro settings
 ```
 
-`maestro settings` shows how the scheduler is set up: the four policies,
-the weights of the score, and the limits above.
+`maestro settings` shows how the scheduler is set up: the three policies,
+the weights of the score, and how many lines wait on a machine.
 [Policies and the score](score.md) explains each of them.
 
-Each line records the settings it was staged under and the group its user
-was in. [`maestro export`](../use/usage.md#maestro-export) writes both, so
+Each line records the settings it was assigned under and the group its
+user was in. [`maestro export`](../use/usage.md#maestro-export) writes both, so
 you can tell later how each line was served.

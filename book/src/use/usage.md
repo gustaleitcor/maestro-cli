@@ -41,8 +41,8 @@ goes next, with older usage counting less. This is the `decay` measure in
 `maestro export` writes a CSV with one row for each line of the runs you
 queued over a period. A row has the line's run and number, its cores and
 memory, the machine it ran on, its status, and the times it was submitted,
-staged, assigned, started and finished. It also records the scheduler
-settings the line was staged under and the group you were in then.
+assigned, started and finished. It also records the scheduler settings the
+line was assigned under and the group you were in then.
 
 ```sh
 maestro export --since 2026-11-01 --until 2026-11-08 > lines.csv

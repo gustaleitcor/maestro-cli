@@ -98,8 +98,8 @@ LINE  PARAMETERS                        MACHINE  STATUS    FILES
 ```
 
 The numbers and machine names will be your server's. A line's status goes
-from `queued` through `staged` and `assigned` while it waits, then `running`,
-then `succeeded`. [The queue](../how/queue.md) explains the waiting ones. The
+from `queued` to `assigned` while it waits, then `running`, then
+`succeeded`. [The queue](../how/queue.md) explains the waiting ones. The
 template's program sleeps for the number of seconds after `-t`, so the run
 takes under a minute once its lines start. The command returns when both
 lines have ended:

@@ -115,7 +115,7 @@ containers stay, and so do those of another orq that uses the same machine.
 ## When a machine can't be reached
 
 A machine orq can't reach gets no new lines. The lines waiting on it, or
-about to start there, go back to `staged` so another machine can take them.
+about to start there, go back to `queued` so another machine can take them.
 orq tries the machine again every 30 seconds. Lines already running on it
 are left alone.
 
