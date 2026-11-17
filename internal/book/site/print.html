@@ -2724,7 +2724,7 @@ trust this computer.</p>
 <pre><code class="language-text">  -y, --yes    don't ask first
 </code></pre>
 <h2 id="maestro-machines"><a class="header" href="#maestro-machines">maestro machines</a></h2>
-<p>Commands for the machines containers run on.</p>
+<p>List the machines containers run on, and how loaded they are.</p>
 <pre><code class="language-text">maestro machines [flags]
 </code></pre>
 <p>Also: <code>machine</code>.</p>
@@ -2740,8 +2740,8 @@ trust this computer.</p>
 <p>List the machines, and whether Maestro can reach them now.</p>
 <pre><code class="language-text">maestro machines list [flags]
 </code></pre>
-<p>Lists the machines an administrator added on the Maestro page. Their
-names are what maestro.toml refers to them by.</p>
+<p>Lists the machines an administrator added on the Maestro page.
+maestro.toml names a machine by the name this list shows.</p>
 <p>Flags:</p>
 <pre><code class="language-text">      --json   print the machines as JSON
 </code></pre>
@@ -2749,10 +2749,11 @@ names are what maestro.toml refers to them by.</p>
 <p>Print how loaded the machines are, once.</p>
 <pre><code class="language-text">maestro machines stats [machine] [flags]
 </code></pre>
-<p>Prints a table of every machine's CPU, memory, GPUs, load, the cores and
-memory lines take of what it has for them (with the lines waiting, as +N) and
-containers once. With --json, prints everything Maestro knows, for scripts.</p>
-<p>For something to watch, use <code>maestro top</code>.</p>
+<p>Prints a table of every machine once: its CPU, memory, GPUs and load,
+the cores and memory lines take of what it has for them, with the lines
+waiting as +N, and its containers. With --json, it prints everything
+Maestro knows, for scripts.</p>
+<p>To watch the machines, use <code>maestro top</code>.</p>
 <p>Flags:</p>
 <pre><code class="language-text">      --json   print everything as JSON
 </code></pre>
@@ -2959,17 +2960,19 @@ administrator changes them on the Maestro page.</p>
 <p>Watch how loaded the machines are, like top.</p>
 <pre><code class="language-text">maestro top [machine] [flags]
 </code></pre>
-<p>Shows every machine on a row: CPU, memory, GPUs, load, how many of the
-cores it has for lines they take and how many lines wait (6/14 +3),
-refreshed as you watch. Press enter on a machine for its cores, memory, disks, network,
-GPUs and the containers on it with whose they are, or name a machine to open
-it straight away.</p>
+<p>Shows one row for each machine: its CPU, memory, GPUs and load. Under
+CORES, 6/14 +3 means lines use 6 of the 14 cores the machine has for them
+and 3 more lines wait. The rows refresh every 2 seconds, or as often as -n
+says.</p>
+<p>Press Enter on a machine to see its cores, memory, disks, network and GPUs,
+and the containers on it with whose each one is. Name a machine to open it
+straight away.</p>
 <p>Anyone signed in sees the machines and their own containers. Administrators
 also see every container, and the server Maestro runs on, as "orq".</p>
-<p>Many people watching share one reading: Maestro takes it at most every couple
-of seconds, however many windows are open.</p>
+<p>However many windows are open, Maestro reads each machine at most once
+every 2 seconds, and everyone watching shares that reading.</p>
 <p>Flags:</p>
-<pre><code class="language-text">  -n, --interval duration   how often to refresh (at least 1s) (default 2s)
+<pre><code class="language-text">  -n, --interval duration   how often to redraw, at least 1s (default 2s)
 </code></pre>
 <h2 id="maestro-usage-1"><a class="header" href="#maestro-usage-1">maestro usage</a></h2>
 <p>Show how much your lines have used.</p>

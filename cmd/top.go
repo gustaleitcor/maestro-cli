@@ -24,17 +24,20 @@ var (
 var topCmd = &cobra.Command{
 	Use:   "top [machine]",
 	Short: "Watch how loaded the machines are, like top",
-	Long: `Shows every machine on a row: CPU, memory, GPUs, load, how many of the
-cores it has for lines they take and how many lines wait (6/14 +3),
-refreshed as you watch. Press enter on a machine for its cores, memory, disks, network,
-GPUs and the containers on it with whose they are, or name a machine to open
-it straight away.
+	Long: `Shows one row for each machine: its CPU, memory, GPUs and load. Under
+CORES, 6/14 +3 means lines use 6 of the 14 cores the machine has for them
+and 3 more lines wait. The rows refresh every 2 seconds, or as often as -n
+says.
+
+Press Enter on a machine to see its cores, memory, disks, network and GPUs,
+and the containers on it with whose each one is. Name a machine to open it
+straight away.
 
 Anyone signed in sees the machines and their own containers. Administrators
 also see every container, and the server Maestro runs on, as "orq".
 
-Many people watching share one reading: Maestro takes it at most every couple
-of seconds, however many windows are open.`,
+However many windows are open, Maestro reads each machine at most once
+every 2 seconds, and everyone watching shares that reading.`,
 	Args:              cobra.MatchAll(cobra.MaximumNArgs(1), flagCheck(checkTopInterval)),
 	ValidArgsFunction: completeMachines,
 	RunE:              runTop,
@@ -42,7 +45,7 @@ of seconds, however many windows are open.`,
 
 func checkTopInterval() error {
 	if topInterval < minTopPeriod {
-		return fmt.Errorf("--interval must be at least %s: Maestro doesn't read the machines more often than that", minTopPeriod)
+		return fmt.Errorf("--interval must be at least %s, because Maestro doesn't read the machines more often than that", minTopPeriod)
 	}
 	return nil
 }
@@ -50,18 +53,19 @@ func checkTopInterval() error {
 var machinesStatsCmd = &cobra.Command{
 	Use:   "stats [machine]",
 	Short: "Print how loaded the machines are, once",
-	Long: `Prints a table of every machine's CPU, memory, GPUs, load, the cores and
-memory lines take of what it has for them (with the lines waiting, as +N) and
-containers once. With --json, prints everything Maestro knows, for scripts.
+	Long: `Prints a table of every machine once: its CPU, memory, GPUs and load,
+the cores and memory lines take of what it has for them, with the lines
+waiting as +N, and its containers. With --json, it prints everything
+Maestro knows, for scripts.
 
-For something to watch, use ` + "`maestro top`" + `.`,
+To watch the machines, use ` + "`maestro top`" + `.`,
 	Args:              cobra.MaximumNArgs(1),
 	ValidArgsFunction: completeMachines,
 	RunE:              runMachinesStats,
 }
 
 func init() {
-	topCmd.Flags().DurationVarP(&topInterval, "interval", "n", 2*time.Second, "how often to refresh (at least 1s)")
+	topCmd.Flags().DurationVarP(&topInterval, "interval", "n", 2*time.Second, "how often to redraw, at least 1s")
 	machinesStatsCmd.Flags().BoolVar(&statsAsJSON, "json", false, "print everything as JSON")
 	rootCmd.AddCommand(topCmd)
 	machinesCmd.AddCommand(machinesStatsCmd)

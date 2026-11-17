@@ -18,7 +18,7 @@ var machinesAsJSON bool
 var machinesCmd = &cobra.Command{
 	Use:     "machines",
 	Aliases: []string{"machine"},
-	Short:   "Commands for the machines containers run on",
+	Short:   "List the machines containers run on, and how loaded they are",
 	Args:    nounArgs,
 	RunE:    runMachinesList,
 }
@@ -26,8 +26,8 @@ var machinesCmd = &cobra.Command{
 var machinesListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List the machines, and whether Maestro can reach them now",
-	Long: `Lists the machines an administrator added on the Maestro page. Their
-names are what maestro.toml refers to them by.`,
+	Long: `Lists the machines an administrator added on the Maestro page.
+maestro.toml names a machine by the name this list shows.`,
 	Args:              cobra.NoArgs,
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE:              runMachinesList,
