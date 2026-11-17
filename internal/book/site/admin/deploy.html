@@ -241,12 +241,28 @@ to the lines that were running.</p>
 <div class="table-wrapper"><table><thead><tr><th>Need</th><th>Detail</th></tr></thead><tbody>
 <tr><td>Its own Podman</td><td>Reached through <code>PODMAN_SOCKET</code>, to build images. The compose file mounts the host user's socket.</td></tr>
 <tr><td>Two volumes</td><td><code>/data</code> for the SQLite database, and <code>/maestro/data</code> for the logs and outputs of runs. The second grows with every run.</td></tr>
-<tr><td>Redis</td><td>At <code>REDIS_URL</code></td></tr>
+<tr><td>Redis</td><td>At <code>REDIS_URL</code>, with a password. See <a href="#redis">Redis</a>.</td></tr>
 <tr><td>An identity provider</td><td>See <a href="identity.html">The identity provider</a>.</td></tr>
 <tr><td><code>MACHINE_SECRET</code></td><td>At least 32 characters. It encrypts the machines' SSH keys. See <a href="machines.html">Adding machines</a>.</td></tr>
 </tbody></table>
 </div>
 <p><a href="../reference/env.html">Environment variables</a> lists every variable.</p>
+<h2 id="redis"><a class="header" href="#redis">Redis</a></h2>
+<p>Redis holds the sessions of the Maestro page, so whoever can write to it can
+make a session and sign in as anyone, administrators included. Builds run on
+the same host and may reach it. Hold it to two rules:</p>
+<ul>
+<li>Give it a password. Make one with <code>openssl rand -hex 32</code>, which needs no
+escaping in a URL. Start Redis with <code>--requirepass &lt;password&gt;</code>, or put
+<code>requirepass &lt;password&gt;</code> in its <code>redis.conf</code>. Then set
+<code>REDIS_URL=redis://:&lt;password&gt;@host:port/db</code> in <code>.env</code>. Unless
+<code>MODE=dev</code>, orq logs a warning at start while <code>REDIS_URL</code> has no password.</li>
+<li>Don't publish its port beyond the host. Other hosts must not reach it.</li>
+</ul>
+<p>A Redis that other services share gets the same care from each of them. Any
+one of them that publishes it, or lets its own users reach it, opens
+Maestro's sessions too. When the Redis belongs to another compose project,
+its owner sets the password there, and you then set it in <code>REDIS_URL</code>.</p>
 <h2 id="the-page-and-the-book"><a class="header" href="#the-page-and-the-book">The page and the book</a></h2>
 <p>The page is built with <code>VITE_ORQ_URL</code>, the address of orq, which in
 production is the page's own host. <code>VITE_IDP_NAME</code> optionally sets the label

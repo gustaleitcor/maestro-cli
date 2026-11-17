@@ -76,11 +76,29 @@ to the lines that were running.
 | --- | --- |
 | Its own Podman | Reached through `PODMAN_SOCKET`, to build images. The compose file mounts the host user's socket. |
 | Two volumes | `/data` for the SQLite database, and `/maestro/data` for the logs and outputs of runs. The second grows with every run. |
-| Redis | At `REDIS_URL` |
+| Redis | At `REDIS_URL`, with a password. See [Redis](#redis). |
 | An identity provider | See [The identity provider](identity.md). |
 | `MACHINE_SECRET` | At least 32 characters. It encrypts the machines' SSH keys. See [Adding machines](machines.md). |
 
 [Environment variables](../reference/env.md) lists every variable.
+
+## Redis
+
+Redis holds the sessions of the Maestro page, so whoever can write to it can
+make a session and sign in as anyone, administrators included. Builds run on
+the same host and may reach it. Hold it to two rules:
+
+- Give it a password. Make one with `openssl rand -hex 32`, which needs no
+  escaping in a URL. Start Redis with `--requirepass <password>`, or put
+  `requirepass <password>` in its `redis.conf`. Then set
+  `REDIS_URL=redis://:<password>@host:port/db` in `.env`. Unless
+  `MODE=dev`, orq logs a warning at start while `REDIS_URL` has no password.
+- Don't publish its port beyond the host. Other hosts must not reach it.
+
+A Redis that other services share gets the same care from each of them. Any
+one of them that publishes it, or lets its own users reach it, opens
+Maestro's sessions too. When the Redis belongs to another compose project,
+its owner sets the password there, and you then set it in `REDIS_URL`.
 
 ## The page and the book
 
