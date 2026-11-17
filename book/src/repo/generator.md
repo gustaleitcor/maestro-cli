@@ -65,7 +65,7 @@ def genvrs():
 ## Lines that need different settings
 
 By default every generated line runs with the `cpus`, `memory`, `env`,
-`outputs` and `time` of `maestro.toml`. To change them for some lines, define a class
+`outputs`, `time` and `retries` of `maestro.toml`. To change them for some lines, define a class
 called `Config` above `genvrs` and assign to its attributes before yielding.
 Each line runs with what the class holds at the moment the line is yielded.
 
@@ -76,6 +76,7 @@ class Config:
     memory: int | None = None
     env: dict[str, str] | None = None
     time: str | None = None
+    retries: int | None = None
 
 def genvrs() -> Generator[str]:
     yield "-t 10 small"          # 4 cores, maestro.toml's memory
@@ -88,7 +89,7 @@ def genvrs() -> Generator[str]:
 ```
 
 `None` means "what `maestro.toml` says, or the default if it says nothing".
-The class may hold only these five attributes. `machines` is the same for
+The class may hold only these six attributes. `machines` is the same for
 every line and is set in `maestro.toml`.
 
 ## Where and when the script runs
@@ -126,7 +127,7 @@ The build fails, and the log says why, when the script:
 
 ```text
 genvrs yielded a int as item 4; every item must be a string
-Config.machines isn't a setting; Config may only hold outputs, cpus, memory, env, time
+Config.machines isn't a setting; Config may only hold outputs, cpus, memory, env, time, retries
 ```
 
 ## Trying a generator without building

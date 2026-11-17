@@ -150,6 +150,14 @@ Any other `error` comes from the system and says nothing about your
 program. The Maestro page shows such lines in amber with the reason, and
 `maestro runs retry` runs them again.
 
+A line whose machine restarts or is removed while it runs, or whose
+container disappears, ends as `error` too. With
+[`retries`](../repo/maestro-toml.md#retries) in `maestro.toml`, it goes back
+to `queued` instead, as many times as `retries` says, and starts again from
+the beginning. Its details on the Maestro page say how many attempts it
+took. A line that exits with a code, that you cancel, or that runs out of
+time never goes back.
+
 A machine that stops answering doesn't turn its waiting lines into errors.
 Maestro moves them back to `queued` so another machine can take them. Lines
 already running on that machine are left alone and checked again when it

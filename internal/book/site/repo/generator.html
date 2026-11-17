@@ -224,7 +224,7 @@ def genvrs():
 </code></pre>
 <h2 id="lines-that-need-different-settings"><a class="header" href="#lines-that-need-different-settings">Lines that need different settings</a></h2>
 <p>By default every generated line runs with the <code>cpus</code>, <code>memory</code>, <code>env</code>,
-<code>outputs</code> and <code>time</code> of <code>maestro.toml</code>. To change them for some lines, define a class
+<code>outputs</code>, <code>time</code> and <code>retries</code> of <code>maestro.toml</code>. To change them for some lines, define a class
 called <code>Config</code> above <code>genvrs</code> and assign to its attributes before yielding.
 Each line runs with what the class holds at the moment the line is yielded.</p>
 <pre><code class="language-python">class Config:
@@ -233,6 +233,7 @@ Each line runs with what the class holds at the moment the line is yielded.</p>
     memory: int | None = None
     env: dict[str, str] | None = None
     time: str | None = None
+    retries: int | None = None
 
 def genvrs() -&gt; Generator[str]:
     yield "-t 10 small"          # 4 cores, maestro.toml's memory
@@ -244,7 +245,7 @@ def genvrs() -&gt; Generator[str]:
     yield "-t 10 medium"         # 4 cores, maestro.toml's memory again
 </code></pre>
 <p><code>None</code> means "what <code>maestro.toml</code> says, or the default if it says nothing".
-The class may hold only these five attributes. <code>machines</code> is the same for
+The class may hold only these six attributes. <code>machines</code> is the same for
 every line and is set in <code>maestro.toml</code>.</p>
 <h2 id="where-and-when-the-script-runs"><a class="header" href="#where-and-when-the-script-runs">Where and when the script runs</a></h2>
 <p>Maestro runs the script once, during the build, and the build keeps the
@@ -276,7 +277,7 @@ to check what it computed.</p>
 sets one that isn't a setting</li>
 </ul>
 <pre><code class="language-text">genvrs yielded a int as item 4; every item must be a string
-Config.machines isn't a setting; Config may only hold outputs, cpus, memory, env, time
+Config.machines isn't a setting; Config may only hold outputs, cpus, memory, env, time, retries
 </code></pre>
 <h2 id="trying-a-generator-without-building"><a class="header" href="#trying-a-generator-without-building">Trying a generator without building</a></h2>
 <p><code>maestro run &lt;build&gt; -g genvrs.py</code> runs an image you already have on the

@@ -601,6 +601,17 @@ and outputs, and ends it as <code>error</code> with the note "stopped after 2h, 
 time this line asked for". The program finds its time in seconds in
 <a href="repo/container.html#what-maestro-tells-the-program"><code>MAESTRO_TIME</code></a>, so it can
 stop on its own a little before and write what it has.</p>
+<h2 id="retries"><a class="header" href="#retries"><code>retries</code></a></h2>
+<pre><code class="language-toml">retries = 2   # default: 0
+</code></pre>
+<p>This is how many times a line goes back to the queue when it loses its
+machine: the machine restarted, an administrator removed it, or its
+container disappeared. The line then starts again from the beginning, on
+whichever machine has room, and its details on the Maestro page say how
+many attempts it took. Give a number from 0 to 5. With 0, such a line ends
+as <code>error</code>.</p>
+<p>A line that exits with a code, that you cancel, or that runs out of
+<a href="repo/maestro-toml.html#time"><code>time</code></a> never goes back to the queue.</p>
 <h2 id="env"><a class="header" href="#env"><code>env</code></a></h2>
 <pre><code class="language-toml">env = { SEED = "42", MODE = "fast" }
 </code></pre>
@@ -641,13 +652,13 @@ repository and must stay inside it. The root remains the build's context, so
 </code></pre>
 <p>This names a Python script in the repository that computes lines. They come
 after the lines of <code>parameters</code>, and the script can give each of its lines
-its own <code>cpus</code>, <code>memory</code>, <code>env</code>, <code>outputs</code> and <code>time</code>. The
+its own <code>cpus</code>, <code>memory</code>, <code>env</code>, <code>outputs</code>, <code>time</code> and <code>retries</code>. The
 <a href="repo/generator.html">next chapter</a> is about it.</p>
 <h2 id="when-the-file-is-wrong"><a class="header" href="#when-the-file-is-wrong">When the file is wrong</a></h2>
 <p>An invalid <code>maestro.toml</code> fails the build, and the last lines of the build
 log say why. A misspelt key is an error too, so that a typo isn't silently
 ignored:</p>
-<pre><code class="language-text">maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env, time)
+<pre><code class="language-text">maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env, time, retries)
 </code></pre>
 <p><a href="repo/../reference/maestro-toml.html">maestro.toml keys</a> lists every key with its
 default and its limits on one page.</p>
@@ -696,7 +707,7 @@ def genvrs():
 </code></pre>
 <h2 id="lines-that-need-different-settings"><a class="header" href="#lines-that-need-different-settings">Lines that need different settings</a></h2>
 <p>By default every generated line runs with the <code>cpus</code>, <code>memory</code>, <code>env</code>,
-<code>outputs</code> and <code>time</code> of <code>maestro.toml</code>. To change them for some lines, define a class
+<code>outputs</code>, <code>time</code> and <code>retries</code> of <code>maestro.toml</code>. To change them for some lines, define a class
 called <code>Config</code> above <code>genvrs</code> and assign to its attributes before yielding.
 Each line runs with what the class holds at the moment the line is yielded.</p>
 <pre><code class="language-python">class Config:
@@ -705,6 +716,7 @@ Each line runs with what the class holds at the moment the line is yielded.</p>
     memory: int | None = None
     env: dict[str, str] | None = None
     time: str | None = None
+    retries: int | None = None
 
 def genvrs() -&gt; Generator[str]:
     yield "-t 10 small"          # 4 cores, maestro.toml's memory
@@ -716,7 +728,7 @@ def genvrs() -&gt; Generator[str]:
     yield "-t 10 medium"         # 4 cores, maestro.toml's memory again
 </code></pre>
 <p><code>None</code> means "what <code>maestro.toml</code> says, or the default if it says nothing".
-The class may hold only these five attributes. <code>machines</code> is the same for
+The class may hold only these six attributes. <code>machines</code> is the same for
 every line and is set in <code>maestro.toml</code>.</p>
 <h2 id="where-and-when-the-script-runs"><a class="header" href="#where-and-when-the-script-runs">Where and when the script runs</a></h2>
 <p>Maestro runs the script once, during the build, and the build keeps the
@@ -748,7 +760,7 @@ to check what it computed.</p>
 sets one that isn't a setting</li>
 </ul>
 <pre><code class="language-text">genvrs yielded a int as item 4; every item must be a string
-Config.machines isn't a setting; Config may only hold outputs, cpus, memory, env, time
+Config.machines isn't a setting; Config may only hold outputs, cpus, memory, env, time, retries
 </code></pre>
 <h2 id="trying-a-generator-without-building"><a class="header" href="#trying-a-generator-without-building">Trying a generator without building</a></h2>
 <p><code>maestro run &lt;build&gt; -g genvrs.py</code> runs an image you already have on the
@@ -1263,6 +1275,13 @@ asked for".</p>
 <p>Any other <code>error</code> comes from the system and says nothing about your
 program. The Maestro page shows such lines in amber with the reason, and
 <code>maestro runs retry</code> runs them again.</p>
+<p>A line whose machine restarts or is removed while it runs, or whose
+container disappears, ends as <code>error</code> too. With
+<a href="use/../repo/maestro-toml.html#retries"><code>retries</code></a> in <code>maestro.toml</code>, it goes back
+to <code>queued</code> instead, as many times as <code>retries</code> says, and starts again from
+the beginning. Its details on the Maestro page say how many attempts it
+took. A line that exits with a code, that you cancel, or that runs out of
+time never goes back.</p>
 <p>A machine that stops answering doesn't turn its waiting lines into errors.
 Maestro moves them back to <code>queued</code> so another machine can take them. Lines
 already running on that machine are left alone and checked again when it
@@ -3246,6 +3265,7 @@ introduces the keys one at a time, and this page is the lookup table.</p>
 <tr><td><a href="reference/../repo/maestro-toml.html#cpus-and-memory"><code>cpus</code></a></td><td>Whole number</td><td>1</td><td>The cores each container can use, and the cores a machine must have free to start it</td></tr>
 <tr><td><a href="reference/../repo/maestro-toml.html#cpus-and-memory"><code>memory</code></a></td><td>Whole number, in MB</td><td>512</td><td>The memory each container can use, and the memory a machine must have free to start it</td></tr>
 <tr><td><a href="reference/../repo/maestro-toml.html#env"><code>env</code></a></td><td>Table of strings</td><td>None</td><td>Environment variables set in every container</td></tr>
+<tr><td><a href="reference/../repo/maestro-toml.html#retries"><code>retries</code></a></td><td>Whole number</td><td>0</td><td>How many times a line that loses its machine goes back to the queue</td></tr>
 <tr><td><a href="reference/../repo/maestro-toml.html#time"><code>time</code></a></td><td>Duration, such as <code>"90m"</code> or <code>"2h"</code></td><td>The server's limit, a week unless your administrator set another</td><td>The longest each line may run before Maestro stops it</td></tr>
 <tr><td><a href="reference/../repo/maestro-toml.html#machines"><code>machines</code></a></td><td>List of strings</td><td>Any machine</td><td>The only machines the lines can run on</td></tr>
 <tr><td><a href="reference/../repo/maestro-toml.html#dockerfile"><code>dockerfile</code></a></td><td>String</td><td><code>Containerfile</code> at the root, or else <code>Dockerfile</code></td><td>The file the image is built from</td></tr>
@@ -3259,6 +3279,7 @@ introduces the keys one at a time, and this page is the lookup table.</p>
 <tr><td><code>env</code>, all names and values together</td><td>64 KiB</td></tr>
 <tr><td>An <code>env</code> name</td><td>Letters, digits and <code>_</code>. It can't start with a digit or with <code>MAESTRO_</code>.</td></tr>
 <tr><td><code>time</code></td><td>At least <code>"1m"</code>, and at most the server's limit</td></tr>
+<tr><td><code>retries</code></td><td>0 to 5</td></tr>
 <tr><td>A path in <code>outputs</code></td><td>A file or directory inside the container. It can't be <code>/</code> or the working directory itself, and it can't begin with <code>..</code>.</td></tr>
 <tr><td><code>generator</code> and <code>dockerfile</code></td><td>A file inside the repository</td></tr>
 <tr><td>The generator script</td><td>1 MiB</td></tr>
@@ -3281,7 +3302,7 @@ yields, at spaces and tabs. No shell is involved.</p>
 <p>A line with a quote left open, or one that ends in a backslash, is an
 error.</p>
 <h2 id="per-line-settings-from-a-generator"><a class="header" href="#per-line-settings-from-a-generator">Per-line settings from a generator</a></h2>
-<p>A generator's <code>Config</code> class can set <code>outputs</code>, <code>cpus</code>, <code>memory</code>, <code>env</code> and <code>time</code>
+<p>A generator's <code>Config</code> class can set <code>outputs</code>, <code>cpus</code>, <code>memory</code>, <code>env</code>, <code>time</code> and <code>retries</code>
 for the lines it yields, within the same limits.
 <a href="reference/../repo/generator.html#lines-that-need-different-settings">Lines that need different settings</a>
 shows how.</p>
@@ -3297,16 +3318,18 @@ cpus           = 4
 memory         = 8192
 env            = { MODE = "fast" }
 time           = "2h"
+retries        = 2
 machines       = ["Q1", "Q2"]
 dockerfile     = "docker/Dockerfile"
 </code></pre>
 <h2 id="errors"><a class="header" href="#errors">Errors</a></h2>
 <p>An unknown key fails the build and lists the keys Maestro knows:</p>
-<pre><code class="language-text">maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env, time)
+<pre><code class="language-text">maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env, time, retries)
 </code></pre>
 <p>The other messages name the key and the value at fault, as these do:</p>
 <pre><code class="language-text">maestro.toml: cpus is 0; give between 1 and 1024 cores
 maestro.toml: memory is 4; give between 6 and 16777216 MB
+maestro.toml: retries is 9; give between 0 and 5
 maestro.toml: time "2 hours" isn't a duration; give one such as "90m" or "2h"
 maestro.toml: outputs_layout "merged" must be "per-line" (each line's outputs apart, the default) or "shared" (every line's in one tree)
 </code></pre>

@@ -125,6 +125,22 @@ time this line asked for". The program finds its time in seconds in
 [`MAESTRO_TIME`](container.md#what-maestro-tells-the-program), so it can
 stop on its own a little before and write what it has.
 
+## `retries`
+
+```toml
+retries = 2   # default: 0
+```
+
+This is how many times a line goes back to the queue when it loses its
+machine: the machine restarted, an administrator removed it, or its
+container disappeared. The line then starts again from the beginning, on
+whichever machine has room, and its details on the Maestro page say how
+many attempts it took. Give a number from 0 to 5. With 0, such a line ends
+as `error`.
+
+A line that exits with a code, that you cancel, or that runs out of
+[`time`](#time) never goes back to the queue.
+
 ## `env`
 
 ```toml
@@ -187,7 +203,7 @@ generator = "genvrs.py"
 
 This names a Python script in the repository that computes lines. They come
 after the lines of `parameters`, and the script can give each of its lines
-its own `cpus`, `memory`, `env`, `outputs` and `time`. The
+its own `cpus`, `memory`, `env`, `outputs`, `time` and `retries`. The
 [next chapter](generator.md) is about it.
 
 ## When the file is wrong
@@ -197,7 +213,7 @@ log say why. A misspelt key is an error too, so that a typo isn't silently
 ignored:
 
 ```text
-maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env, time)
+maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env, time, retries)
 ```
 
 [maestro.toml keys](../reference/maestro-toml.md) lists every key with its
