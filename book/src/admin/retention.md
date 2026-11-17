@@ -40,6 +40,13 @@ The files stay until someone deletes the run. orq deletes none of them on
 its own, so size the volume for that, and ask users to remove the runs they
 no longer need with `maestro runs rm`.
 
+`USER_DATA_MAX_GB` limits what all of a user's runs keep, and is off by
+default. orq adds up the user's files when they start a run. Once they keep
+that much or more, it refuses the run with "your runs keep 52 GB of the 50 GB
+allowed; delete one with `maestro runs rm <run>`". orq checks only when a
+run starts, so a run already started can take the user past the limit, by
+at most `RUN_OUTPUT_MAX_MB` for each of its lines.
+
 ## Images
 
 Each user keeps at most 10 built images. Admin › Settings changes the

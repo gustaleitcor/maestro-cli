@@ -2303,6 +2303,12 @@ keeps at most <code>RUN_OUTPUT_MAX_MB</code> of logs and outputs, 1024 by defaul
 <p>The files stay until someone deletes the run. orq deletes none of them on
 its own, so size the volume for that, and ask users to remove the runs they
 no longer need with <code>maestro runs rm</code>.</p>
+<p><code>USER_DATA_MAX_GB</code> limits what all of a user's runs keep, and is off by
+default. orq adds up the user's files when they start a run. Once they keep
+that much or more, it refuses the run with "your runs keep 52 GB of the 50 GB
+allowed; delete one with <code>maestro runs rm &lt;run&gt;</code>". orq checks only when a
+run starts, so a run already started can take the user past the limit, by
+at most <code>RUN_OUTPUT_MAX_MB</code> for each of its lines.</p>
 <h2 id="images"><a class="header" href="#images">Images</a></h2>
 <p>Each user keeps at most 10 built images. Admin › Settings changes the
 number. A build that would exceed it removes the image the user ran least
@@ -3056,6 +3062,7 @@ maestro.toml: outputs_layout "merged" must be "per-line" (each line's outputs ap
 <tr><td><code>DATA_DIR</code></td><td><code>/maestro/data</code></td><td>Where the logs and outputs of runs are kept</td></tr>
 <tr><td><code>RUN_OUTPUT_MAX_MB</code></td><td><code>1024</code></td><td>The logs and outputs kept for each line. orq drops the rest and leaves a note on the line.</td></tr>
 <tr><td><code>RUN_MAX_HOURS</code></td><td><code>168</code> (a week)</td><td>How long a line may run. orq stops a line that runs longer, keeps its logs and outputs, and ends it as <code>error</code>. <code>0</code> means no limit.</td></tr>
+<tr><td><code>USER_DATA_MAX_GB</code></td><td><code>0</code></td><td>What all of a user's runs may keep, in GB. A user at the limit can't start a run until they delete one. <code>0</code> means no limit.</td></tr>
 <tr><td><code>RUN_PIDS</code></td><td><code>512</code></td><td>The limit on processes in each container. <code>0</code> means no limit.</td></tr>
 <tr><td><code>REDIS_URL</code></td><td>required</td><td><code>redis://[:password@]host:port/db</code> of a Redis, Valkey or KeyDB</td></tr>
 <tr><td><code>SESSION_TTL</code></td><td><code>12h</code></td><td>How long a session of the Maestro page lasts</td></tr>
