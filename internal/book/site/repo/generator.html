@@ -187,10 +187,13 @@ string the function yields becomes one line, split into words the same way a
 line of <a href="maestro-toml.html#parameters"><code>parameters</code></a> is.</p>
 <h2 id="turn-on-the-templates-generator"><a class="header" href="#turn-on-the-templates-generator">Turn on the template's generator</a></h2>
 <p>The template already has one, <code>genvrs.py</code>:</p>
-<pre><code class="language-python">def genvrs():
+<pre><code class="language-python">def genvrs() -&gt; Generator[str]:
     for seconds in (10, 20, 30):
         yield f"-t {seconds} out.txt"
 </code></pre>
+<p>Above it, the file has a <code>Config</code> class with every attribute at <code>None</code>.
+<a href="#lines-that-need-different-settings">Lines that need different settings</a>
+explains it, and the script runs the same without it.</p>
 <p>Its <code>maestro.toml</code> has the line that enables it commented out. Remove the
 <code>#</code>:</p>
 <pre><code class="language-toml">generator = "genvrs.py"

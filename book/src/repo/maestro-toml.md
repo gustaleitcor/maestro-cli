@@ -123,7 +123,9 @@ When a line runs longer than its `time`, Maestro stops it, keeps its logs
 and outputs, and ends it as `error` with the note "stopped after 2h, the
 time this line asked for". The program finds its time in seconds in
 [`MAESTRO_TIME`](container.md#what-maestro-tells-the-program), so it can
-stop on its own a little before and write what it has.
+stop on its own a little before and write what it has. The template's
+`knapsack` branch does this for its solver, as
+[Fuller examples](examples.md#knapsack-a-solver-job) shows.
 
 ## `retries`
 

@@ -11,10 +11,14 @@ line of [`parameters`](maestro-toml.md#parameters) is.
 The template already has one, `genvrs.py`:
 
 ```python
-def genvrs():
+def genvrs() -> Generator[str]:
     for seconds in (10, 20, 30):
         yield f"-t {seconds} out.txt"
 ```
+
+Above it, the file has a `Config` class with every attribute at `None`.
+[Lines that need different settings](#lines-that-need-different-settings)
+explains it, and the script runs the same without it.
 
 Its `maestro.toml` has the line that enables it commented out. Remove the
 `#`:

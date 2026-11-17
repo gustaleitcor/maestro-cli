@@ -266,7 +266,9 @@ ask for more:</p>
 and outputs, and ends it as <code>error</code> with the note "stopped after 2h, the
 time this line asked for". The program finds its time in seconds in
 <a href="container.html#what-maestro-tells-the-program"><code>MAESTRO_TIME</code></a>, so it can
-stop on its own a little before and write what it has.</p>
+stop on its own a little before and write what it has. The template's
+<code>knapsack</code> branch does this for its solver, as
+<a href="examples.html#knapsack-a-solver-job">Fuller examples</a> shows.</p>
 <h2 id="retries"><a class="header" href="#retries"><code>retries</code></a></h2>
 <pre><code class="language-toml">retries = 2   # default: 0
 </code></pre>

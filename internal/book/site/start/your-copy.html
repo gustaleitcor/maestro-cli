@@ -213,7 +213,7 @@ maestro build some-org/solver --ref v1.2.0      # someone else's, at a tag
 <h2 id="what-the-copy-holds"><a class="header" href="#what-the-copy-holds">What the copy holds</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>File</th><th>What it is</th><th>Where this book covers it</th></tr></thead><tbody>
 <tr><td><code>Dockerfile</code></td><td>Builds the image. Your program is its <code>ENTRYPOINT</code>.</td><td><a href="../repo/dockerfile.html">The minimum: a Dockerfile</a></td></tr>
-<tr><td><code>maestro.toml</code></td><td>Optional. Lists the lines of parameters and the files to keep.</td><td><a href="../repo/maestro-toml.html">maestro.toml</a></td></tr>
+<tr><td><code>maestro.toml</code></td><td>Optional. Lists the lines of parameters and the files to keep. The other keys are there too, commented out at their defaults.</td><td><a href="../repo/maestro-toml.html">maestro.toml</a></td></tr>
 <tr><td><code>genvrs.py</code></td><td>Optional. Computes lines in place of writing them out.</td><td><a href="../repo/generator.html">Generating lines with Python</a></td></tr>
 <tr><td><code>main.py</code></td><td>A stand-in program. It waits <code>-t</code> seconds and writes one line to a file.</td><td>Replace it with your program.</td></tr>
 <tr><td><code>requirements.txt</code></td><td>The Python packages the Dockerfile installs.</td><td></td></tr>

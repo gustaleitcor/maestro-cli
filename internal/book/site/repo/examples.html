@@ -196,17 +196,32 @@ start the run with a <code>maestro.toml</code> of your own:
 <a href="https://www.python-mip.com">mip</a> solver, one container for each instance
 and capacity.</p>
 <div class="table-wrapper"><table><thead><tr><th>File</th><th>What it shows</th></tr></thead><tbody>
-<tr><td><code>maestro.toml</code></td><td>Two lines of <code>parameters</code>, a <code>generator</code>, <code>cpus</code>, <code>memory</code>, an <code>env</code> variable and one output, <code>solution.json</code></td></tr>
+<tr><td><code>maestro.toml</code></td><td>Two lines of <code>parameters</code>, a <code>generator</code>, <code>cpus</code>, <code>memory</code>, <code>time</code>, <code>retries</code>, an <code>env</code> variable, and <code>outputs_layout = "shared"</code> for one <code>results/</code> folder</td></tr>
 <tr><td><code>genvrs.py</code></td><td>Reads every file in <code>instances/</code> and yields three lines for each, with the capacity scaled by 0.25, 0.5 and 2</td></tr>
-<tr><td><code>main.py</code></td><td>Solves one instance, with as many solver threads as <code>MAESTRO_CPUS</code> says</td></tr>
+<tr><td><code>main.py</code></td><td>Solves one instance, with as many solver threads as <code>MAESTRO_CPUS</code> says, and stops searching before <code>MAESTRO_TIME</code> runs out</td></tr>
 <tr><td><code>requirements.txt</code></td><td>The solver, installed by the Dockerfile</td></tr>
 </tbody></table>
 </div>
 <p>The generator gives larger instances more than the rest. An instance with
-more than 30 items gets 1024 MB through <code>Config.memory</code> and a time limit of
-60 seconds, where a small one keeps <code>maestro.toml</code>'s 512 MB and gets 10
-seconds. It also prints one line for each instance, which shows up in the
-build log.</p>
+more than 30 items gets 1024 MB and 2 cores through <code>Config</code> and 60 seconds
+to search. A smaller one keeps the 1 core and 512 MB of <code>maestro.toml</code> and
+gets 10 seconds. The generator also prints one line for each instance, which
+shows up in the build log.</p>
+<p>Every line may run for 2 minutes (<code>time = "2m"</code>). <code>main.py</code> reads that from
+<code>MAESTRO_TIME</code> and ends its search 15 seconds before, so the line
+<code>large --time-limit 120</code> stops on its own and still writes its best
+solution:</p>
+<pre><code class="language-python">seconds = args.time_limit
+if (limit := int(os.environ.get("MAESTRO_TIME", "0"))) &gt; 0:
+    seconds = min(seconds, max(1, limit - 15))
+</code></pre>
+<p>A solve can start over from the beginning, so each line has <code>retries = 2</code>
+and goes back to the queue if its machine is lost.</p>
+<p>Each line writes <code>results/&lt;instance&gt;-&lt;capacity&gt;.json</code>. With
+<code>outputs_layout = "shared"</code>, every line's file goes into one tree for the
+run, and <code>maestro runs get</code> puts them all in <code>&lt;run&gt;/shared/results/</code>. Each
+line's logs stay in <code>&lt;run&gt;/&lt;line&gt;/</code>. The names differ by instance and
+capacity, so no line overwrites another's.</p>
 <p>With three instance files, a run has eleven lines: two from <code>parameters</code> and
 nine from the generator.</p>
 <h2 id="stress-a-thousand-lines"><a class="header" href="#stress-a-thousand-lines"><code>stress</code>: a thousand lines</a></h2>
@@ -215,15 +230,21 @@ Each one sleeps, keeps its cores busy, fills part of its memory, or does
 both, for between ten seconds and four minutes, and writes a <code>report.json</code>
 with what it used.</p>
 <p><code>maestro.toml</code> lists four lines and <code>genvrs.py</code> adds 996, which makes 1000.
-The generator draws each line's size from ten shapes, from 1 core and 64 MB
-up to 10 cores and 10 GB, with a fixed seed so that every build yields the
-same lines. One line in ten also keeps a
-<code>samples.csv</code>, and every hundredth line exits with code 3 on purpose, so the
-run has failed lines to look at.</p>
+A run could have 5000, but ten runs of 1000 show more of how the queue takes
+turns. The generator draws each line's size from ten shapes, from 1 core and
+64 MB up to 10 cores and 10 GB, with a fixed seed so that every build yields
+the same lines. One line in ten also keeps a <code>samples.csv</code>, and every
+hundredth line exits with code 3 on purpose, so the run has failed lines to
+look at.</p>
+<p>Every line may run for 10 minutes (<code>time</code>), far more than any needs. Each
+has <code>retries = 2</code>, so restarting a machine in the middle of a run sends its
+lines back to the queue instead of ending them as <code>error</code>.</p>
 <p>It is a good run to have going while you read
 <a href="../how/queue.html">The queue</a>:</p>
-<pre><code class="language-sh">maestro queue     # how many lines wait in each queue
-maestro top       # each machine as it fills
+<pre><code class="language-sh">maestro queue                       # how many lines wait in each queue
+maestro top                         # each machine as it fills
+maestro runs show &lt;run&gt; --failed    # the lines that exited with 3
+maestro runs retry &lt;run&gt;            # run them again
 </code></pre>
 
                     </main>

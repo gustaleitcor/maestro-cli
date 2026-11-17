@@ -52,7 +52,7 @@ Without `--ref`, a build takes the newest commit of the default branch.
 | File | What it is | Where this book covers it |
 | --- | --- | --- |
 | `Dockerfile` | Builds the image. Your program is its `ENTRYPOINT`. | [The minimum: a Dockerfile](../repo/dockerfile.md) |
-| `maestro.toml` | Optional. Lists the lines of parameters and the files to keep. | [maestro.toml](../repo/maestro-toml.md) |
+| `maestro.toml` | Optional. Lists the lines of parameters and the files to keep. The other keys are there too, commented out at their defaults. | [maestro.toml](../repo/maestro-toml.md) |
 | `genvrs.py` | Optional. Computes lines in place of writing them out. | [Generating lines with Python](../repo/generator.md) |
 | `main.py` | A stand-in program. It waits `-t` seconds and writes one line to a file. | Replace it with your program. |
 | `requirements.txt` | The Python packages the Dockerfile installs. | |
