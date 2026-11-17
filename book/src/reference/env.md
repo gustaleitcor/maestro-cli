@@ -4,7 +4,7 @@
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `MODE` | empty | `dev` serves swagger and allows session cookies over plain http. |
+| `MODE` | empty | `dev` serves swagger to anyone and allows session cookies over plain http. Otherwise only someone signed in on the Maestro page sees swagger. |
 | `MAESTRO_ORQ_ADDR` | `:8081` | Where orq listens. The compose file uses `:3005`. |
 | `MAESTRO_ORQ_DB` | `maestro-orq.db` | The SQLite database |
 | `ALLOWED_ORIGINS` | required | The origins of the Maestro page, separated by commas, for CORS |

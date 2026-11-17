@@ -2983,7 +2983,7 @@ maestro.toml: outputs_layout "merged" must be "per-line" (each line's outputs ap
 <div style="break-before: page; page-break-before: always;"></div><h1 id="environment-variables"><a class="header" href="#environment-variables">Environment variables</a></h1>
 <h2 id="orq"><a class="header" href="#orq">orq</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
-<tr><td><code>MODE</code></td><td>empty</td><td><code>dev</code> serves swagger and allows session cookies over plain http.</td></tr>
+<tr><td><code>MODE</code></td><td>empty</td><td><code>dev</code> serves swagger to anyone and allows session cookies over plain http. Otherwise only someone signed in on the Maestro page sees swagger.</td></tr>
 <tr><td><code>MAESTRO_ORQ_ADDR</code></td><td><code>:8081</code></td><td>Where orq listens. The compose file uses <code>:3005</code>.</td></tr>
 <tr><td><code>MAESTRO_ORQ_DB</code></td><td><code>maestro-orq.db</code></td><td>The SQLite database</td></tr>
 <tr><td><code>ALLOWED_ORIGINS</code></td><td>required</td><td>The origins of the Maestro page, separated by commas, for CORS</td></tr>
