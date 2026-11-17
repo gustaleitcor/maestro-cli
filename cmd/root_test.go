@@ -248,10 +248,10 @@ func TestUsageMistakesComeFirst(t *testing.T) {
 		args []string
 		want []string
 	}{
-		{[]string{"run"}, []string{"maestro run needs a build number (see `maestro builds`)", "Usage: maestro run <build>", "Run 'maestro run --help'"}},
-		{[]string{"run", "abc"}, []string{`invalid build "abc": expected a number such as 12`}},
-		{[]string{"run", "12", "13"}, []string{"maestro run takes at most 1 argument(s), not 2"}},
-		{[]string{"runs", "logs"}, []string{"maestro runs logs needs a run number (see `maestro runs`)"}},
+		{[]string{"run"}, []string{"`maestro run` needs a build number; `maestro builds` shows yours", "Usage: maestro run <build>", "Run 'maestro run --help'"}},
+		{[]string{"run", "abc"}, []string{`"abc" isn't a build number, such as 12`}},
+		{[]string{"run", "12", "13"}, []string{"`maestro run` takes at most 1 argument(s), not 2"}},
+		{[]string{"runs", "logs"}, []string{"`maestro runs logs` needs a run number; `maestro runs` shows yours"}},
 		{[]string{"runs", "shw"}, []string{`unknown command "shw" for "maestro runs"`, "Did you mean this?\n\tshow", "Run 'maestro runs --help'"}},
 		{[]string{"runs", "--watch", "--json"}, []string{"--json prints once"}},
 		{[]string{"top", "-n", "100ms"}, []string{"--interval must be at least 1s"}},

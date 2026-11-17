@@ -44,12 +44,12 @@ var (
 // followPoll is how often runs logs -f looks whether a line has started.
 var followPoll = 2 * time.Second
 
-const noRuns = "No runs yet. Start one with: maestro run <build>"
+const noRuns = "No runs yet. Start one with `maestro run <build>`."
 
 // On its own it lists.
 var runsCmd = &cobra.Command{
 	Use:   "runs",
-	Short: "Commands for the runs started with `maestro run`",
+	Short: "List, show and download your runs",
 	Args:  cobra.MatchAll(nounArgs, flagCheck(checkWatch)),
 	RunE:  runRunsList,
 }
@@ -57,11 +57,12 @@ var runsCmd = &cobra.Command{
 var runsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List your runs",
-	Long: `Lists your runs, newest first: the last --limit of them (20; 0 for all),
-of a --status (queued, running, succeeded, failed, cancelled) or a --repo
-if asked. --json prints the same runs. With --watch, the list is drawn again
-every --interval until you press ctrl-c. With --all, an administrator is
-given everyone's runs, and whose each is.`,
+	Long: `Lists your runs, newest first. It shows your 20 newest, or as many as
+--limit says, and --limit 0 shows them all. --status (queued, running,
+succeeded, failed, cancelled) and --repo narrow the list, and --json prints
+the same runs. With --watch, it draws the list again every --interval until
+you press Ctrl-C. With --all, an administrator sees everyone's runs, and
+whose each one is.`,
 	Args:              cobra.MatchAll(cobra.NoArgs, flagCheck(checkWatch)),
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE:              runRunsList,
@@ -70,11 +71,10 @@ given everyone's runs, and whose each is.`,
 var runsShowCmd = &cobra.Command{
 	Use:   "show [run]",
 	Short: "Show each line of a run: where it ran, how it ended, what it kept",
-	Long: `Shows each line of a run: where it ran, how it ended, what it kept. With
---watch, it is drawn again every --interval until the run is over, or you
-press ctrl-c, and exits 1 if the run failed. Without a run, it shows your
-newest. --failed shows only the lines that failed, errored or were
-cancelled.`,
+	Long: `Shows each line of a run: where it ran, how it ended and what it kept.
+Without a run, it shows your newest. With --watch, it draws the run again
+every --interval until the run is over or you press Ctrl-C, and exits with
+status 1 if the run failed.`,
 	Args:              cobra.MatchAll(numberArgs(0, 1, "run"), flagCheck(checkWatch)),
 	ValidArgsFunction: completeRuns,
 	RunE:              runRunsShow,
@@ -82,19 +82,21 @@ cancelled.`,
 
 var runsLogsCmd = &cobra.Command{
 	Use:   "logs <run> [line]",
-	Short: "Print what a line's container wrote to stdout and stderr",
-	Long: `Prints what a line's container wrote: its stdout to stdout and its stderr
-to stderr, so the two can be told apart or sent to different places. The
-line may be left out of a run that has only one.
+	Short: "Print what a line's container wrote to standard output and standard error",
+	Long: `Prints what a line's container wrote. What it wrote to standard output
+goes to your standard output, and what it wrote to standard error goes to
+your standard error, so you can tell the two apart or send them to
+different places. You can leave out the line of a run that has only one.
 
-With -f, a line that hasn't started yet is waited for, and what a running
-line prints is followed until it ends, as tail -f does.
+With -f, it waits for a line that hasn't started yet, and follows what a
+running line prints until the line ends, as tail -f does.
 
-Once a line is over, all of its stdout comes before all of its stderr; how
-they were mixed as the container ran isn't kept.`,
+Once a line is over, all of its standard output comes before all of its
+standard error. Maestro doesn't keep how the two were interleaved as the
+container ran.`,
 	Example: `  maestro runs logs 31 2 -f
-  maestro runs logs 31 2 2>/dev/null   # only what it printed to stdout
-  maestro runs logs 31 2 >/dev/null    # only what it printed to stderr`,
+  maestro runs logs 31 2 2>/dev/null   # only what it printed to standard output
+  maestro runs logs 31 2 >/dev/null    # only what it printed to standard error`,
 	Args:              numberArgs(1, 2, "run", "line"),
 	ValidArgsFunction: completeRunLines,
 	RunE:              runRunsLogs,
@@ -103,10 +105,11 @@ they were mixed as the container ran isn't kept.`,
 var runsGetCmd = &cobra.Command{
 	Use:   "get <run> [dir]",
 	Short: "Download the files kept from a run",
-	Long: `Downloads every file kept from a run's containers into <dir>/<run>/<line>/,
-and what each printed among them, as stdout.log and stderr.log (dir defaults
-to the current directory). --line picks some lines only. A run already
-downloaded there is only downloaded over with --force.`,
+	Long: `Downloads every file kept from a run's containers into
+<dir>/<run>/<line>/, with what each container printed beside them, as
+stdout.log and stderr.log. <dir> is the current directory unless you give
+one. --line picks some lines only. Without --force, it won't download over a
+run already downloaded there.`,
 	Example: `  maestro runs get 31
   maestro runs get 31 results/ --line 2 --line 5`,
 	Args:              numberArgs(1, 2, "run"),
@@ -132,20 +135,23 @@ var runsRmCmd = &cobra.Command{
 }
 
 func init() {
-	runsLogsCmd.Flags().IntVar(&runsLogsTail, "tail", 0, "only the last N lines of a line still running (all when left out)")
+	runsLogsCmd.Flags().IntVar(&runsLogsTail, "tail", 0, "only the last `n` lines of a line still running (default: all)")
 	runsLogsCmd.Flags().BoolVarP(&runsLogsFollow, "follow", "f", false, "wait for the line to start, and follow what it prints until it ends")
 	for _, c := range []*cobra.Command{runsCmd, runsListCmd} {
-		addWatchFlags(c, "keep showing it, refreshed as it changes")
+		addWatchFlags(c, "keep showing it as it changes")
 		c.Flags().BoolVar(&runsAsJSON, "json", false, "print the runs as JSON")
 		c.Flags().BoolVar(&runsAll, "all", false, "everyone's runs (administrators only)")
-		c.Flags().IntVar(&runsLimit, "limit", 20, "how many runs, newest first; 0 for all")
-		c.Flags().StringVar(&runsStatus, "status", "", "only the runs with this status")
-		c.Flags().StringVar(&runsRepo, "repo", "", "only the runs of this repo (owner/name, or name)")
+		c.Flags().IntVar(&runsLimit, "limit", 20, "show the newest `n` runs, or all of them with 0")
+		c.Flags().StringVar(&runsStatus, "status", "", "only the runs with this `status`")
+		c.Flags().StringVar(&runsRepo, "repo", "", "only the runs of this `repo`, as owner/name or name")
 	}
-	addWatchFlags(runsShowCmd, "keep showing it, refreshed as it changes; exit 1 if the run failed")
+	addWatchFlags(runsShowCmd, "keep showing it as it changes, and exit with status 1 if the run failed")
 	runsShowCmd.Flags().BoolVar(&runsAsJSON, "json", false, "print the run as JSON")
-	runsShowCmd.Flags().BoolVar(&runsFailed, "failed", false, "only the lines that failed, errored or were cancelled")
-	runsGetCmd.Flags().Int64SliceVar(&runsGetLines, "line", nil, "only this line (again for more)")
+	runsShowCmd.Flags().BoolVar(&runsFailed, "failed", false, "only the lines that failed, ended in an error or were cancelled")
+	runsGetCmd.Flags().Int64SliceVar(&runsGetLines, "line", nil, "only line `n` (again for more)")
+	// pflag prints "(default [])" for an empty int64 slice, as it does for
+	// no other empty slice.
+	runsGetCmd.Flags().Lookup("line").DefValue = ""
 	runsGetCmd.Flags().BoolVar(&runsGetForce, "force", false, "download over a run already downloaded there")
 	rootCmd.AddCommand(runsCmd)
 	addYesFlag(runsRmCmd)
@@ -156,13 +162,13 @@ func init() {
 // in the watch of runs list or runs show.
 func addWatchFlags(c *cobra.Command, usage string) {
 	c.Flags().BoolVarP(&runsWatch, "watch", "w", false, usage)
-	c.Flags().DurationVarP(&runsInterval, "interval", "n", 2*time.Second, "how often to refresh with --watch (at least 1s)")
+	c.Flags().DurationVarP(&runsInterval, "interval", "n", 2*time.Second, "how often to redraw with --watch, at least 1s")
 }
 
 func parseID(arg, what string) (int64, error) {
 	id, err := strconv.ParseInt(strings.TrimPrefix(arg, "#"), 10, 64)
 	if err != nil || id <= 0 {
-		return 0, fmt.Errorf("invalid %s %q: expected a number", what, arg)
+		return 0, fmt.Errorf("%q isn't a %s number", arg, what)
 	}
 	return id, nil
 }
@@ -278,7 +284,7 @@ func writeRunsList(out io.Writer, runs []maestroapi.Run, all bool, matching int)
 		return err
 	}
 	if matching > len(runs) {
-		_, err := fmt.Fprintln(out, dimStyle.Render(fmt.Sprintf("\nThe newest %d of %d runs; --limit 0 for all.", len(runs), matching)))
+		_, err := fmt.Fprintln(out, dimStyle.Render(fmt.Sprintf("\nThe newest %d of %d runs. --limit 0 shows them all.", len(runs), matching)))
 		return err
 	}
 	return nil
@@ -335,7 +341,7 @@ func showRun(ctx context.Context, id int64, watch bool) error {
 	}
 	err := tui.Watch(ctx, runsInterval, show)
 	if errors.Is(err, tui.ErrInterrupted) {
-		fmt.Fprintln(os.Stderr, dimStyle.Render(fmt.Sprintf("Stopped watching; run %d goes on. Cancel it with `maestro runs cancel %d`.", id, id)))
+		fmt.Fprintln(os.Stderr, dimStyle.Render(fmt.Sprintf("Stopped watching. Run %d goes on. Cancel it with `maestro runs cancel %d`.", id, id)))
 	}
 	if err != nil {
 		return err
@@ -401,7 +407,7 @@ func writeRunShow(out io.Writer, run *maestroapi.Run, onlyFailed bool) error {
 		fmt.Fprintln(out, dimStyle.Render(fmt.Sprintf("Lines from your %s, not the build's.", strings.Join(run.LocalFiles, ", "))))
 	}
 	if run.OutputsLayout == "shared" {
-		fmt.Fprintln(out, dimStyle.Render("Outputs in one tree shared by every line: a later line overwrites a path an earlier one wrote."))
+		fmt.Fprintln(out, dimStyle.Render("Every line's outputs go in one shared tree, so a later line overwrites a path an earlier one wrote."))
 	}
 	if counts := lineCounts(runLineCounts(run)); counts != "" {
 		fmt.Fprintf(out, "%d line(s): %s\n", len(run.Detail), counts)
@@ -503,7 +509,7 @@ func pickLine(run *maestroapi.Run, args []string) (maestroapi.RunLine, error) {
 			return run.Detail[0], nil
 		}
 		first, last := run.Detail[0].Line, run.Detail[len(run.Detail)-1].Line
-		return maestroapi.RunLine{}, usageError(fmt.Errorf("run %d has %d lines (%d–%d): name one, as `maestro runs logs %d <line>`", run.ID, len(run.Detail), first, last, run.ID))
+		return maestroapi.RunLine{}, usageError(fmt.Errorf("run %d has %d lines, numbered %d to %d; name one, as in `maestro runs logs %d <line>`", run.ID, len(run.Detail), first, last, run.ID))
 	}
 	line, err := parseID(args[0], "line")
 	if err != nil {
@@ -536,7 +542,7 @@ func followLine(ctx context.Context, runID int64, l maestroapi.RunLine, stdout, 
 	said := ""
 	for lineWaiting(l.Status) {
 		if l.Status != said {
-			fmt.Fprintln(stderr, dimStyle.Render(fmt.Sprintf("Line %d is %s; waiting for it to start...", l.Line, l.Status)))
+			fmt.Fprintln(stderr, dimStyle.Render(fmt.Sprintf("Line %d is %s. Waiting for it to start...", l.Line, l.Status)))
 			said = l.Status
 		}
 		select {
@@ -570,7 +576,7 @@ func followLine(ctx context.Context, runID int64, l maestroapi.RunLine, stdout, 
 	// answered what it had and no more: it is from before follow.
 	if run, err := maestroapi.GetRun(ctx, maestroKey, runID); err == nil {
 		if now, err := pickLine(run, []string{strconv.FormatInt(l.Line, 10)}); err == nil && now.Status == "running" {
-			fmt.Fprintln(stderr, warnStyle.Render("This Maestro server can't follow logs: that is what the line had printed so far."))
+			fmt.Fprintln(stderr, warnStyle.Render("This Maestro server can't follow logs. That is what the line had printed so far."))
 		}
 	}
 	return nil
@@ -639,7 +645,7 @@ func runRunsGet(cmd *cobra.Command, args []string) error {
 
 	runDir := filepath.Join(dir, strconv.FormatInt(run.ID, 10))
 	if _, err := os.Stat(runDir); err == nil && !runsGetForce {
-		return fmt.Errorf("%s is there already: pass --force to download over it", runDir)
+		return fmt.Errorf("%s is there already; pass --force to download over it", runDir)
 	}
 	lines, err := pickLines(run, runsGetLines)
 	if err != nil {
@@ -666,7 +672,7 @@ func runRunsGet(cmd *cobra.Command, args []string) error {
 			target := filepath.Join(filesDir, filepath.FromSlash(file.Path))
 			// The server only lists paths inside the line, but don't trust that blindly.
 			if rel, err := filepath.Rel(filesDir, target); err != nil || strings.HasPrefix(rel, "..") {
-				return fmt.Errorf("refusing to write %q outside %s", file.Path, filesDir)
+				return fmt.Errorf("won't write %q, which is outside %s", file.Path, filesDir)
 			}
 			if err := save(target, func(f *os.File) error {
 				return maestroapi.DownloadRunFile(cmd.Context(), maestroKey, run.ID, l.Line, file.Path, f)
@@ -689,7 +695,7 @@ func runRunsGet(cmd *cobra.Command, args []string) error {
 	progress.done()
 	fmt.Printf("%s %d file(s) and the logs into %s\n", successStyle.Render("Downloaded"), count, runDir)
 	if run.Status == "queued" || run.Status == "running" {
-		fmt.Println(dimStyle.Render("The run isn't over yet: lines still going have nothing to download."))
+		fmt.Println(dimStyle.Render("The run isn't over yet. Lines that haven't ended have nothing to download."))
 	}
 	return nil
 }
@@ -776,7 +782,7 @@ func runRunsCancel(cmd *cobra.Command, args []string) error {
 	if err := maestroapi.CancelRun(cmd.Context(), maestroKey, id); err != nil {
 		return err
 	}
-	fmt.Println(successStyle.Render(fmt.Sprintf("Cancelled run %d.", id)) + " Running containers stop shortly; their files are still kept.")
+	fmt.Println(successStyle.Render(fmt.Sprintf("Cancelled run %d.", id)) + " Its running containers stop soon, and Maestro keeps their files.")
 	return nil
 }
 

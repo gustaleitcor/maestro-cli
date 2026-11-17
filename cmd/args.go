@@ -37,9 +37,9 @@ func asUsage(c *cobra.Command) {
 
 // whereToFind says, after a number is missing or wrong, where the numbers are.
 var whereToFind = map[string]string{
-	"build": "see `maestro builds`",
-	"run":   "see `maestro runs`",
-	"line":  "see `maestro runs show <run>`",
+	"build": "`maestro builds` shows yours",
+	"run":   "`maestro runs` shows yours",
+	"line":  "`maestro runs show <run>` shows them",
 }
 
 // numberArgs is Args for a command that takes the numbers of whats, the
@@ -49,17 +49,17 @@ func numberArgs(min, max int, whats ...string) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if len(args) < min {
 			what := whats[len(args)]
-			return fmt.Errorf("%s needs %s %s number (%s)", cmd.CommandPath(), article(what), what, whereToFind[what])
+			return fmt.Errorf("`%s` needs %s %s number; %s", cmd.CommandPath(), article(what), what, whereToFind[what])
 		}
 		if len(args) > max {
-			return fmt.Errorf("%s takes at most %d argument(s), not %d", cmd.CommandPath(), max, len(args))
+			return fmt.Errorf("`%s` takes at most %d argument(s), not %d", cmd.CommandPath(), max, len(args))
 		}
 		for i, what := range whats {
 			if i >= len(args) {
 				break
 			}
 			if _, err := parseID(args[i], what); err != nil {
-				return fmt.Errorf("%w such as 12 (%s)", err, whereToFind[what])
+				return fmt.Errorf("%w, such as 12; %s", err, whereToFind[what])
 			}
 		}
 		return nil

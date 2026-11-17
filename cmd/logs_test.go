@@ -72,7 +72,7 @@ func TestFollowWaitsThenFollows(t *testing.T) {
 		t.Errorf("stdout %q, stderr %q", stdout.String(), stderr.String())
 	}
 	said := ansi.Strip(stderr.String())
-	if strings.Count(said, "Line 1 is queued; waiting") != 1 || strings.Count(said, "Line 1 is starting; waiting") != 1 {
+	if strings.Count(said, "Line 1 is queued. Waiting") != 1 || strings.Count(said, "Line 1 is starting. Waiting") != 1 {
 		t.Errorf("said while waiting: %q", said)
 	}
 	if strings.Contains(said, "can't follow") {
@@ -127,7 +127,7 @@ func TestPickLine(t *testing.T) {
 	several := &maestroapi.Run{ID: 31, Detail: []maestroapi.RunLine{{Line: 1}, {Line: 2}, {Line: 8}}}
 	_, err := pickLine(several, nil)
 	var exit *exitError
-	if !errors.As(err, &exit) || exit.code != exitUsage || !strings.Contains(err.Error(), "run 31 has 3 lines (1–8)") {
+	if !errors.As(err, &exit) || exit.code != exitUsage || !strings.Contains(err.Error(), "run 31 has 3 lines, numbered 1 to 8") {
 		t.Errorf("several lines: %v", err)
 	}
 	if l, err := pickLine(several, []string{"2"}); err != nil || l.Line != 2 {
@@ -171,7 +171,7 @@ func TestRunsListPicks(t *testing.T) {
 	if err := writeRunsList(&out, shown, false, matching); err != nil {
 		t.Fatal(err)
 	}
-	if got := ansi.Strip(out.String()); !strings.Contains(got, "The newest 4 of 10 runs; --limit 0 for all.") || !strings.Contains(got, "10h ago") {
+	if got := ansi.Strip(out.String()); !strings.Contains(got, "The newest 4 of 10 runs. --limit 0 shows them all.") || !strings.Contains(got, "10h ago") {
 		t.Errorf("printed %q", got)
 	}
 

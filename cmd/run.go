@@ -16,21 +16,22 @@ import (
 var runCmd = &cobra.Command{
 	Use:   "run <build>",
 	Short: "Run the image of one of your builds on the machines",
-	Long: `Queues a run of the image a build produced: one container per line of
-parameters in the repo's maestro.toml, and per line its generator yielded
-when the image was built, spread over the machines it names.
-Without a maestro.toml, a single container runs the image's own command.
+	Long: `Queues a run of a build's image. The run starts one container for each
+line of parameters in the repository's maestro.toml, and one for each line
+its generator yielded when the image was built, on the machines maestro.toml
+names. Without a maestro.toml, one container runs the image's own command.
 
-<build> is the build number shown by ` + "`maestro builds`" + `, with or without #.
-Containers start as machines have room; --watch follows them until the run
-is over, as ` + "`maestro runs show <run> --watch`" + ` does later, and exits 1
-if the run failed.
+<build> is the build's number as ` + "`maestro builds`" + ` shows it, with or
+without #. Containers start as the machines have room. With --watch, it
+follows the run until the run is over, as
+` + "`maestro runs show <run> --watch`" + ` does later, and exits with status 1 if
+the run failed.
 
 To try other lines without a new build, send your own maestro.toml (-c) or
-the generator it names (-g) from here: the server reads them against the
-repo as the build had it and runs the build's image on the lines they make.
-Each may have any name here. A Dockerfile changes the image, which takes
-` + "`maestro build -f`" + `.
+the generator it names (-g) from your computer. The server reads them
+against the repository as the build had it, and runs the build's image on
+the lines they make. Your files can have any name. A Dockerfile changes the
+image, so it takes ` + "`maestro build -f`" + `.
 
 ` + "`maestro help concepts`" + ` says what lines are.`,
 	Example: `  maestro run 12 --watch
@@ -46,7 +47,7 @@ Each may have any name here. A Dockerfile changes the image, which takes
 // cobra can't put one command under two parents.
 var buildsRunCmd = &cobra.Command{
 	Use:               "run <build>",
-	Short:             "Run a build's image on the machines (as maestro run)",
+	Short:             "Run a build's image on the machines, as `maestro run` does",
 	Long:              runCmd.Long,
 	Example:           strings.ReplaceAll(runCmd.Example, "maestro run ", "maestro builds run "),
 	Args:              runCmd.Args,
@@ -65,12 +66,12 @@ func init() {
 }
 
 func addRunFlags(c *cobra.Command) {
-	addWatchFlags(c, "follow the run until it is over; exit 1 if it failed")
-	c.Flags().StringVarP(&runLocal.config, "config", "c", "", "a maestro.toml here to make the lines from in place of the build's")
-	c.Flags().StringVarP(&runLocal.generator, "generator", "g", "", "a generator script here, in place of the one maestro.toml names")
+	addWatchFlags(c, "follow the run until it is over, and exit with status 1 if it failed")
+	c.Flags().StringVarP(&runLocal.config, "config", "c", "", "a `file` on your computer to make the lines from as maestro.toml, in place of the build's")
+	c.Flags().StringVarP(&runLocal.generator, "generator", "g", "", "a generator `script` on your computer, in place of the one maestro.toml names")
 	// Only to say it takes a build, as on build, so that it isn't taken for
 	// a typo; hidden, as it is never right here.
-	c.Flags().StringVarP(&runLocal.dockerfile, "dockerfile", "f", "", "not on run: a Dockerfile takes a new image, from maestro build -f")
+	c.Flags().StringVarP(&runLocal.dockerfile, "dockerfile", "f", "", "not for a run: a Dockerfile makes a new image, with maestro build -f")
 	c.Flags().MarkHidden("dockerfile")
 	addAnswerFlags(c, "the queued run")
 }
@@ -78,13 +79,13 @@ func addRunFlags(c *cobra.Command) {
 func runRun(cmd *cobra.Command, args []string) error {
 	buildID, err := parseID(args[0], "build")
 	if err != nil {
-		return fmt.Errorf("%w such as 12 (see `maestro builds list`)", err)
+		return fmt.Errorf("%w, such as 12; `maestro builds list` shows yours", err)
 	}
 	if err := checkWatch(); err != nil {
 		return err
 	}
 	if runLocal.dockerfile != "" {
-		return fmt.Errorf("a Dockerfile changes the image, which a run can't: build it with `maestro build <repo> -f %s`", runLocal.dockerfile)
+		return fmt.Errorf("a Dockerfile changes the image, and a run can't change it; build a new image with `maestro build <repo> -f %s`", runLocal.dockerfile)
 	}
 	files, err := readLocalFiles(runLocal)
 	if err != nil {
@@ -108,8 +109,8 @@ func runRun(cmd *cobra.Command, args []string) error {
 // addAnswerFlags gives run and build --json and -q, for scripts: stdout
 // then has the answer alone, and what they say along the way goes to stderr.
 func addAnswerFlags(c *cobra.Command, what string) {
-	c.Flags().BoolVar(&runsAsJSON, "json", false, "print "+what+" as JSON, and nothing else on stdout")
-	c.Flags().BoolVarP(&runsQuiet, "quiet", "q", false, "print only the number of "+what+", and nothing else on stdout")
+	c.Flags().BoolVar(&runsAsJSON, "json", false, "print "+what+" as JSON, and nothing else on standard output")
+	c.Flags().BoolVarP(&runsQuiet, "quiet", "q", false, "print only the number of "+what+", and nothing else on standard output")
 }
 
 // chatter is where a command says what it does along the way: stdout,
@@ -144,7 +145,7 @@ func startRunWith(ctx context.Context, buildID int64, files maestroapi.LocalFile
 	}
 	at := slices.IndexFunc(builds, func(b maestroapi.Build) bool { return b.ID == buildID })
 	if at < 0 {
-		return nil, fmt.Errorf("no build #%d (see `maestro builds list`)", buildID)
+		return nil, fmt.Errorf("you have no build #%d; `maestro builds list` shows yours", buildID)
 	}
 	token := ""
 	if active, err := selectForgeByHost(builds[at].Host, ""); err == nil {
@@ -158,7 +159,7 @@ func startRunWith(ctx context.Context, buildID int64, files maestroapi.LocalFile
 	}
 	if len(run.LocalFiles) == 0 {
 		// Queued all the same, on the build's lines.
-		return nil, fmt.Errorf("run %d was queued on build #%d's own lines, not yours: this Maestro server is too old to take them; cancel it with `maestro runs cancel %d` and update the server", run.ID, buildID, run.ID)
+		return nil, fmt.Errorf("run %d was queued on build #%d's own lines, not yours, because this Maestro server is too old to take them; cancel it with `maestro runs cancel %d`, and ask your administrator to update the server", run.ID, buildID, run.ID)
 	}
 	sayQueued(run)
 	return run, nil

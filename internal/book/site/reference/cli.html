@@ -222,9 +222,9 @@ build=$(maestro build my-app -q)
   -f, --dockerfile file     a file on your computer to build from as the Dockerfile, in place of the repository's
       --forge string        which forge to use (see 'maestro forges list')
   -g, --generator script    a generator script on your computer, in place of the one maestro.toml names
-  -n, --interval duration   how often to refresh with --watch (at least 1s) (default 2s)
-      --json                print the build (and its run, with --run) as JSON, and nothing else on stdout
-  -q, --quiet               print only the number of the build (and its run, with --run), and nothing else on stdout
+  -n, --interval duration   how often to redraw with --watch, at least 1s (default 2s)
+      --json                print the build (and its run, with --run) as JSON, and nothing else on standard output
+  -q, --quiet               print only the number of the build (and its run, with --run), and nothing else on standard output
       --ref ref             build this ref, a branch, tag or commit (default: the repository's default branch)
       --run                 start a run once the image is built
   -w, --watch               start a run once the image is built, as --run does, and follow it until it is over
@@ -241,7 +241,7 @@ build=$(maestro build my-app -q)
 <ul>
 <li><a href="#maestro-builds-list">maestro builds list</a>: List your builds, and whether each still has its image</li>
 <li><a href="#maestro-builds-rm">maestro builds rm</a>: Remove the image a build made</li>
-<li><a href="#maestro-builds-run">maestro builds run</a>: Run a build's image on the machines (as maestro run)</li>
+<li><a href="#maestro-builds-run">maestro builds run</a>: Run a build's image on the machines, as <code>maestro run</code> does</li>
 </ul>
 <h2 id="maestro-builds-list"><a class="header" href="#maestro-builds-list">maestro builds list</a></h2>
 <p>List your builds, and whether each still has its image.</p>
@@ -270,22 +270,23 @@ without #.</p>
 <pre><code class="language-text">  -y, --yes    don't ask first
 </code></pre>
 <h2 id="maestro-builds-run"><a class="header" href="#maestro-builds-run">maestro builds run</a></h2>
-<p>Run a build's image on the machines (as maestro run).</p>
+<p>Run a build's image on the machines, as <code>maestro run</code> does.</p>
 <pre><code class="language-text">maestro builds run &lt;build&gt; [flags]
 </code></pre>
-<p>Queues a run of the image a build produced: one container per line of
-parameters in the repo's maestro.toml, and per line its generator yielded
-when the image was built, spread over the machines it names.
-Without a maestro.toml, a single container runs the image's own command.</p>
-<p>&lt;build&gt; is the build number shown by <code>maestro builds</code>, with or without #.
-Containers start as machines have room; --watch follows them until the run
-is over, as <code>maestro runs show &lt;run&gt; --watch</code> does later, and exits 1
-if the run failed.</p>
+<p>Queues a run of a build's image. The run starts one container for each
+line of parameters in the repository's maestro.toml, and one for each line
+its generator yielded when the image was built, on the machines maestro.toml
+names. Without a maestro.toml, one container runs the image's own command.</p>
+<p>&lt;build&gt; is the build's number as <code>maestro builds</code> shows it, with or
+without #. Containers start as the machines have room. With --watch, it
+follows the run until the run is over, as
+<code>maestro runs show &lt;run&gt; --watch</code> does later, and exits with status 1 if
+the run failed.</p>
 <p>To try other lines without a new build, send your own maestro.toml (-c) or
-the generator it names (-g) from here: the server reads them against the
-repo as the build had it and runs the build's image on the lines they make.
-Each may have any name here. A Dockerfile changes the image, which takes
-<code>maestro build -f</code>.</p>
+the generator it names (-g) from your computer. The server reads them
+against the repository as the build had it, and runs the build's image on
+the lines they make. Your files can have any name. A Dockerfile changes the
+image, so it takes <code>maestro build -f</code>.</p>
 <p><code>maestro help concepts</code> says what lines are.</p>
 <p>Examples:</p>
 <pre><code class="language-sh">maestro builds run 12 --watch
@@ -294,12 +295,12 @@ maestro builds run 12 -g genvrs.py
 run=$(maestro builds run 12 -q) &amp;&amp; maestro runs show "$run" --watch
 </code></pre>
 <p>Flags:</p>
-<pre><code class="language-text">  -c, --config string       a maestro.toml here to make the lines from in place of the build's
-  -g, --generator string    a generator script here, in place of the one maestro.toml names
-  -n, --interval duration   how often to refresh with --watch (at least 1s) (default 2s)
-      --json                print the queued run as JSON, and nothing else on stdout
-  -q, --quiet               print only the number of the queued run, and nothing else on stdout
-  -w, --watch               follow the run until it is over; exit 1 if it failed
+<pre><code class="language-text">  -c, --config file         a file on your computer to make the lines from as maestro.toml, in place of the build's
+  -g, --generator script    a generator script on your computer, in place of the one maestro.toml names
+  -n, --interval duration   how often to redraw with --watch, at least 1s (default 2s)
+      --json                print the queued run as JSON, and nothing else on standard output
+  -q, --quiet               print only the number of the queued run, and nothing else on standard output
+  -w, --watch               follow the run until it is over, and exit with status 1 if it failed
 </code></pre>
 <h2 id="maestro-completion"><a class="header" href="#maestro-completion">maestro completion</a></h2>
 <p>Generate the autocompletion script for the specified shell.</p>
@@ -637,19 +638,20 @@ instead, or only those of --forge.</p>
 <p>Run the image of one of your builds on the machines.</p>
 <pre><code class="language-text">maestro run &lt;build&gt; [flags]
 </code></pre>
-<p>Queues a run of the image a build produced: one container per line of
-parameters in the repo's maestro.toml, and per line its generator yielded
-when the image was built, spread over the machines it names.
-Without a maestro.toml, a single container runs the image's own command.</p>
-<p>&lt;build&gt; is the build number shown by <code>maestro builds</code>, with or without #.
-Containers start as machines have room; --watch follows them until the run
-is over, as <code>maestro runs show &lt;run&gt; --watch</code> does later, and exits 1
-if the run failed.</p>
+<p>Queues a run of a build's image. The run starts one container for each
+line of parameters in the repository's maestro.toml, and one for each line
+its generator yielded when the image was built, on the machines maestro.toml
+names. Without a maestro.toml, one container runs the image's own command.</p>
+<p>&lt;build&gt; is the build's number as <code>maestro builds</code> shows it, with or
+without #. Containers start as the machines have room. With --watch, it
+follows the run until the run is over, as
+<code>maestro runs show &lt;run&gt; --watch</code> does later, and exits with status 1 if
+the run failed.</p>
 <p>To try other lines without a new build, send your own maestro.toml (-c) or
-the generator it names (-g) from here: the server reads them against the
-repo as the build had it and runs the build's image on the lines they make.
-Each may have any name here. A Dockerfile changes the image, which takes
-<code>maestro build -f</code>.</p>
+the generator it names (-g) from your computer. The server reads them
+against the repository as the build had it, and runs the build's image on
+the lines they make. Your files can have any name. A Dockerfile changes the
+image, so it takes <code>maestro build -f</code>.</p>
 <p><code>maestro help concepts</code> says what lines are.</p>
 <p>Examples:</p>
 <pre><code class="language-sh">maestro run 12 --watch
@@ -658,32 +660,32 @@ maestro run 12 -g genvrs.py
 run=$(maestro run 12 -q) &amp;&amp; maestro runs show "$run" --watch
 </code></pre>
 <p>Flags:</p>
-<pre><code class="language-text">  -c, --config string       a maestro.toml here to make the lines from in place of the build's
-  -g, --generator string    a generator script here, in place of the one maestro.toml names
-  -n, --interval duration   how often to refresh with --watch (at least 1s) (default 2s)
-      --json                print the queued run as JSON, and nothing else on stdout
-  -q, --quiet               print only the number of the queued run, and nothing else on stdout
-  -w, --watch               follow the run until it is over; exit 1 if it failed
+<pre><code class="language-text">  -c, --config file         a file on your computer to make the lines from as maestro.toml, in place of the build's
+  -g, --generator script    a generator script on your computer, in place of the one maestro.toml names
+  -n, --interval duration   how often to redraw with --watch, at least 1s (default 2s)
+      --json                print the queued run as JSON, and nothing else on standard output
+  -q, --quiet               print only the number of the queued run, and nothing else on standard output
+  -w, --watch               follow the run until it is over, and exit with status 1 if it failed
 </code></pre>
 <h2 id="maestro-runs"><a class="header" href="#maestro-runs">maestro runs</a></h2>
-<p>Commands for the runs started with <code>maestro run</code>.</p>
+<p>List, show and download your runs.</p>
 <pre><code class="language-text">maestro runs [flags]
 </code></pre>
 <p>Flags:</p>
 <pre><code class="language-text">      --all                 everyone's runs (administrators only)
-  -n, --interval duration   how often to refresh with --watch (at least 1s) (default 2s)
+  -n, --interval duration   how often to redraw with --watch, at least 1s (default 2s)
       --json                print the runs as JSON
-      --limit int           how many runs, newest first; 0 for all (default 20)
-      --repo string         only the runs of this repo (owner/name, or name)
-      --status string       only the runs with this status
-  -w, --watch               keep showing it, refreshed as it changes
+      --limit n             show the newest n runs, or all of them with 0 (default 20)
+      --repo repo           only the runs of this repo, as owner/name or name
+      --status status       only the runs with this status
+  -w, --watch               keep showing it as it changes
 </code></pre>
 <p>Commands:</p>
 <ul>
 <li><a href="#maestro-runs-cancel">maestro runs cancel</a>: Cancel a run: drop what hasn't started and stop what has</li>
 <li><a href="#maestro-runs-get">maestro runs get</a>: Download the files kept from a run</li>
 <li><a href="#maestro-runs-list">maestro runs list</a>: List your runs</li>
-<li><a href="#maestro-runs-logs">maestro runs logs</a>: Print what a line's container wrote to stdout and stderr</li>
+<li><a href="#maestro-runs-logs">maestro runs logs</a>: Print what a line's container wrote to standard output and standard error</li>
 <li><a href="#maestro-runs-rm">maestro runs rm</a>: Delete a finished run and the files kept from it</li>
 <li><a href="#maestro-runs-show">maestro runs show</a>: Show each line of a run: where it ran, how it ended, what it kept</li>
 </ul>
@@ -698,55 +700,59 @@ run=$(maestro run 12 -q) &amp;&amp; maestro runs show "$run" --watch
 <p>Download the files kept from a run.</p>
 <pre><code class="language-text">maestro runs get &lt;run&gt; [dir] [flags]
 </code></pre>
-<p>Downloads every file kept from a run's containers into &lt;dir&gt;/&lt;run&gt;/&lt;line&gt;/,
-and what each printed among them, as stdout.log and stderr.log (dir defaults
-to the current directory). --line picks some lines only. A run already
-downloaded there is only downloaded over with --force.</p>
+<p>Downloads every file kept from a run's containers into
+&lt;dir&gt;/&lt;run&gt;/&lt;line&gt;/, with what each container printed beside them, as
+stdout.log and stderr.log. &lt;dir&gt; is the current directory unless you give
+one. --line picks some lines only. Without --force, it won't download over a
+run already downloaded there.</p>
 <p>Examples:</p>
 <pre><code class="language-sh">maestro runs get 31
 maestro runs get 31 results/ --line 2 --line 5
 </code></pre>
 <p>Flags:</p>
-<pre><code class="language-text">      --force             download over a run already downloaded there
-      --line int64Slice   only this line (again for more) (default [])
+<pre><code class="language-text">      --force    download over a run already downloaded there
+      --line n   only line n (again for more)
 </code></pre>
 <h2 id="maestro-runs-list"><a class="header" href="#maestro-runs-list">maestro runs list</a></h2>
 <p>List your runs.</p>
 <pre><code class="language-text">maestro runs list [flags]
 </code></pre>
-<p>Lists your runs, newest first: the last --limit of them (20; 0 for all),
-of a --status (queued, running, succeeded, failed, cancelled) or a --repo
-if asked. --json prints the same runs. With --watch, the list is drawn again
-every --interval until you press ctrl-c. With --all, an administrator is
-given everyone's runs, and whose each is.</p>
+<p>Lists your runs, newest first. It shows your 20 newest, or as many as
+--limit says, and --limit 0 shows them all. --status (queued, running,
+succeeded, failed, cancelled) and --repo narrow the list, and --json prints
+the same runs. With --watch, it draws the list again every --interval until
+you press Ctrl-C. With --all, an administrator sees everyone's runs, and
+whose each one is.</p>
 <p>Flags:</p>
 <pre><code class="language-text">      --all                 everyone's runs (administrators only)
-  -n, --interval duration   how often to refresh with --watch (at least 1s) (default 2s)
+  -n, --interval duration   how often to redraw with --watch, at least 1s (default 2s)
       --json                print the runs as JSON
-      --limit int           how many runs, newest first; 0 for all (default 20)
-      --repo string         only the runs of this repo (owner/name, or name)
-      --status string       only the runs with this status
-  -w, --watch               keep showing it, refreshed as it changes
+      --limit n             show the newest n runs, or all of them with 0 (default 20)
+      --repo repo           only the runs of this repo, as owner/name or name
+      --status status       only the runs with this status
+  -w, --watch               keep showing it as it changes
 </code></pre>
 <h2 id="maestro-runs-logs"><a class="header" href="#maestro-runs-logs">maestro runs logs</a></h2>
-<p>Print what a line's container wrote to stdout and stderr.</p>
+<p>Print what a line's container wrote to standard output and standard error.</p>
 <pre><code class="language-text">maestro runs logs &lt;run&gt; [line] [flags]
 </code></pre>
-<p>Prints what a line's container wrote: its stdout to stdout and its stderr
-to stderr, so the two can be told apart or sent to different places. The
-line may be left out of a run that has only one.</p>
-<p>With -f, a line that hasn't started yet is waited for, and what a running
-line prints is followed until it ends, as tail -f does.</p>
-<p>Once a line is over, all of its stdout comes before all of its stderr; how
-they were mixed as the container ran isn't kept.</p>
+<p>Prints what a line's container wrote. What it wrote to standard output
+goes to your standard output, and what it wrote to standard error goes to
+your standard error, so you can tell the two apart or send them to
+different places. You can leave out the line of a run that has only one.</p>
+<p>With -f, it waits for a line that hasn't started yet, and follows what a
+running line prints until the line ends, as tail -f does.</p>
+<p>Once a line is over, all of its standard output comes before all of its
+standard error. Maestro doesn't keep how the two were interleaved as the
+container ran.</p>
 <p>Examples:</p>
 <pre><code class="language-sh">maestro runs logs 31 2 -f
-maestro runs logs 31 2 2&gt;/dev/null   # only what it printed to stdout
-maestro runs logs 31 2 &gt;/dev/null    # only what it printed to stderr
+maestro runs logs 31 2 2&gt;/dev/null   # only what it printed to standard output
+maestro runs logs 31 2 &gt;/dev/null    # only what it printed to standard error
 </code></pre>
 <p>Flags:</p>
-<pre><code class="language-text">  -f, --follow     wait for the line to start, and follow what it prints until it ends
-      --tail int   only the last N lines of a line still running (all when left out)
+<pre><code class="language-text">  -f, --follow   wait for the line to start, and follow what it prints until it ends
+      --tail n   only the last n lines of a line still running (default: all)
 </code></pre>
 <h2 id="maestro-runs-rm"><a class="header" href="#maestro-runs-rm">maestro runs rm</a></h2>
 <p>Delete a finished run and the files kept from it.</p>
@@ -760,16 +766,15 @@ maestro runs logs 31 2 &gt;/dev/null    # only what it printed to stderr
 <p>Show each line of a run: where it ran, how it ended, what it kept.</p>
 <pre><code class="language-text">maestro runs show [run] [flags]
 </code></pre>
-<p>Shows each line of a run: where it ran, how it ended, what it kept. With
---watch, it is drawn again every --interval until the run is over, or you
-press ctrl-c, and exits 1 if the run failed. Without a run, it shows your
-newest. --failed shows only the lines that failed, errored or were
-cancelled.</p>
+<p>Shows each line of a run: where it ran, how it ended and what it kept.
+Without a run, it shows your newest. With --watch, it draws the run again
+every --interval until the run is over or you press Ctrl-C, and exits with
+status 1 if the run failed.</p>
 <p>Flags:</p>
-<pre><code class="language-text">      --failed              only the lines that failed, errored or were cancelled
-  -n, --interval duration   how often to refresh with --watch (at least 1s) (default 2s)
+<pre><code class="language-text">      --failed              only the lines that failed, ended in an error or were cancelled
+  -n, --interval duration   how often to redraw with --watch, at least 1s (default 2s)
       --json                print the run as JSON
-  -w, --watch               keep showing it, refreshed as it changes; exit 1 if the run failed
+  -w, --watch               keep showing it as it changes, and exit with status 1 if the run failed
 </code></pre>
 <h2 id="maestro-settings"><a class="header" href="#maestro-settings">maestro settings</a></h2>
 <p>Show the server's settings: the image limit and how lines are scheduled.</p>
