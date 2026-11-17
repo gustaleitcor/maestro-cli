@@ -206,10 +206,13 @@ administrator sees everyone's runs with <code>--all</code>.</p>
 <pre><code class="language-text">Run 33 of ada/maestro-template@main (build #14): failed, on any machine
 2 line(s): 1 succeeded, 1 failed
 
-LINE  PARAMETERS      MACHINE  STATUS           FILES
-1     -t 10 out.txt   Q1       succeeded        out.txt
-2     -t ten out.txt  Q2       failed (exit 2)  out.txt (missing)
+LINE  PARAMETERS      MACHINE  STATUS           TIME  FILES
+1     -t 10 out.txt   Q1       succeeded        2h    out.txt
+2     -t ten out.txt  Q2       failed (exit 2)  2h    out.txt (missing)
 </code></pre>
+<p><code>TIME</code> is the longest each line may run, from its
+<a href="../repo/maestro-toml.html#time"><code>time</code></a> or the server's limit. It is <code>-</code> when
+there is no limit.</p>
 <p><code>maestro runs show</code> with no number shows your newest run. <code>--failed</code> leaves
 only the lines that failed, ended in an error, or were cancelled. A run made
 by <code>maestro runs retry</code> says which run it retries, as in
@@ -282,7 +285,10 @@ first.</p>
 <p>A line runs for at most a week, unless your administrator set another
 length. When a line runs longer, Maestro stops it, keeps its logs and
 outputs, and ends it as <code>error</code> with the note "stopped after 168 hours, the
-longest a line may run on this server".</p>
+longest a line may run on this server". A line can ask for less with
+<a href="../repo/maestro-toml.html#time"><code>time</code></a> in <code>maestro.toml</code>. Past that time,
+Maestro stops it the same way, with the note "stopped after 2h, the time this line
+asked for".</p>
 <p>Any other <code>error</code> comes from the system and says nothing about your
 program. The Maestro page shows such lines in amber with the reason, and
 <code>maestro runs retry</code> runs them again.</p>

@@ -63,6 +63,17 @@ func Uptime(seconds float64) string {
 	return fmt.Sprintf("%dd%dh", int(d.Hours())/24, int(d.Hours())%24)
 }
 
+// Limit is seconds as maestro.toml's time writes them: 2h, 90m, 45s.
+func Limit(seconds int64) string {
+	switch {
+	case seconds%3600 == 0:
+		return fmt.Sprintf("%dh", seconds/3600)
+	case seconds%60 == 0:
+		return fmt.Sprintf("%dm", seconds/60)
+	}
+	return fmt.Sprintf("%ds", seconds)
+}
+
 func Percent(p float64) string {
 	return fmt.Sprintf("%.0f%%", p)
 }

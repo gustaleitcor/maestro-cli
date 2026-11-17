@@ -471,8 +471,14 @@ func writeRunShow(out io.Writer, run *maestroapi.Run, onlyFailed bool) error {
 		}
 	}
 
+	// A server from before lines had a time sends none, and gets no column.
+	timed := slices.ContainsFunc(lines, func(l maestroapi.RunLine) bool { return l.Time != nil })
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "LINE\tPARAMETERS\tMACHINE\tSTATUS\tFILES")
+	headings := "LINE\tPARAMETERS\tMACHINE\tSTATUS\tFILES"
+	if timed {
+		headings = "LINE\tPARAMETERS\tMACHINE\tSTATUS\tTIME\tFILES"
+	}
+	fmt.Fprintln(w, headings)
 	for _, l := range lines {
 		status := l.Status
 		if l.ExitCode != nil && l.Status != "succeeded" {
@@ -493,7 +499,11 @@ func writeRunShow(out io.Writer, run *maestroapi.Run, onlyFailed bool) error {
 		if len(files) == 0 {
 			files = []string{"-"}
 		}
-		fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n", l.Line, showArgs(l.Args), machine, status, strings.Join(files, ", "))
+		cells := []string{strconv.FormatInt(l.Line, 10), showArgs(l.Args), machine, status}
+		if timed {
+			cells = append(cells, lineTime(l))
+		}
+		fmt.Fprintln(w, strings.Join(append(cells, strings.Join(files, ", ")), "\t"))
 	}
 	if err := w.Flush(); err != nil {
 		return err
@@ -505,6 +515,14 @@ func writeRunShow(out io.Writer, run *maestroapi.Run, onlyFailed bool) error {
 	}
 	_, err := fmt.Fprintln(out)
 	return err
+}
+
+// lineTime is the longest a line may run, or - for no limit.
+func lineTime(l maestroapi.RunLine) string {
+	if l.Time == nil || *l.Time == 0 {
+		return "-"
+	}
+	return humanize.Limit(*l.Time)
 }
 
 // showArgs quotes the arguments that need it, so a line reads back as it

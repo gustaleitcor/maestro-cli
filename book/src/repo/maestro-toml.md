@@ -7,6 +7,8 @@ arguments, how much of a machine each one may use, and which files to keep.
 Every key is optional. A key you leave out keeps the default from the
 [previous chapter](dockerfile.md#what-a-dockerfile-alone-gets-you): one
 container, the image's own command, 1 core, 512 MB, any machine, no files.
+A line runs for as long as the server lets it, a week unless your
+administrator set another limit.
 
 This is the template's file, with its comments removed:
 
@@ -102,6 +104,27 @@ limit by counting the machine's cores, so read
 [how many threads to start](container.md#how-many-threads-to-start) before
 giving a multithreaded program more than one core.
 
+## `time`
+
+```toml
+time = "2h"   # default: the server's limit, a week unless your administrator set another
+```
+
+This is the longest each line may run. Write it as a number and a unit,
+`h`, `m` or `s`, such as `"90m"`, `"2h"` or `"1h30m"`. It must be at least
+`"1m"`, and at most the server's limit. Maestro refuses a run whose lines
+ask for more:
+
+```text
+line 1 asks for time "200h", longer than the 168 hours a line may run on this server; give 168h or less in maestro.toml
+```
+
+When a line runs longer than its `time`, Maestro stops it, keeps its logs
+and outputs, and ends it as `error` with the note "stopped after 2h, the
+time this line asked for". The program finds its time in seconds in
+[`MAESTRO_TIME`](container.md#what-maestro-tells-the-program), so it can
+stop on its own a little before and write what it has.
+
 ## `env`
 
 ```toml
@@ -164,7 +187,7 @@ generator = "genvrs.py"
 
 This names a Python script in the repository that computes lines. They come
 after the lines of `parameters`, and the script can give each of its lines
-its own `cpus`, `memory`, `env` and `outputs`. The
+its own `cpus`, `memory`, `env`, `outputs` and `time`. The
 [next chapter](generator.md) is about it.
 
 ## When the file is wrong
@@ -174,7 +197,7 @@ log say why. A misspelt key is an error too, so that a typo isn't silently
 ignored:
 
 ```text
-maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env)
+maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env, time)
 ```
 
 [maestro.toml keys](../reference/maestro-toml.md) lists every key with its

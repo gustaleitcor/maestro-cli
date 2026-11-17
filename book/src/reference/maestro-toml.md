@@ -15,6 +15,7 @@ introduces the keys one at a time, and this page is the lookup table.
 | [`cpus`](../repo/maestro-toml.md#cpus-and-memory) | Whole number | 1 | The cores each container can use, and the cores a machine must have free to start it |
 | [`memory`](../repo/maestro-toml.md#cpus-and-memory) | Whole number, in MB | 512 | The memory each container can use, and the memory a machine must have free to start it |
 | [`env`](../repo/maestro-toml.md#env) | Table of strings | None | Environment variables set in every container |
+| [`time`](../repo/maestro-toml.md#time) | Duration, such as `"90m"` or `"2h"` | The server's limit, a week unless your administrator set another | The longest each line may run before Maestro stops it |
 | [`machines`](../repo/maestro-toml.md#machines) | List of strings | Any machine | The only machines the lines can run on |
 | [`dockerfile`](../repo/maestro-toml.md#dockerfile) | String | `Containerfile` at the root, or else `Dockerfile` | The file the image is built from |
 
@@ -27,6 +28,7 @@ introduces the keys one at a time, and this page is the lookup table.
 | `memory` | 6 to 16777216 MB |
 | `env`, all names and values together | 64 KiB |
 | An `env` name | Letters, digits and `_`. It can't start with a digit or with `MAESTRO_`. |
+| `time` | At least `"1m"`, and at most the server's limit |
 | A path in `outputs` | A file or directory inside the container. It can't be `/` or the working directory itself, and it can't begin with `..`. |
 | `generator` and `dockerfile` | A file inside the repository |
 | The generator script | 1 MiB |
@@ -53,7 +55,7 @@ error.
 
 ## Per-line settings from a generator
 
-A generator's `Config` class can set `outputs`, `cpus`, `memory` and `env`
+A generator's `Config` class can set `outputs`, `cpus`, `memory`, `env` and `time`
 for the lines it yields, within the same limits.
 [Lines that need different settings](../repo/generator.md#lines-that-need-different-settings)
 shows how.
@@ -71,6 +73,7 @@ outputs_layout = "per-line"
 cpus           = 4
 memory         = 8192
 env            = { MODE = "fast" }
+time           = "2h"
 machines       = ["Q1", "Q2"]
 dockerfile     = "docker/Dockerfile"
 ```
@@ -80,7 +83,7 @@ dockerfile     = "docker/Dockerfile"
 An unknown key fails the build and lists the keys Maestro knows:
 
 ```text
-maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env)
+maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env, time)
 ```
 
 The other messages name the key and the value at fault, as these do:
@@ -88,5 +91,6 @@ The other messages name the key and the value at fault, as these do:
 ```text
 maestro.toml: cpus is 0; give between 1 and 1024 cores
 maestro.toml: memory is 4; give between 6 and 16777216 MB
+maestro.toml: time "2 hours" isn't a duration; give one such as "90m" or "2h"
 maestro.toml: outputs_layout "merged" must be "per-line" (each line's outputs apart, the default) or "shared" (every line's in one tree)
 ```

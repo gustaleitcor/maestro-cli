@@ -192,6 +192,7 @@ introduces the keys one at a time, and this page is the lookup table.</p>
 <tr><td><a href="../repo/maestro-toml.html#cpus-and-memory"><code>cpus</code></a></td><td>Whole number</td><td>1</td><td>The cores each container can use, and the cores a machine must have free to start it</td></tr>
 <tr><td><a href="../repo/maestro-toml.html#cpus-and-memory"><code>memory</code></a></td><td>Whole number, in MB</td><td>512</td><td>The memory each container can use, and the memory a machine must have free to start it</td></tr>
 <tr><td><a href="../repo/maestro-toml.html#env"><code>env</code></a></td><td>Table of strings</td><td>None</td><td>Environment variables set in every container</td></tr>
+<tr><td><a href="../repo/maestro-toml.html#time"><code>time</code></a></td><td>Duration, such as <code>"90m"</code> or <code>"2h"</code></td><td>The server's limit, a week unless your administrator set another</td><td>The longest each line may run before Maestro stops it</td></tr>
 <tr><td><a href="../repo/maestro-toml.html#machines"><code>machines</code></a></td><td>List of strings</td><td>Any machine</td><td>The only machines the lines can run on</td></tr>
 <tr><td><a href="../repo/maestro-toml.html#dockerfile"><code>dockerfile</code></a></td><td>String</td><td><code>Containerfile</code> at the root, or else <code>Dockerfile</code></td><td>The file the image is built from</td></tr>
 </tbody></table>
@@ -203,6 +204,7 @@ introduces the keys one at a time, and this page is the lookup table.</p>
 <tr><td><code>memory</code></td><td>6 to 16777216 MB</td></tr>
 <tr><td><code>env</code>, all names and values together</td><td>64 KiB</td></tr>
 <tr><td>An <code>env</code> name</td><td>Letters, digits and <code>_</code>. It can't start with a digit or with <code>MAESTRO_</code>.</td></tr>
+<tr><td><code>time</code></td><td>At least <code>"1m"</code>, and at most the server's limit</td></tr>
 <tr><td>A path in <code>outputs</code></td><td>A file or directory inside the container. It can't be <code>/</code> or the working directory itself, and it can't begin with <code>..</code>.</td></tr>
 <tr><td><code>generator</code> and <code>dockerfile</code></td><td>A file inside the repository</td></tr>
 <tr><td>The generator script</td><td>1 MiB</td></tr>
@@ -225,7 +227,7 @@ yields, at spaces and tabs. No shell is involved.</p>
 <p>A line with a quote left open, or one that ends in a backslash, is an
 error.</p>
 <h2 id="per-line-settings-from-a-generator"><a class="header" href="#per-line-settings-from-a-generator">Per-line settings from a generator</a></h2>
-<p>A generator's <code>Config</code> class can set <code>outputs</code>, <code>cpus</code>, <code>memory</code> and <code>env</code>
+<p>A generator's <code>Config</code> class can set <code>outputs</code>, <code>cpus</code>, <code>memory</code>, <code>env</code> and <code>time</code>
 for the lines it yields, within the same limits.
 <a href="../repo/generator.html#lines-that-need-different-settings">Lines that need different settings</a>
 shows how.</p>
@@ -240,16 +242,18 @@ outputs_layout = "per-line"
 cpus           = 4
 memory         = 8192
 env            = { MODE = "fast" }
+time           = "2h"
 machines       = ["Q1", "Q2"]
 dockerfile     = "docker/Dockerfile"
 </code></pre>
 <h2 id="errors"><a class="header" href="#errors">Errors</a></h2>
 <p>An unknown key fails the build and lists the keys Maestro knows:</p>
-<pre><code class="language-text">maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env)
+<pre><code class="language-text">maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env, time)
 </code></pre>
 <p>The other messages name the key and the value at fault, as these do:</p>
 <pre><code class="language-text">maestro.toml: cpus is 0; give between 1 and 1024 cores
 maestro.toml: memory is 4; give between 6 and 16777216 MB
+maestro.toml: time "2 hours" isn't a duration; give one such as "90m" or "2h"
 maestro.toml: outputs_layout "merged" must be "per-line" (each line's outputs apart, the default) or "shared" (every line's in one tree)
 </code></pre>
 

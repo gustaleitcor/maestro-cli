@@ -35,10 +35,14 @@ administrator sees everyone's runs with `--all`.
 Run 33 of ada/maestro-template@main (build #14): failed, on any machine
 2 line(s): 1 succeeded, 1 failed
 
-LINE  PARAMETERS      MACHINE  STATUS           FILES
-1     -t 10 out.txt   Q1       succeeded        out.txt
-2     -t ten out.txt  Q2       failed (exit 2)  out.txt (missing)
+LINE  PARAMETERS      MACHINE  STATUS           TIME  FILES
+1     -t 10 out.txt   Q1       succeeded        2h    out.txt
+2     -t ten out.txt  Q2       failed (exit 2)  2h    out.txt (missing)
 ```
+
+`TIME` is the longest each line may run, from its
+[`time`](../repo/maestro-toml.md#time) or the server's limit. It is `-` when
+there is no limit.
 
 `maestro runs show` with no number shows your newest run. `--failed` leaves
 only the lines that failed, ended in an error, or were cancelled. A run made
@@ -137,7 +141,10 @@ first.
 A line runs for at most a week, unless your administrator set another
 length. When a line runs longer, Maestro stops it, keeps its logs and
 outputs, and ends it as `error` with the note "stopped after 168 hours, the
-longest a line may run on this server".
+longest a line may run on this server". A line can ask for less with
+[`time`](../repo/maestro-toml.md#time) in `maestro.toml`. Past that time,
+Maestro stops it the same way, with the note "stopped after 2h, the time this line
+asked for".
 
 Any other `error` comes from the system and says nothing about your
 program. The Maestro page shows such lines in amber with the reason, and

@@ -47,3 +47,11 @@ func TestAgo(t *testing.T) {
 		}
 	}
 }
+
+func TestLimit(t *testing.T) {
+	for seconds, want := range map[int64]string{7200: "2h", 5400: "90m", 45: "45s", 604800: "168h"} {
+		if got := Limit(seconds); got != want {
+			t.Errorf("Limit(%d) = %s, want %s", seconds, got, want)
+		}
+	}
+}

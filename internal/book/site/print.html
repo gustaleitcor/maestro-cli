@@ -519,7 +519,9 @@ Dockerfile. It says how many containers a run starts and with which
 arguments, how much of a machine each one may use, and which files to keep.</p>
 <p>Every key is optional. A key you leave out keeps the default from the
 <a href="repo/dockerfile.html#what-a-dockerfile-alone-gets-you">previous chapter</a>: one
-container, the image's own command, 1 core, 512 MB, any machine, no files.</p>
+container, the image's own command, 1 core, 512 MB, any machine, no files.
+A line runs for as long as the server lets it, a week unless your
+administrator set another limit.</p>
 <p>This is the template's file, with its comments removed:</p>
 <pre><code class="language-toml">parameters = [
   "-t 10 out.txt",
@@ -585,6 +587,20 @@ one of its lines would not fit on any machine it may use, even an empty one:</p>
 limit by counting the machine's cores, so read
 <a href="repo/container.html#how-many-threads-to-start">how many threads to start</a> before
 giving a multithreaded program more than one core.</p>
+<h2 id="time"><a class="header" href="#time"><code>time</code></a></h2>
+<pre><code class="language-toml">time = "2h"   # default: the server's limit, a week unless your administrator set another
+</code></pre>
+<p>This is the longest each line may run. Write it as a number and a unit,
+<code>h</code>, <code>m</code> or <code>s</code>, such as <code>"90m"</code>, <code>"2h"</code> or <code>"1h30m"</code>. It must be at least
+<code>"1m"</code>, and at most the server's limit. Maestro refuses a run whose lines
+ask for more:</p>
+<pre><code class="language-text">line 1 asks for time "200h", longer than the 168 hours a line may run on this server; give 168h or less in maestro.toml
+</code></pre>
+<p>When a line runs longer than its <code>time</code>, Maestro stops it, keeps its logs
+and outputs, and ends it as <code>error</code> with the note "stopped after 2h, the
+time this line asked for". The program finds its time in seconds in
+<a href="repo/container.html#what-maestro-tells-the-program"><code>MAESTRO_TIME</code></a>, so it can
+stop on its own a little before and write what it has.</p>
 <h2 id="env"><a class="header" href="#env"><code>env</code></a></h2>
 <pre><code class="language-toml">env = { SEED = "42", MODE = "fast" }
 </code></pre>
@@ -625,13 +641,13 @@ repository and must stay inside it. The root remains the build's context, so
 </code></pre>
 <p>This names a Python script in the repository that computes lines. They come
 after the lines of <code>parameters</code>, and the script can give each of its lines
-its own <code>cpus</code>, <code>memory</code>, <code>env</code> and <code>outputs</code>. The
+its own <code>cpus</code>, <code>memory</code>, <code>env</code>, <code>outputs</code> and <code>time</code>. The
 <a href="repo/generator.html">next chapter</a> is about it.</p>
 <h2 id="when-the-file-is-wrong"><a class="header" href="#when-the-file-is-wrong">When the file is wrong</a></h2>
 <p>An invalid <code>maestro.toml</code> fails the build, and the last lines of the build
 log say why. A misspelt key is an error too, so that a typo isn't silently
 ignored:</p>
-<pre><code class="language-text">maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env)
+<pre><code class="language-text">maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env, time)
 </code></pre>
 <p><a href="repo/../reference/maestro-toml.html">maestro.toml keys</a> lists every key with its
 default and its limits on one page.</p>
@@ -679,8 +695,8 @@ def genvrs():
         yield f"{path.stem} --time-limit 60"
 </code></pre>
 <h2 id="lines-that-need-different-settings"><a class="header" href="#lines-that-need-different-settings">Lines that need different settings</a></h2>
-<p>By default every generated line runs with the <code>cpus</code>, <code>memory</code>, <code>env</code> and
-<code>outputs</code> of <code>maestro.toml</code>. To change them for some lines, define a class
+<p>By default every generated line runs with the <code>cpus</code>, <code>memory</code>, <code>env</code>,
+<code>outputs</code> and <code>time</code> of <code>maestro.toml</code>. To change them for some lines, define a class
 called <code>Config</code> above <code>genvrs</code> and assign to its attributes before yielding.
 Each line runs with what the class holds at the moment the line is yielded.</p>
 <pre><code class="language-python">class Config:
@@ -688,6 +704,7 @@ Each line runs with what the class holds at the moment the line is yielded.</p>
     cpus: int | None = 4                 # 4 cores, whatever maestro.toml says
     memory: int | None = None
     env: dict[str, str] | None = None
+    time: str | None = None
 
 def genvrs() -&gt; Generator[str]:
     yield "-t 10 small"          # 4 cores, maestro.toml's memory
@@ -699,7 +716,7 @@ def genvrs() -&gt; Generator[str]:
     yield "-t 10 medium"         # 4 cores, maestro.toml's memory again
 </code></pre>
 <p><code>None</code> means "what <code>maestro.toml</code> says, or the default if it says nothing".
-The class may hold only these four attributes. <code>machines</code> is the same for
+The class may hold only these five attributes. <code>machines</code> is the same for
 every line and is set in <code>maestro.toml</code>.</p>
 <h2 id="where-and-when-the-script-runs"><a class="header" href="#where-and-when-the-script-runs">Where and when the script runs</a></h2>
 <p>Maestro runs the script once, during the build, and the build keeps the
@@ -731,7 +748,7 @@ to check what it computed.</p>
 sets one that isn't a setting</li>
 </ul>
 <pre><code class="language-text">genvrs yielded a int as item 4; every item must be a string
-Config.machines isn't a setting; Config may only hold outputs, cpus, memory, env
+Config.machines isn't a setting; Config may only hold outputs, cpus, memory, env, time
 </code></pre>
 <h2 id="trying-a-generator-without-building"><a class="header" href="#trying-a-generator-without-building">Trying a generator without building</a></h2>
 <p><code>maestro run &lt;build&gt; -g genvrs.py</code> runs an image you already have on the
@@ -750,6 +767,7 @@ ends, Maestro keeps its logs and outputs and removes it.</p>
 <tr><td><code>MAESTRO_LINE</code></td><td>The line's number in the run, starting at 1</td></tr>
 <tr><td><code>MAESTRO_CPUS</code></td><td>The line's <code>cpus</code></td></tr>
 <tr><td><code>MAESTRO_MEMORY</code></td><td>The line's <code>memory</code>, in MB</td></tr>
+<tr><td><code>MAESTRO_TIME</code></td><td>The seconds the line may run, from its <code>time</code> or the server's limit. <code>0</code> means no limit.</td></tr>
 <tr><td><code>MAESTRO_OUTPUTS</code></td><td>The line's <code>outputs</code>, one path on each text line</td></tr>
 </tbody></table>
 </div>
@@ -1159,10 +1177,13 @@ administrator sees everyone's runs with <code>--all</code>.</p>
 <pre><code class="language-text">Run 33 of ada/maestro-template@main (build #14): failed, on any machine
 2 line(s): 1 succeeded, 1 failed
 
-LINE  PARAMETERS      MACHINE  STATUS           FILES
-1     -t 10 out.txt   Q1       succeeded        out.txt
-2     -t ten out.txt  Q2       failed (exit 2)  out.txt (missing)
+LINE  PARAMETERS      MACHINE  STATUS           TIME  FILES
+1     -t 10 out.txt   Q1       succeeded        2h    out.txt
+2     -t ten out.txt  Q2       failed (exit 2)  2h    out.txt (missing)
 </code></pre>
+<p><code>TIME</code> is the longest each line may run, from its
+<a href="use/../repo/maestro-toml.html#time"><code>time</code></a> or the server's limit. It is <code>-</code> when
+there is no limit.</p>
 <p><code>maestro runs show</code> with no number shows your newest run. <code>--failed</code> leaves
 only the lines that failed, ended in an error, or were cancelled. A run made
 by <code>maestro runs retry</code> says which run it retries, as in
@@ -1235,7 +1256,10 @@ first.</p>
 <p>A line runs for at most a week, unless your administrator set another
 length. When a line runs longer, Maestro stops it, keeps its logs and
 outputs, and ends it as <code>error</code> with the note "stopped after 168 hours, the
-longest a line may run on this server".</p>
+longest a line may run on this server". A line can ask for less with
+<a href="use/../repo/maestro-toml.html#time"><code>time</code></a> in <code>maestro.toml</code>. Past that time,
+Maestro stops it the same way, with the note "stopped after 2h, the time this line
+asked for".</p>
 <p>Any other <code>error</code> comes from the system and says nothing about your
 program. The Maestro page shows such lines in amber with the reason, and
 <code>maestro runs retry</code> runs them again.</p>
@@ -3222,6 +3246,7 @@ introduces the keys one at a time, and this page is the lookup table.</p>
 <tr><td><a href="reference/../repo/maestro-toml.html#cpus-and-memory"><code>cpus</code></a></td><td>Whole number</td><td>1</td><td>The cores each container can use, and the cores a machine must have free to start it</td></tr>
 <tr><td><a href="reference/../repo/maestro-toml.html#cpus-and-memory"><code>memory</code></a></td><td>Whole number, in MB</td><td>512</td><td>The memory each container can use, and the memory a machine must have free to start it</td></tr>
 <tr><td><a href="reference/../repo/maestro-toml.html#env"><code>env</code></a></td><td>Table of strings</td><td>None</td><td>Environment variables set in every container</td></tr>
+<tr><td><a href="reference/../repo/maestro-toml.html#time"><code>time</code></a></td><td>Duration, such as <code>"90m"</code> or <code>"2h"</code></td><td>The server's limit, a week unless your administrator set another</td><td>The longest each line may run before Maestro stops it</td></tr>
 <tr><td><a href="reference/../repo/maestro-toml.html#machines"><code>machines</code></a></td><td>List of strings</td><td>Any machine</td><td>The only machines the lines can run on</td></tr>
 <tr><td><a href="reference/../repo/maestro-toml.html#dockerfile"><code>dockerfile</code></a></td><td>String</td><td><code>Containerfile</code> at the root, or else <code>Dockerfile</code></td><td>The file the image is built from</td></tr>
 </tbody></table>
@@ -3233,6 +3258,7 @@ introduces the keys one at a time, and this page is the lookup table.</p>
 <tr><td><code>memory</code></td><td>6 to 16777216 MB</td></tr>
 <tr><td><code>env</code>, all names and values together</td><td>64 KiB</td></tr>
 <tr><td>An <code>env</code> name</td><td>Letters, digits and <code>_</code>. It can't start with a digit or with <code>MAESTRO_</code>.</td></tr>
+<tr><td><code>time</code></td><td>At least <code>"1m"</code>, and at most the server's limit</td></tr>
 <tr><td>A path in <code>outputs</code></td><td>A file or directory inside the container. It can't be <code>/</code> or the working directory itself, and it can't begin with <code>..</code>.</td></tr>
 <tr><td><code>generator</code> and <code>dockerfile</code></td><td>A file inside the repository</td></tr>
 <tr><td>The generator script</td><td>1 MiB</td></tr>
@@ -3255,7 +3281,7 @@ yields, at spaces and tabs. No shell is involved.</p>
 <p>A line with a quote left open, or one that ends in a backslash, is an
 error.</p>
 <h2 id="per-line-settings-from-a-generator"><a class="header" href="#per-line-settings-from-a-generator">Per-line settings from a generator</a></h2>
-<p>A generator's <code>Config</code> class can set <code>outputs</code>, <code>cpus</code>, <code>memory</code> and <code>env</code>
+<p>A generator's <code>Config</code> class can set <code>outputs</code>, <code>cpus</code>, <code>memory</code>, <code>env</code> and <code>time</code>
 for the lines it yields, within the same limits.
 <a href="reference/../repo/generator.html#lines-that-need-different-settings">Lines that need different settings</a>
 shows how.</p>
@@ -3270,16 +3296,18 @@ outputs_layout = "per-line"
 cpus           = 4
 memory         = 8192
 env            = { MODE = "fast" }
+time           = "2h"
 machines       = ["Q1", "Q2"]
 dockerfile     = "docker/Dockerfile"
 </code></pre>
 <h2 id="errors"><a class="header" href="#errors">Errors</a></h2>
 <p>An unknown key fails the build and lists the keys Maestro knows:</p>
-<pre><code class="language-text">maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env)
+<pre><code class="language-text">maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env, time)
 </code></pre>
 <p>The other messages name the key and the value at fault, as these do:</p>
 <pre><code class="language-text">maestro.toml: cpus is 0; give between 1 and 1024 cores
 maestro.toml: memory is 4; give between 6 and 16777216 MB
+maestro.toml: time "2 hours" isn't a duration; give one such as "90m" or "2h"
 maestro.toml: outputs_layout "merged" must be "per-line" (each line's outputs apart, the default) or "shared" (every line's in one tree)
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="environment-variables"><a class="header" href="#environment-variables">Environment variables</a></h1>
@@ -3298,7 +3326,7 @@ maestro.toml: outputs_layout "merged" must be "per-line" (each line's outputs ap
 <tr><td><code>ALLOWED_FORGE_HOSTS</code></td><td><code>github.com,codeberg.org,gitlab.com</code></td><td>The only hosts orq clones from. The list keeps anyone from pointing orq at a host on its own network.</td></tr>
 <tr><td><code>DATA_DIR</code></td><td><code>/maestro/data</code></td><td>Where the logs and outputs of runs are kept</td></tr>
 <tr><td><code>RUN_OUTPUT_MAX_MB</code></td><td><code>1024</code></td><td>The logs and outputs kept for each line. orq drops the rest and leaves a note on the line.</td></tr>
-<tr><td><code>RUN_MAX_HOURS</code></td><td><code>168</code> (a week)</td><td>How long a line may run. orq stops a line that runs longer, keeps its logs and outputs, and ends it as <code>error</code>. <code>0</code> means no limit.</td></tr>
+<tr><td><code>RUN_MAX_HOURS</code></td><td><code>168</code> (a week)</td><td>How long a line may run, and the most a line's <code>time</code> may ask for. orq stops a line that runs longer, keeps its logs and outputs, and ends it as <code>error</code>. <code>0</code> means no limit.</td></tr>
 <tr><td><code>USER_DATA_MAX_GB</code></td><td><code>0</code></td><td>What all of a user's runs may keep, in GB. A user at the limit can't start a run until they delete one. <code>0</code> means no limit.</td></tr>
 <tr><td><code>RUN_PIDS</code></td><td><code>512</code></td><td>The limit on processes in each container. <code>0</code> means no limit.</td></tr>
 <tr><td><code>REDIS_URL</code></td><td>required</td><td><code>redis://[:password@]host:port/db</code> of a Redis, Valkey or KeyDB</td></tr>
@@ -3343,6 +3371,7 @@ shows how a program uses them.</p>
 <tr><td><code>MAESTRO_LINE</code></td><td>The line's number in the run, starting at 1</td></tr>
 <tr><td><code>MAESTRO_CPUS</code></td><td>The line's <code>cpus</code></td></tr>
 <tr><td><code>MAESTRO_MEMORY</code></td><td>The line's <code>memory</code>, in MB</td></tr>
+<tr><td><code>MAESTRO_TIME</code></td><td>The seconds the line may run, from its <code>time</code> or the server's limit. <code>0</code> means no limit.</td></tr>
 <tr><td><code>MAESTRO_OUTPUTS</code></td><td>The line's <code>outputs</code>, one path on each text line</td></tr>
 </tbody></table>
 </div><div style="break-before: page; page-break-before: always;"></div><h1 id="when-something-goes-wrong"><a class="header" href="#when-something-goes-wrong">When something goes wrong</a></h1>

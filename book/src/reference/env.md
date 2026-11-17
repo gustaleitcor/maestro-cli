@@ -17,7 +17,7 @@
 | `ALLOWED_FORGE_HOSTS` | `github.com,codeberg.org,gitlab.com` | The only hosts orq clones from. The list keeps anyone from pointing orq at a host on its own network. |
 | `DATA_DIR` | `/maestro/data` | Where the logs and outputs of runs are kept |
 | `RUN_OUTPUT_MAX_MB` | `1024` | The logs and outputs kept for each line. orq drops the rest and leaves a note on the line. |
-| `RUN_MAX_HOURS` | `168` (a week) | How long a line may run. orq stops a line that runs longer, keeps its logs and outputs, and ends it as `error`. `0` means no limit. |
+| `RUN_MAX_HOURS` | `168` (a week) | How long a line may run, and the most a line's `time` may ask for. orq stops a line that runs longer, keeps its logs and outputs, and ends it as `error`. `0` means no limit. |
 | `USER_DATA_MAX_GB` | `0` | What all of a user's runs may keep, in GB. A user at the limit can't start a run until they delete one. `0` means no limit. |
 | `RUN_PIDS` | `512` | The limit on processes in each container. `0` means no limit. |
 | `REDIS_URL` | required | `redis://[:password@]host:port/db` of a Redis, Valkey or KeyDB |
@@ -67,4 +67,5 @@ shows how a program uses them.
 | `MAESTRO_LINE` | The line's number in the run, starting at 1 |
 | `MAESTRO_CPUS` | The line's `cpus` |
 | `MAESTRO_MEMORY` | The line's `memory`, in MB |
+| `MAESTRO_TIME` | The seconds the line may run, from its `time` or the server's limit. `0` means no limit. |
 | `MAESTRO_OUTPUTS` | The line's `outputs`, one path on each text line |

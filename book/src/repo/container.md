@@ -16,6 +16,7 @@ Maestro sets these variables in every container, after those of
 | `MAESTRO_LINE` | The line's number in the run, starting at 1 |
 | `MAESTRO_CPUS` | The line's `cpus` |
 | `MAESTRO_MEMORY` | The line's `memory`, in MB |
+| `MAESTRO_TIME` | The seconds the line may run, from its `time` or the server's limit. `0` means no limit. |
 | `MAESTRO_OUTPUTS` | The line's `outputs`, one path on each text line |
 
 ## How many threads to start

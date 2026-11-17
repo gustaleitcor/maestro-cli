@@ -185,7 +185,9 @@ Dockerfile. It says how many containers a run starts and with which
 arguments, how much of a machine each one may use, and which files to keep.</p>
 <p>Every key is optional. A key you leave out keeps the default from the
 <a href="dockerfile.html#what-a-dockerfile-alone-gets-you">previous chapter</a>: one
-container, the image's own command, 1 core, 512 MB, any machine, no files.</p>
+container, the image's own command, 1 core, 512 MB, any machine, no files.
+A line runs for as long as the server lets it, a week unless your
+administrator set another limit.</p>
 <p>This is the template's file, with its comments removed:</p>
 <pre><code class="language-toml">parameters = [
   "-t 10 out.txt",
@@ -251,6 +253,20 @@ one of its lines would not fit on any machine it may use, even an empty one:</p>
 limit by counting the machine's cores, so read
 <a href="container.html#how-many-threads-to-start">how many threads to start</a> before
 giving a multithreaded program more than one core.</p>
+<h2 id="time"><a class="header" href="#time"><code>time</code></a></h2>
+<pre><code class="language-toml">time = "2h"   # default: the server's limit, a week unless your administrator set another
+</code></pre>
+<p>This is the longest each line may run. Write it as a number and a unit,
+<code>h</code>, <code>m</code> or <code>s</code>, such as <code>"90m"</code>, <code>"2h"</code> or <code>"1h30m"</code>. It must be at least
+<code>"1m"</code>, and at most the server's limit. Maestro refuses a run whose lines
+ask for more:</p>
+<pre><code class="language-text">line 1 asks for time "200h", longer than the 168 hours a line may run on this server; give 168h or less in maestro.toml
+</code></pre>
+<p>When a line runs longer than its <code>time</code>, Maestro stops it, keeps its logs
+and outputs, and ends it as <code>error</code> with the note "stopped after 2h, the
+time this line asked for". The program finds its time in seconds in
+<a href="container.html#what-maestro-tells-the-program"><code>MAESTRO_TIME</code></a>, so it can
+stop on its own a little before and write what it has.</p>
 <h2 id="env"><a class="header" href="#env"><code>env</code></a></h2>
 <pre><code class="language-toml">env = { SEED = "42", MODE = "fast" }
 </code></pre>
@@ -291,13 +307,13 @@ repository and must stay inside it. The root remains the build's context, so
 </code></pre>
 <p>This names a Python script in the repository that computes lines. They come
 after the lines of <code>parameters</code>, and the script can give each of its lines
-its own <code>cpus</code>, <code>memory</code>, <code>env</code> and <code>outputs</code>. The
+its own <code>cpus</code>, <code>memory</code>, <code>env</code>, <code>outputs</code> and <code>time</code>. The
 <a href="generator.html">next chapter</a> is about it.</p>
 <h2 id="when-the-file-is-wrong"><a class="header" href="#when-the-file-is-wrong">When the file is wrong</a></h2>
 <p>An invalid <code>maestro.toml</code> fails the build, and the last lines of the build
 log say why. A misspelt key is an error too, so that a typo isn't silently
 ignored:</p>
-<pre><code class="language-text">maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env)
+<pre><code class="language-text">maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env, time)
 </code></pre>
 <p><a href="../reference/maestro-toml.html">maestro.toml keys</a> lists every key with its
 default and its limits on one page.</p>

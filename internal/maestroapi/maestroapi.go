@@ -153,6 +153,10 @@ type RunLine struct {
 	Error      string    `json:"error"`
 	StartedAt  time.Time `json:"started_at"`
 	FinishedAt time.Time `json:"finished_at"`
+	// Time is the most seconds it may run: its time in maestro.toml, or
+	// the server's limit. 0 is no limit, and nil a server from before
+	// lines had a time.
+	Time *int64 `json:"time"`
 	// Logs names the streams there are logs of: stdout and stderr, or
 	// combined for a line kept before the two were kept apart. Nil from a
 	// server that only knows them together.

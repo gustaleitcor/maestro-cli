@@ -216,6 +216,23 @@ func TestWriteRunShow(t *testing.T) {
 		t.Errorf("ends oddly: %q", got)
 	}
 
+	if strings.Contains(got, "TIME") {
+		t.Errorf("a column of time from a server that sends none:\n%s", got)
+	}
+
+	// Each line's time, or - for no limit.
+	twoHours, none := int64(7200), int64(0)
+	out.Reset()
+	writeRunShow(&out, &maestroapi.Run{ID: 32, Status: "running", Detail: []maestroapi.RunLine{
+		{Line: 1, Status: "running", Machine: "Q1", Time: &twoHours},
+		{Line: 2, Status: "queued", Time: &none},
+	}}, false)
+	for _, want := range []string{"STATUS   TIME  FILES", "running  2h", "queued   -"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("lacks %q in:\n%s", want, out.String())
+		}
+	}
+
 	out.Reset()
 	writeRunShow(&out, &maestroapi.Run{ID: 5, Status: "queued"}, false)
 	if !strings.Contains(out.String(), "on any machine") {
