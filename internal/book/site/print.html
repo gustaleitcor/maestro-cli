@@ -1190,9 +1190,13 @@ first.</p>
 <tr><td><code>cancelled</code></td><td>You cancelled the run before the line ended.</td></tr>
 </tbody></table>
 </div>
-<p>An <code>error</code> comes from the system and says nothing about your program. The
-Maestro page shows such lines in amber with the reason, and you can run them
-again.</p>
+<p>A line runs for at most a week, unless your administrator set another
+length. When a line runs longer, Maestro stops it, keeps its logs and
+outputs, and ends it as <code>error</code> with the note "stopped after 168 hours, the
+longest a line may run on this server".</p>
+<p>Any other <code>error</code> comes from the system and says nothing about your
+program. The Maestro page shows such lines in amber with the reason, and you
+can run them again.</p>
 <p>A machine that stops answering doesn't turn its waiting lines into errors.
 Maestro moves them back to <code>queued</code> so another machine can take them. Lines
 already running on that machine are left alone and checked again when it
@@ -3051,6 +3055,7 @@ maestro.toml: outputs_layout "merged" must be "per-line" (each line's outputs ap
 <tr><td><code>ALLOWED_FORGE_HOSTS</code></td><td><code>github.com,codeberg.org,gitlab.com</code></td><td>The only hosts orq clones from. The list keeps anyone from pointing orq at a host on its own network.</td></tr>
 <tr><td><code>DATA_DIR</code></td><td><code>/maestro/data</code></td><td>Where the logs and outputs of runs are kept</td></tr>
 <tr><td><code>RUN_OUTPUT_MAX_MB</code></td><td><code>1024</code></td><td>The logs and outputs kept for each line. orq drops the rest and leaves a note on the line.</td></tr>
+<tr><td><code>RUN_MAX_HOURS</code></td><td><code>168</code> (a week)</td><td>How long a line may run. orq stops a line that runs longer, keeps its logs and outputs, and ends it as <code>error</code>. <code>0</code> means no limit.</td></tr>
 <tr><td><code>RUN_PIDS</code></td><td><code>512</code></td><td>The limit on processes in each container. <code>0</code> means no limit.</td></tr>
 <tr><td><code>REDIS_URL</code></td><td>required</td><td><code>redis://[:password@]host:port/db</code> of a Redis, Valkey or KeyDB</td></tr>
 <tr><td><code>SESSION_TTL</code></td><td><code>12h</code></td><td>How long a session of the Maestro page lasts</td></tr>
@@ -3245,7 +3250,7 @@ dispatcher queue as its user's head, and a machine's queue.</p>
 <div class="table-wrapper"><table><thead><tr><th>Status</th><th>What happened</th></tr></thead><tbody>
 <tr><td><code>succeeded</code></td><td>The program exited with 0.</td></tr>
 <tr><td><code>failed</code></td><td>The program exited with another code.</td></tr>
-<tr><td><code>error</code></td><td>The line couldn't run, for a reason on Maestro's side and outside your program.</td></tr>
+<tr><td><code>error</code></td><td>The line couldn't run, for a reason on Maestro's side and outside your program. A line that runs longer than the server allows is stopped and ends as <code>error</code> too.</td></tr>
 <tr><td><code>cancelled</code></td><td>Its run was cancelled before it ended.</td></tr>
 </tbody></table>
 </div>

@@ -210,7 +210,7 @@ dispatcher queue as its user's head, and a machine's queue.</p>
 <div class="table-wrapper"><table><thead><tr><th>Status</th><th>What happened</th></tr></thead><tbody>
 <tr><td><code>succeeded</code></td><td>The program exited with 0.</td></tr>
 <tr><td><code>failed</code></td><td>The program exited with another code.</td></tr>
-<tr><td><code>error</code></td><td>The line couldn't run, for a reason on Maestro's side and outside your program.</td></tr>
+<tr><td><code>error</code></td><td>The line couldn't run, for a reason on Maestro's side and outside your program. A line that runs longer than the server allows is stopped and ends as <code>error</code> too.</td></tr>
 <tr><td><code>cancelled</code></td><td>Its run was cancelled before it ended.</td></tr>
 </tbody></table>
 </div>

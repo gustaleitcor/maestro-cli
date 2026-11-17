@@ -14,6 +14,7 @@
 | `ALLOWED_FORGE_HOSTS` | `github.com,codeberg.org,gitlab.com` | The only hosts orq clones from. The list keeps anyone from pointing orq at a host on its own network. |
 | `DATA_DIR` | `/maestro/data` | Where the logs and outputs of runs are kept |
 | `RUN_OUTPUT_MAX_MB` | `1024` | The logs and outputs kept for each line. orq drops the rest and leaves a note on the line. |
+| `RUN_MAX_HOURS` | `168` (a week) | How long a line may run. orq stops a line that runs longer, keeps its logs and outputs, and ends it as `error`. `0` means no limit. |
 | `RUN_PIDS` | `512` | The limit on processes in each container. `0` means no limit. |
 | `REDIS_URL` | required | `redis://[:password@]host:port/db` of a Redis, Valkey or KeyDB |
 | `SESSION_TTL` | `12h` | How long a session of the Maestro page lasts |

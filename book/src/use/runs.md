@@ -97,9 +97,14 @@ first.
 | `error` | The line couldn't run. Most often it couldn't start on its machine, or the machine restarted while it ran and the container was lost. |
 | `cancelled` | You cancelled the run before the line ended. |
 
-An `error` comes from the system and says nothing about your program. The
-Maestro page shows such lines in amber with the reason, and you can run them
-again.
+A line runs for at most a week, unless your administrator set another
+length. When a line runs longer, Maestro stops it, keeps its logs and
+outputs, and ends it as `error` with the note "stopped after 168 hours, the
+longest a line may run on this server".
+
+Any other `error` comes from the system and says nothing about your
+program. The Maestro page shows such lines in amber with the reason, and you
+can run them again.
 
 A machine that stops answering doesn't turn its waiting lines into errors.
 Maestro moves them back to `queued` so another machine can take them. Lines
