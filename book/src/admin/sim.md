@@ -3,7 +3,8 @@
 `sim` is a program in the maestro-orq repository. It runs orq's own
 scheduler over a workload on a simulated clock, so you can compare policies
 without using the machines. It also measures how lines were served, whether
-they came from a simulation or from a real Maestro.
+they came from a simulation or from a real Maestro. It can replay the lines
+of a real week, to check how closely the simulator follows your machines.
 
 ```sh
 cd maestro-orq
@@ -86,3 +87,75 @@ The objective has three parts.
 The Usage page on the Maestro page measures a real period the same way,
 under "Lines over a period". It uses what the machines have for lines at
 the moment you ask.
+
+## Comparing two files of lines
+
+`sim compare` measures two files of lines, as `sim evaluate` does, and
+prints them side by side. The last column is the second file's value less
+the first's.
+
+```sh
+go run ./cmd/sim compare -cpus 30 -memory 61440 week.csv replayed.csv
+```
+
+```text
+MEASURE             week.csv   replayed.csv  DIFFERENCE
+lines               296        296           0
+wq                  13535.196  13125.912     -409.284
+queued              12677.507  12269.348     -408.159
+...
+```
+
+It takes the same flags as `sim evaluate`. Times are in seconds. The
+utilizations, Φ_J and Φ_O are fractions between 0 and 1.
+
+## Checking the simulator against a real week
+
+`sim replay` reads an export and runs its lines again. Each line that ran
+becomes a line of the workload, with its user, group, cores and memory.
+It arrives when it was submitted, and it runs as long as it ran, from
+started to finished. A line that never ran is left out, and `sim replay`
+says how many it left out. It takes the same flags as `sim run`.
+
+To see how closely the simulator follows your machines:
+
+1. Pick a week in which nobody changed the scheduler's settings. The
+   `policy_set` column of the export says which settings each line was
+   assigned under, so every line of the week should have the same one.
+2. Export the week:
+
+   ```sh
+   maestro export --all --since 2026-11-02 --until 2026-11-09 -o week.csv
+   ```
+
+3. Write the machines as they were that week, with what each kept back,
+   for `-machines`. Save the scheduler's settings from that week as a JSON
+   file for `-config`.
+4. Replay the week, and compare the replay with what happened:
+
+   ```sh
+   go run ./cmd/sim replay -machines Q1:32:65536:2:4096,Q2:32:65536:2:4096 -config week.json < week.csv > replayed.csv
+   go run ./cmd/sim compare -cpus 60 -memory 122880 week.csv replayed.csv
+   ```
+
+The smaller the differences, the better the simulator predicts your
+machines. Some differences come from what the simulation leaves out:
+
+- A real line waits for its image to be copied and its container to be
+  created before it starts. A simulated line starts at once.
+- The export doesn't say which machines a line was allowed to use, so the
+  replay lets each line use any machine.
+- A machine that was down for part of the week is up for all of it in the
+  replay.
+- siro and the choice among machines with room draw at random. The seed
+  repeats the simulation's draws, but not the real cluster's.
+- Two runs of one user submitted within the same second become one run.
+  That changes only F, which is measured over runs.
+
+With `@speed`, `sim replay` multiplies a line's time by the speed of the
+machine it ran on, so that the line runs as long again on that machine.
+
+Maestro's tests check that a simulation's own lines, replayed on the same
+machines with the same settings and seed, give every line the same wait.
+A difference between a replay and a real week is something the simulator
+doesn't model.
