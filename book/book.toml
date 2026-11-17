@@ -15,9 +15,8 @@ create-missing = false
 command = "mdbook-mermaid"
 
 [output.html]
-# Served by `maestro docs`, which carries it, from 127.0.0.1; also served at
-# <view>/docs/, beside the Maestro page, which only the 404 page minds.
-site-url = "/docs/"
+# Served by `maestro docs`, which carries it, from the root of 127.0.0.1.
+site-url = "/"
 default-theme = "light"
 preferred-dark-theme = "navy"
 git-repository-url = "https://github.com/gustaleitcor/maestro-cli"
