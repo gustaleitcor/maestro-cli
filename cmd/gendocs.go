@@ -19,7 +19,7 @@ var genDocsStamp string
 var genDocsCmd = &cobra.Command{
 	Use:   "gen-docs <file>",
 	Short: "Write the book's CLI reference, as Markdown",
-	Long: `Writes every command, its flags and its help to one Markdown page, "-" for stdout. The book is built with it.
+	Long: `Writes every command, its flags and its help to one Markdown page, "-" for standard output. The book is built with it.
 
 --stamp also writes the checksum of what the book is built from, the book
 being the one the page is in, as <book>/src/reference/cli.md.`,

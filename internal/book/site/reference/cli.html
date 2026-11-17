@@ -184,8 +184,8 @@
 version of <code>maestro</code> takes. <code>maestro &lt;command&gt; --help</code> says the same in a
 terminal.</p>
 <p>Every command also takes <code>-h, --help</code>, and these:</p>
-<pre><code class="language-text">      --no-color        print without colours (as NO_COLOR=1 does)
-      --server string   the Maestro server to talk to (default: the one kept, asked for the first time)
+<pre><code class="language-text">      --no-color     print without colours (as NO_COLOR=1 does)
+      --server url   the url of the Maestro server to talk to (default: the server the CLI kept, which it asks for the first time)
 </code></pre>
 <h2 id="maestro-build"><a class="header" href="#maestro-build">maestro build</a></h2>
 <p>Build a container image from a repository on one of your forges.</p>
@@ -394,16 +394,17 @@ to enable it.  You can execute the following once:</p>
 <p>Open the Maestro book, on a topic or a command.</p>
 <pre><code class="language-text">maestro docs [topic | command…] [flags]
 </code></pre>
-<p>Opens the Maestro book in a browser, and prints its link: the book explains
-how Maestro builds, queues and runs your containers, and how to set it up.</p>
-<p>Name a topic (maestro docs queue) to open its page, or a command
-(maestro docs runs logs) for what it takes.</p>
-<p>maestro carries the book, so it opens offline, without signing in: it is
-served from this computer only (127.0.0.1), until ctrl-c, so that any
-browser opens it whole, a sandboxed one too. --web opens the copy your
-Maestro server serves instead, which can be opened on another machine, as
-when this one is reached over SSH. MAESTRO_DOCS_URL points at another copy
-still.</p>
+<p>Opens the Maestro book in a browser, and prints its link. The book
+explains how Maestro builds, queues and runs your containers, and how to
+set it up.</p>
+<p>Name a topic (<code>maestro docs queue</code>) to open its page, or a command
+(<code>maestro docs runs logs</code>) to see what it takes.</p>
+<p>maestro carries the book, so it opens offline and without signing in. The
+CLI serves it from your computer only (127.0.0.1) until you press Ctrl-C,
+so any browser opens it whole, a sandboxed one too. --web opens the copy
+your Maestro server serves instead, which you can open on another
+computer, as when you reach this one over SSH. MAESTRO_DOCS_URL points at
+another copy still.</p>
 <p>Also: <code>doc</code>.</p>
 <p>Examples:</p>
 <pre><code class="language-sh">maestro docs
@@ -413,7 +414,7 @@ maestro docs queue --web --url
 </code></pre>
 <p>Flags:</p>
 <pre><code class="language-text">      --url    only print the link, without opening a browser
-      --web    the book your Maestro server serves, instead of the one maestro carries
+      --web    open the book your Maestro server serves, instead of the one maestro carries
 </code></pre>
 <h2 id="maestro-export"><a class="header" href="#maestro-export">maestro export</a></h2>
 <p>Write what happened to your lines over a period, as CSV.</p>

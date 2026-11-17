@@ -94,18 +94,19 @@ var docsCmd = &cobra.Command{
 	Use:     "docs [topic | command…]",
 	Aliases: []string{"doc"},
 	Short:   "Open the Maestro book, on a topic or a command",
-	Long: `Opens the Maestro book in a browser, and prints its link: the book explains
-how Maestro builds, queues and runs your containers, and how to set it up.
+	Long: `Opens the Maestro book in a browser, and prints its link. The book
+explains how Maestro builds, queues and runs your containers, and how to
+set it up.
 
-Name a topic (maestro docs queue) to open its page, or a command
-(maestro docs runs logs) for what it takes.
+Name a topic (` + "`maestro docs queue`" + `) to open its page, or a command
+(` + "`maestro docs runs logs`" + `) to see what it takes.
 
-maestro carries the book, so it opens offline, without signing in: it is
-served from this computer only (127.0.0.1), until ctrl-c, so that any
-browser opens it whole, a sandboxed one too. --web opens the copy your
-Maestro server serves instead, which can be opened on another machine, as
-when this one is reached over SSH. MAESTRO_DOCS_URL points at another copy
-still.`,
+maestro carries the book, so it opens offline and without signing in. The
+CLI serves it from your computer only (127.0.0.1) until you press Ctrl-C,
+so any browser opens it whole, a sandboxed one too. --web opens the copy
+your Maestro server serves instead, which you can open on another
+computer, as when you reach this one over SSH. MAESTRO_DOCS_URL points at
+another copy still.`,
 	Example: "  maestro docs\n  maestro docs toml\n  maestro docs runs logs\n  maestro docs queue --web --url",
 	// What args name is checked before a server is asked for.
 	Args: func(cmd *cobra.Command, args []string) error {
@@ -118,7 +119,7 @@ still.`,
 
 func init() {
 	docsCmd.Flags().BoolVar(&docsURLOnly, "url", false, "only print the link, without opening a browser")
-	docsCmd.Flags().BoolVar(&docsWeb, "web", false, "the book your Maestro server serves, instead of the one maestro carries")
+	docsCmd.Flags().BoolVar(&docsWeb, "web", false, "open the book your Maestro server serves, instead of the one maestro carries")
 	docsCmd.Flags().BoolVar(&docsTopicList, "topics", false, "print every topic and its page, for scripts")
 	_ = docsCmd.Flags().MarkHidden("topics")
 	rootCmd.AddCommand(docsCmd)
@@ -138,21 +139,21 @@ func runDocs(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if base != "" {
-		return showDocs(out, base, args, "No browser opened here; open the link in one.")
+		return showDocs(out, base, args, "No browser opened here. Open the link in one.")
 	}
 
 	ctx := cmd.Context()
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	// ctrl-c is how serving ends, so it isn't an interruption.
+	// Ctrl-C is how serving ends, so it isn't an interruption.
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
 	defer stop()
 	return serveBook(ctx, func(base string) error {
 		if err := showDocs(out, base, args, "No browser opened here. `maestro docs --web --url` gives the server's copy, to open elsewhere."); err != nil {
 			return err
 		}
-		fmt.Fprintln(out, dimStyle.Render("Serving the book from this computer; ctrl-c stops it."))
+		fmt.Fprintln(out, dimStyle.Render("Serving the book from your computer. Ctrl-C stops it."))
 		return nil
 	})
 }
@@ -200,7 +201,7 @@ func docsBase() (string, error) {
 func serveSite(ctx context.Context, site fs.FS, ready func(base string) error) error {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		return fmt.Errorf("serving the book: %w", err)
+		return fmt.Errorf("couldn't serve the book: %w", err)
 	}
 	srv := &http.Server{Handler: http.FileServer(http.FS(site)), ReadHeaderTimeout: 10 * time.Second}
 	served := make(chan error, 1)
@@ -214,7 +215,7 @@ func serveSite(ctx context.Context, site fs.FS, ready func(base string) error) e
 		srv.Close()
 		return nil
 	case err := <-served:
-		return fmt.Errorf("serving the book: %w", err)
+		return fmt.Errorf("couldn't serve the book: %w", err)
 	}
 }
 
@@ -242,7 +243,7 @@ func topicPath(args []string) (string, error) {
 	if c, ok := findCommand(args); ok {
 		return "reference/cli.html#" + commandAnchor(c), nil
 	}
-	return "", fmt.Errorf("no topic or command %q\n\nTopics: %s", strings.Join(args, " "), strings.Join(topicNames(), ", "))
+	return "", fmt.Errorf("there is no topic or command %q\n\nTopics: %s", strings.Join(args, " "), strings.Join(topicNames(), ", "))
 }
 
 func findTopic(name string) (docTopic, bool) {
@@ -317,7 +318,7 @@ func startBrowser(url string) error {
 		c = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
 	default:
 		if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
-			return fmt.Errorf("no desktop to open a browser on")
+			return fmt.Errorf("there is no desktop to open a browser on")
 		}
 		c = exec.Command("xdg-open", url)
 	}

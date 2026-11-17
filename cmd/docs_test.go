@@ -241,7 +241,7 @@ func TestDocsWithoutABrowserIsNoError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out, "http://docs.test/") || !strings.Contains(out, "open the link") {
+	if !strings.Contains(out, "http://docs.test/") || !strings.Contains(out, "Open the link") {
 		t.Errorf("got %q", out)
 	}
 }

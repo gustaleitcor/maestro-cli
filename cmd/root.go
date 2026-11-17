@@ -27,12 +27,12 @@ var Version = "dev"
 
 var rootCmd = &cobra.Command{
 	Use:   "maestro",
-	Short: "Build images from your repos and run them across Maestro's machines",
-	Long: `Builds container images from your git repos and runs them across Maestro's
-machines, one container per line of parameters.
+	Short: "Build images from your repositories and run them on Maestro's machines",
+	Long: `Builds container images from your git repositories and runs them on
+Maestro's machines, one container for each line of parameters.
 
   maestro login            sign in
-  maestro build my-app     build an image; the build gets a number
+  maestro build my-app     build an image, which gets a build number
   maestro run 12 --watch   run build #12's image, and follow the run
   maestro runs get 31      download what run 31 kept
 
@@ -64,7 +64,7 @@ machines, one container per line of parameters.
 		mk, err := config.LoadMaestroKey(maestroapi.BaseURL())
 		var other *config.OtherServerError
 		if errors.As(err, &other) {
-			return fmt.Errorf("%w\n\nRun `maestro login --server %s` to sign in there, which forgets the key for %s", err, other.Asked, other.Stored)
+			return fmt.Errorf("%w\n\nRun `maestro login --server %s` to sign in there. It forgets the key for %s", err, other.Asked, other.Stored)
 		}
 		if err != nil {
 			return fmt.Errorf("%w\n\nRun `maestro login` to sign in", err)
@@ -155,7 +155,7 @@ func ensureServer(in *os.File, out io.Writer) error {
 func askServer(in *bufio.Reader, out io.Writer) (string, error) {
 	fmt.Fprintln(out, "No Maestro server is set yet.")
 	for {
-		fmt.Fprint(out, "Maestro server URL (e.g. https://maestro.example.org): ")
+		fmt.Fprint(out, "Maestro server URL (such as https://maestro.example.org): ")
 		line, readErr := in.ReadString('\n')
 		if raw := strings.TrimSpace(line); raw != "" {
 			url, err := checkServer(raw)
@@ -169,13 +169,13 @@ func askServer(in *bufio.Reader, out io.Writer) (string, error) {
 				fmt.Fprintln(out)
 				return "", errors.New("no Maestro server given")
 			}
-			return "", fmt.Errorf("reading input: %w", readErr)
+			return "", fmt.Errorf("couldn't read what you typed: %w", readErr)
 		}
 	}
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&serverFlag, "server", "", "the Maestro server to talk to (default: the one kept, asked for the first time)")
+	rootCmd.PersistentFlags().StringVar(&serverFlag, "server", "", "the `url` of the Maestro server to talk to (default: the server the CLI kept, which it asks for the first time)")
 	// Asked at every request, so that what a flag says is what is used,
 	// completions included.
 	maestroapi.Server = func() string {
@@ -294,7 +294,7 @@ func report(w io.Writer, cmd *cobra.Command, err error) int {
 		if !strings.HasPrefix(err.Error(), "unknown command") {
 			fmt.Fprintln(w, "\nUsage: "+cmd.UseLine())
 		}
-		fmt.Fprintf(w, "Run '%s --help' for more.\n", cmd.CommandPath())
+		fmt.Fprintf(w, "Run `%s --help` for more.\n", cmd.CommandPath())
 	}
 	return code
 }
