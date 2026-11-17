@@ -188,7 +188,6 @@ them.</p>
 <div class="table-wrapper"><table><thead><tr><th>Part</th><th>What it is</th><th>How it runs</th></tr></thead><tbody>
 <tr><td><code>maestro-orq</code></td><td>The server, written in Go, with SQLite and its own Podman for builds</td><td>A container that stays up, on port 3005 of 127.0.0.1</td></tr>
 <tr><td><code>maestro-view</code></td><td>The Maestro page, a Vue app</td><td>Built once into <code>maestro-view/dist</code>, then served as files</td></tr>
-<tr><td><code>maestro-cli/book</code></td><td>This book, which <code>maestro</code> also carries</td><td>Optionally built once into <code>maestro-cli/book/dist</code>, then served as files</td></tr>
 <tr><td>Redis</td><td>Sessions, and answers cached for a few seconds</td><td>Any Redis, Valkey or KeyDB</td></tr>
 <tr><td>A reverse proxy</td><td>TLS, and one host name for everything</td><td>Caddy, nginx or another</td></tr>
 </tbody></table>
@@ -199,27 +198,19 @@ cd maestro
 cp .env.example .env   # the identity provider, MACHINE_SECRET, REDIS_URL
 podman compose up --build -d
 </code></pre>
-<p>The <code>orq</code> service stays up as the server. The <code>view</code> and <code>docs</code> services
-build <code>maestro-view/dist</code> and <code>maestro-cli/book/dist</code> and then exit. The
-reverse proxy serves those two directories itself, with no container in
-between.</p>
-<p>On the page's host, the reverse proxy has three jobs.</p>
+<p>The <code>orq</code> service stays up as the server. The <code>view</code> service builds
+<code>maestro-view/dist</code> and then exits. The reverse proxy serves that directory
+itself, with no container in between.</p>
+<p>On the page's host, the reverse proxy has two jobs.</p>
 <ol>
 <li>Send <code>/api/*</code> to orq on port 3005. This lets <code>OIDC_REDIRECT_URL</code> reach
 orq and makes the session cookie first-party.</li>
-<li>Serve <code>maestro-cli/book/dist</code> at <code>/docs/</code>. The page's Docs link and
-<code>maestro docs --web</code> open that copy. <code>maestro docs</code> without <code>--web</code> opens
-the copy inside the CLI and needs none of this.</li>
 <li>Serve <code>maestro-view/dist</code> for every other path.</li>
 </ol>
 <p>With Caddy:</p>
 <pre><code class="language-caddyfile">maestro.example.org {
 	handle /api/* {
 		reverse_proxy localhost:3005
-	}
-	handle_path /docs/* {
-		root * /srv/maestro/maestro-cli/book/dist
-		file_server
 	}
 	handle {
 		root * /srv/maestro/maestro-view/dist
@@ -241,7 +232,7 @@ loginctl show-user &lt;user&gt; --property=Linger   # Linger=yes
 <p>Pull, then build again. Compose replaces a container that already exists
 only when you pass <code>--force-recreate</code>:</p>
 <pre><code class="language-sh">git pull --recurse-submodules
-podman compose up --build -d --force-recreate orq view docs
+podman compose up --build -d --force-recreate orq view
 </code></pre>
 <p>orq keeps everything about runs in its database, so you can restart it in
 the middle of a run. <a href="retention.html">What orq keeps</a> describes what happens
@@ -296,8 +287,9 @@ its owner sets the password there, and you then set it in <code>REDIS_URL</code>
 <h2 id="the-page-and-the-book"><a class="header" href="#the-page-and-the-book">The page and the book</a></h2>
 <p>The page is built with <code>VITE_ORQ_URL</code>, the address of orq, which in
 production is the page's own host. <code>VITE_IDP_NAME</code> optionally sets the label
-of the sign-in button. Neither the page nor the book has a server of its
-own.</p>
+of the sign-in button. The page has no server of its own.</p>
+<p>The deployment doesn't serve this book. <code>maestro</code> carries it, and
+<code>maestro docs</code> opens it from your computer.</p>
 <h2 id="a-development-stack"><a class="header" href="#a-development-stack">A development stack</a></h2>
 <pre><code class="language-sh">git clone --recurse-submodules https://github.com/gustaleitcor/maestro
 podman compose -f docker-compose-dev.yml up --build

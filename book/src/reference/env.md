@@ -44,14 +44,13 @@ deployment has to set.
 | --- | --- | --- |
 | `VITE_ORQ_URL` | `http://localhost:8081` | Where orq is |
 | `VITE_IDP_NAME` | empty | The label of the sign-in button |
-| `VITE_DOCS_URL` | `/docs/` | Where the server's copy of this book is, for the Docs link in the sidebar |
 
 ## The CLI
 
 | Variable | Meaning |
 | --- | --- |
 | `MAESTRO_ORQ_URL` | The Maestro server to use in place of the one the CLI kept. `--server` wins over it. |
-| `MAESTRO_DOCS_URL` | Where `maestro docs` opens this book, in place of the copy inside the CLI or, with `--web`, the server's `/docs` |
+| `MAESTRO_DOCS_URL` | Where `maestro docs` opens this book, in place of the copy inside the CLI |
 | `NO_COLOR` | Prints without colours, as `--no-color` does |
 
 ## Inside each container

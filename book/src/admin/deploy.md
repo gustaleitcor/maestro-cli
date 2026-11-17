@@ -10,7 +10,6 @@ them.
 | --- | --- | --- |
 | `maestro-orq` | The server, written in Go, with SQLite and its own Podman for builds | A container that stays up, on port 3005 of 127.0.0.1 |
 | `maestro-view` | The Maestro page, a Vue app | Built once into `maestro-view/dist`, then served as files |
-| `maestro-cli/book` | This book, which `maestro` also carries | Optionally built once into `maestro-cli/book/dist`, then served as files |
 | Redis | Sessions, and answers cached for a few seconds | Any Redis, Valkey or KeyDB |
 | A reverse proxy | TLS, and one host name for everything | Caddy, nginx or another |
 
@@ -23,19 +22,15 @@ cp .env.example .env   # the identity provider, MACHINE_SECRET, REDIS_URL
 podman compose up --build -d
 ```
 
-The `orq` service stays up as the server. The `view` and `docs` services
-build `maestro-view/dist` and `maestro-cli/book/dist` and then exit. The
-reverse proxy serves those two directories itself, with no container in
-between.
+The `orq` service stays up as the server. The `view` service builds
+`maestro-view/dist` and then exits. The reverse proxy serves that directory
+itself, with no container in between.
 
-On the page's host, the reverse proxy has three jobs.
+On the page's host, the reverse proxy has two jobs.
 
 1. Send `/api/*` to orq on port 3005. This lets `OIDC_REDIRECT_URL` reach
    orq and makes the session cookie first-party.
-2. Serve `maestro-cli/book/dist` at `/docs/`. The page's Docs link and
-   `maestro docs --web` open that copy. `maestro docs` without `--web` opens
-   the copy inside the CLI and needs none of this.
-3. Serve `maestro-view/dist` for every other path.
+2. Serve `maestro-view/dist` for every other path.
 
 With Caddy:
 
@@ -43,10 +38,6 @@ With Caddy:
 maestro.example.org {
 	handle /api/* {
 		reverse_proxy localhost:3005
-	}
-	handle_path /docs/* {
-		root * /srv/maestro/maestro-cli/book/dist
-		file_server
 	}
 	handle {
 		root * /srv/maestro/maestro-view/dist
@@ -76,7 +67,7 @@ only when you pass `--force-recreate`:
 
 ```sh
 git pull --recurse-submodules
-podman compose up --build -d --force-recreate orq view docs
+podman compose up --build -d --force-recreate orq view
 ```
 
 orq keeps everything about runs in its database, so you can restart it in
@@ -143,8 +134,10 @@ its owner sets the password there, and you then set it in `REDIS_URL`.
 
 The page is built with `VITE_ORQ_URL`, the address of orq, which in
 production is the page's own host. `VITE_IDP_NAME` optionally sets the label
-of the sign-in button. Neither the page nor the book has a server of its
-own.
+of the sign-in button. The page has no server of its own.
+
+The deployment doesn't serve this book. `maestro` carries it, and
+`maestro docs` opens it from your computer.
 
 ## A development stack
 

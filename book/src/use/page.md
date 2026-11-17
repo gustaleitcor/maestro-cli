@@ -6,7 +6,7 @@ on My runs.
 
 ## The sidebar
 
-The sidebar has My runs, Queue, Usage and Docs, which opens this book.
+The sidebar has My runs, Queue and Usage.
 Administrators also get All users and the admin pages: Machines, Groups and
 Settings. On a narrow screen the sidebar shrinks to a rail of icons.
 
