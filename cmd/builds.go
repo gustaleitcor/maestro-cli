@@ -21,7 +21,7 @@ var buildsAsJSON bool
 var buildsCmd = &cobra.Command{
 	Use:     "builds",
 	Aliases: []string{"image"},
-	Short:   "Commands for what `maestro build` built",
+	Short:   "List your builds and remove their images",
 	Args:    nounArgs,
 	RunE:    runBuildsList,
 }
@@ -30,9 +30,10 @@ var buildsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List your builds, and whether each still has its image",
 	Long: `Lists every build of yours, newest first: the ones that worked, the ones
-that failed and why, and any still going. IMAGE is the size of the image a
-build has, or "removed" once it is gone; only a build with an image can be
-run. BUILD is the number ` + "`maestro run`" + ` and ` + "`maestro builds rm`" + ` take.`,
+that failed and why, and the ones still building. IMAGE is the size of the
+build's image, or "removed" once the image is gone. Only a build with an
+image can be run. BUILD is the number ` + "`maestro run`" + ` and
+` + "`maestro builds rm`" + ` take.`,
 	Args:              cobra.NoArgs,
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE:              runBuildsList,
@@ -41,12 +42,14 @@ run. BUILD is the number ` + "`maestro run`" + ` and ` + "`maestro builds rm`" +
 var buildsRmCmd = &cobra.Command{
 	Use:     "rm <build>",
 	Aliases: []string{"remove"},
-	Short:   "Remove the image a build produced",
+	Short:   "Remove the image a build made",
 	Long: `Removes the image of a build, from the server and from the machines.
-Each user may keep a limited number of images; this frees a place for a new
-build. The build's record and its runs, with their files, are kept.
+You keep at most 10 images, unless your administrator set another number,
+and removing one frees a place for a new build. Maestro keeps the build's
+record and its runs, with their files. It asks first.
 
-<build> is the build number shown by ` + "`maestro builds list`" + `, with or without #.`,
+<build> is the build's number as ` + "`maestro builds list`" + ` shows it, with or
+without #.`,
 	Args:              numberArgs(1, 1, "build"),
 	ValidArgsFunction: completeBuilds,
 	RunE:              runBuildsRm,
@@ -132,7 +135,7 @@ func loadBuilds(ctx context.Context) ([]buildRow, int, error) {
 
 func writeBuildsList(out io.Writer, rows []buildRow, limit int) error {
 	if len(rows) == 0 {
-		_, err := fmt.Fprintln(out, "No builds yet. Build one with: maestro build <repo>")
+		_, err := fmt.Fprintln(out, "No builds yet. Build one with `maestro build <repo>`.")
 		return err
 	}
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
@@ -155,7 +158,7 @@ func writeBuildsList(out io.Writer, rows []buildRow, limit int) error {
 	// Which builds aren't their commit's alone.
 	for _, b := range rows {
 		if len(b.LocalFiles) > 0 {
-			fmt.Fprintf(out, "\n%s", dimStyle.Render(fmt.Sprintf("#%d: built with your %s, not the repo's.", b.ID, strings.Join(b.LocalFiles, ", "))))
+			fmt.Fprintf(out, "\n%s", dimStyle.Render(fmt.Sprintf("#%d: built with your %s, not the repository's.", b.ID, strings.Join(b.LocalFiles, ", "))))
 		}
 	}
 	// Why a build failed is its last word: what came before is the log.

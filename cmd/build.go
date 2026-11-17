@@ -40,26 +40,28 @@ const maxLocalFile = 1 << 20
 
 var buildCmd = &cobra.Command{
 	Use:   "build <repo>",
-	Short: "Build a container image from a repo on one of your forges",
-	Long: `Builds a container image from a repo's Dockerfile (or Containerfile)
-at the root of the repo, or from the one its maestro.toml names with
-dockerfile = "path/to/Dockerfile". The root of the repo is the build's
-context either way.
+	Short: "Build a container image from a repository on one of your forges",
+	Long: `Builds a container image from the Dockerfile, or Containerfile, at the
+root of a repository. When the repository's maestro.toml names another one
+with dockerfile = "path/to/Dockerfile", it builds from that one. Either way,
+the build's context is the root of the repository.
 
-<repo> is a name, owner/name, or URL. The forge that has it is used; pass
---forge when several do. A public repo on GitHub, GitLab or Codeberg needs no
-forge and no token: pass its full URL.
+<repo> is a name, owner/name or URL. The CLI uses the forge that has it, and
+when several of your forges have it, you pick one with --forge. A public
+repository on GitHub, GitLab or Codeberg needs no forge and no token: pass
+its full URL.
 
-The build gets a number: ` + "`maestro run <build>`" + ` runs its image, and
-` + "`maestro builds`" + ` shows the ones you have. With --run, the image is run as
-soon as it is built; --watch implies --run, and follows the run (not the
-build) until it is over.
+The build gets a number. ` + "`maestro run <build>`" + ` runs its image, and
+` + "`maestro builds`" + ` shows the builds you have. With --run, it starts a run as
+soon as the image is built. --watch does the same, then follows the run,
+not the build, until the run is over.
 
 To try a change without pushing it, send your own maestro.toml (-c), the
-generator it names (-g) or the Dockerfile (-f) from here: the server builds
-the repo with them in place of its own. Each may have any name here. A
-change to maestro.toml or the generator alone needs no new build: send them
-to ` + "`maestro run`" + ` instead, which runs the image you have.`,
+generator it names (-g) or the Dockerfile (-f) from your computer. The
+server builds the repository with them in place of its own. Your files can
+have any name. A change to maestro.toml or the generator alone needs no new
+build: send the files to ` + "`maestro run`" + ` instead, which runs the image you
+have.`,
 	Example: `  maestro build my-app
   maestro build some-org/my-app --ref v1.2.0
   maestro build https://github.com/some-org/public-app
@@ -76,9 +78,9 @@ to ` + "`maestro run`" + ` instead, which runs the image you have.`,
 func repoArg(cmd *cobra.Command, args []string) error {
 	switch {
 	case len(args) == 0:
-		return fmt.Errorf("maestro build needs a repo: a name, owner/name or URL (see `maestro repos`)")
+		return fmt.Errorf("`maestro build` needs a <repo>: a name, owner/name or URL; `maestro repos` lists yours")
 	case len(args) > 1:
-		return fmt.Errorf("maestro build builds one repo at a time, not %d", len(args))
+		return fmt.Errorf("`maestro build` builds one repository at a time, not %d", len(args))
 	}
 	return nil
 }
@@ -88,13 +90,13 @@ func repoArg(cmd *cobra.Command, args []string) error {
 var buildFiles = []string{"Dockerfile", "Containerfile", "maestro.toml"}
 
 func init() {
-	buildCmd.Flags().StringVar(&buildRef, "ref", "", "branch, tag or commit to build (default: the default branch)")
-	buildCmd.Flags().BoolVar(&buildRun, "run", false, "run the image once it is built")
-	addWatchFlags(buildCmd, "run the image once it is built (as --run), and follow the run until it is over")
+	buildCmd.Flags().StringVar(&buildRef, "ref", "", "build this `ref`, a branch, tag or commit (default: the repository's default branch)")
+	buildCmd.Flags().BoolVar(&buildRun, "run", false, "start a run once the image is built")
+	addWatchFlags(buildCmd, "start a run once the image is built, as --run does, and follow it until it is over")
 	addForgeFlag(buildCmd, &buildForge)
-	buildCmd.Flags().StringVarP(&buildLocal.config, "config", "c", "", "a maestro.toml here to build with in place of the repo's")
-	buildCmd.Flags().StringVarP(&buildLocal.generator, "generator", "g", "", "a generator script here, in place of the one maestro.toml names")
-	buildCmd.Flags().StringVarP(&buildLocal.dockerfile, "dockerfile", "f", "", "a Dockerfile here to build from in place of the repo's")
+	buildCmd.Flags().StringVarP(&buildLocal.config, "config", "c", "", "a `file` on your computer to build with as maestro.toml, in place of the repository's")
+	buildCmd.Flags().StringVarP(&buildLocal.generator, "generator", "g", "", "a generator `script` on your computer, in place of the one maestro.toml names")
+	buildCmd.Flags().StringVarP(&buildLocal.dockerfile, "dockerfile", "f", "", "a `file` on your computer to build from as the Dockerfile, in place of the repository's")
 	addAnswerFlags(buildCmd, "the build (and its run, with --run)")
 	rootCmd.AddCommand(buildCmd)
 }
@@ -117,7 +119,7 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	if ref == "" {
 		r, err := active.Client.GetRepo(cmd.Context(), owner, repo)
 		if err != nil {
-			return fmt.Errorf("resolving default branch: %w", err)
+			return fmt.Errorf("couldn't find the repository's default branch: %w", err)
 		}
 		ref = r.DefaultBranch
 	}
@@ -132,7 +134,7 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(out, "Building %s/%s/%s@%s...\n", active.Client.Host(), owner, repo, ref)
 	sayLocalFiles(buildLocal)
 
-	// The server builds for as long as it is listened to: ctrl-c stops it.
+	// The server builds for as long as it is listened to: Ctrl-C stops it.
 	buildCtx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt)
 	final, err := maestroapi.TriggerBuild(buildCtx, maestroKey, active.Token, maestroapi.BuildRequest{
 		Forge: active.Client.Kind(),
@@ -145,17 +147,17 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	interrupted := buildCtx.Err() != nil
 	stop()
 	if interrupted {
-		fmt.Fprintln(os.Stderr, "\n"+dimStyle.Render("Stopped: leaving cancels the build on the server too."))
+		fmt.Fprintln(os.Stderr, "\n"+dimStyle.Render("Stopped. The server cancels the build too."))
 		return tui.ErrInterrupted
 	}
 	if err != nil {
 		return err
 	}
 	if final.Status != "success" {
-		return fmt.Errorf("build failed: %s", final.Error)
+		return fmt.Errorf("the build failed: %s", final.Error)
 	}
 	if !files.Empty() && len(final.LocalFiles) == 0 {
-		return fmt.Errorf("build #%d was built from the repo's files, not yours: this Maestro server is too old to take them; update it", final.BuildID)
+		return fmt.Errorf("build #%d used the repository's files, not yours, because this Maestro server is too old to take them; ask your administrator to update it", final.BuildID)
 	}
 
 	succeeded := "Build succeeded:"
@@ -217,7 +219,7 @@ func readLocalFiles(flags localFlags) (maestroapi.LocalFiles, error) {
 			return files, fmt.Errorf("%s: %w", named, err)
 		}
 		if len(raw) == 0 {
-			return files, fmt.Errorf("%s: empty", named)
+			return files, fmt.Errorf("%s: the file is empty", named)
 		}
 		*f.into = string(raw)
 	}
@@ -236,7 +238,7 @@ func sayLocalFiles(flags localFlags) {
 		}
 	}
 	if len(sent) > 0 {
-		fmt.Fprintln(chatter(), dimStyle.Render("Sending "+strings.Join(sent, ", ")+" from here."))
+		fmt.Fprintln(chatter(), dimStyle.Render("Sending "+strings.Join(sent, ", ")+" from your computer."))
 	}
 }
 
@@ -248,7 +250,7 @@ func checkBuildFile(ctx context.Context, client forge.Forge, owner, repo, ref st
 	for _, name := range buildFiles {
 		found, err := client.HasFile(ctx, owner, repo, ref, name)
 		if err != nil {
-			fmt.Fprintln(chatter(), warnStyle.Render("Warning: could not check for a Dockerfile: "+err.Error()))
+			fmt.Fprintln(chatter(), warnStyle.Render("Warning: couldn't check for a Dockerfile: "+err.Error()))
 			return nil
 		}
 		if found {
@@ -257,9 +259,9 @@ func checkBuildFile(ctx context.Context, client forge.Forge, owner, repo, ref st
 	}
 	// A repo the token can't see has no files either: say that instead.
 	if _, err := client.GetRepo(ctx, owner, repo); errors.Is(err, forge.ErrNotFound) {
-		return fmt.Errorf("%s/%s not found, or your token can't see it\n\nIf it's private, add a token that can: maestro forges add", owner, repo)
+		return fmt.Errorf("%s/%s not found, or your token can't see it\n\nIf it is private, add a token that can see it with `maestro forges add`", owner, repo)
 	}
-	return fmt.Errorf("%s/%s has no Dockerfile at %s\n\nMaestro builds the image from a Dockerfile (or Containerfile) at the root of\nthe repo, or from the one maestro.toml names with dockerfile = \"…\". Add one,\nor pick a branch that has it with --ref", owner, repo, ref)
+	return fmt.Errorf("%s/%s has no Dockerfile at %s\n\nMaestro builds the image from a Dockerfile (or Containerfile) at the root of\nthe repository, or from the one maestro.toml names with dockerfile = \"…\". Add one,\nor pick a branch that has it with --ref", owner, repo, ref)
 }
 
 // parseRepoArg accepts "name", "owner/name", or a full repo URL. A URL
@@ -275,14 +277,14 @@ func parseRepoArg(ctx context.Context, arg, forgeName string) (active *activeFor
 			return nil, "", "", err
 		}
 		if owner, repo, err = splitRepoPath(active.Client.Kind(), path); err != nil {
-			return nil, "", "", fmt.Errorf("invalid repo URL %q: %w", arg, err)
+			return nil, "", "", fmt.Errorf("%q isn't a repository's URL: %w", arg, err)
 		}
 		return active, owner, repo, nil
 	}
 
 	arg = strings.Trim(strings.TrimSuffix(arg, ".git"), "/")
 	if arg == "" {
-		return nil, "", "", fmt.Errorf("invalid repo: expected name, owner/name, or a repo URL")
+		return nil, "", "", fmt.Errorf("<repo> is empty; give a name, owner/name or URL")
 	}
 
 	candidates, err := forgesToSearch(forgeName)
@@ -331,12 +333,12 @@ func parseRepoArg(ctx context.Context, arg, forgeName string) (active *activeFor
 		// A forge that couldn't answer may well be the one that has it.
 		failed = slices.DeleteFunc(failed, func(err error) bool { return err == nil })
 		if len(failed) == len(candidates) && allUnreachable(failed) {
-			return nil, "", "", fmt.Errorf("could not reach any of your forges: check your internet connection")
+			return nil, "", "", fmt.Errorf("couldn't reach any of your forges; check your internet connection")
 		}
 		if len(failed) > 0 {
 			return nil, "", "", failed[0]
 		}
-		return nil, "", "", fmt.Errorf("no configured forge has a repo %q", arg)
+		return nil, "", "", fmt.Errorf("none of your forges has a repository %q; `maestro repos` lists what they have", arg)
 	case 1:
 		return matches[0].active, matches[0].owner, matches[0].repo, nil
 	}
@@ -366,7 +368,7 @@ func forgesToSearch(name string) ([]*activeForge, error) {
 		return nil, err
 	}
 	if len(configured) == 0 {
-		return nil, fmt.Errorf("no forge configured\n\nRun `maestro forges add` to add GitHub, a Forgejo instance, or GitLab")
+		return nil, fmt.Errorf("you have no forge yet\n\nRun `maestro forges add` to add GitHub, GitLab or a Forgejo server")
 	}
 	all := make([]*activeForge, 0, len(configured))
 	for _, f := range configured {
@@ -383,12 +385,12 @@ func splitRepoArg(ctx context.Context, active *activeForge, arg string) (owner, 
 	if !strings.Contains(arg, "/") {
 		user, err := active.Client.CurrentUser(ctx)
 		if err != nil {
-			return "", "", fmt.Errorf("resolving authenticated user: %w", err)
+			return "", "", fmt.Errorf("couldn't ask the forge who you are: %w", err)
 		}
 		return user.Login, arg, nil
 	}
 	if owner, repo, err = splitRepoPath(active.Client.Kind(), arg); err != nil {
-		return "", "", fmt.Errorf("invalid repo %q: %w", arg, err)
+		return "", "", fmt.Errorf("%q isn't a repository: %w", arg, err)
 	}
 	return owner, repo, nil
 }
@@ -396,7 +398,7 @@ func splitRepoArg(ctx context.Context, active *activeForge, arg string) (owner, 
 func splitRepoURL(raw string) (host, path string, err error) {
 	parsed, err := url.Parse(raw)
 	if err != nil || parsed.Host == "" || (parsed.Scheme != "https" && parsed.Scheme != "http") {
-		return "", "", fmt.Errorf("invalid repo URL %q: expected https://host/owner/name", raw)
+		return "", "", fmt.Errorf("%q isn't a repository's URL, such as https://host/owner/name", raw)
 	}
 	path = strings.Trim(parsed.Path, "/")
 	// GitLab puts everything that isn't the project path behind "/-/".
@@ -410,10 +412,10 @@ func splitRepoURL(raw string) (host, path string, err error) {
 func splitRepoPath(kind, path string) (owner, repo string, err error) {
 	parts := strings.Split(path, "/")
 	if len(parts) < 2 {
-		return "", "", fmt.Errorf("expected owner/name")
+		return "", "", fmt.Errorf("it should be owner/name")
 	}
 	if slices.Contains(parts, "") {
-		return "", "", fmt.Errorf("expected owner/name")
+		return "", "", fmt.Errorf("it should be owner/name")
 	}
 	if kind != forge.GitLab {
 		return parts[0], parts[1], nil

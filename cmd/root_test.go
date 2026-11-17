@@ -255,7 +255,7 @@ func TestUsageMistakesComeFirst(t *testing.T) {
 		{[]string{"runs", "shw"}, []string{`unknown command "shw" for "maestro runs"`, "Did you mean this?\n\tshow", "Run 'maestro runs --help'"}},
 		{[]string{"runs", "--watch", "--json"}, []string{"--json prints once"}},
 		{[]string{"top", "-n", "100ms"}, []string{"--interval must be at least 1s"}},
-		{[]string{"build"}, []string{"maestro build needs a repo"}},
+		{[]string{"build"}, []string{"`maestro build` needs a <repo>"}},
 		{[]string{"run", "12", "--bogus"}, []string{"unknown flag: --bogus", "Usage: maestro run <build>"}},
 		{[]string{"runz"}, []string{`unknown command "runz" for "maestro"`, "Run 'maestro --help'"}},
 	}

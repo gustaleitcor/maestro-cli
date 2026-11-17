@@ -2354,25 +2354,27 @@ terminal.</p>
       --server string   the Maestro server to talk to (default: the one kept, asked for the first time)
 </code></pre>
 <h2 id="maestro-build"><a class="header" href="#maestro-build">maestro build</a></h2>
-<p>Build a container image from a repo on one of your forges.</p>
+<p>Build a container image from a repository on one of your forges.</p>
 <pre><code class="language-text">maestro build &lt;repo&gt; [flags]
 </code></pre>
-<p>Builds a container image from a repo's Dockerfile (or Containerfile)
-at the root of the repo, or from the one its maestro.toml names with
-dockerfile = "path/to/Dockerfile". The root of the repo is the build's
-context either way.</p>
-<p>&lt;repo&gt; is a name, owner/name, or URL. The forge that has it is used; pass
---forge when several do. A public repo on GitHub, GitLab or Codeberg needs no
-forge and no token: pass its full URL.</p>
-<p>The build gets a number: <code>maestro run &lt;build&gt;</code> runs its image, and
-<code>maestro builds</code> shows the ones you have. With --run, the image is run as
-soon as it is built; --watch implies --run, and follows the run (not the
-build) until it is over.</p>
+<p>Builds a container image from the Dockerfile, or Containerfile, at the
+root of a repository. When the repository's maestro.toml names another one
+with dockerfile = "path/to/Dockerfile", it builds from that one. Either way,
+the build's context is the root of the repository.</p>
+<p>&lt;repo&gt; is a name, owner/name or URL. The CLI uses the forge that has it, and
+when several of your forges have it, you pick one with --forge. A public
+repository on GitHub, GitLab or Codeberg needs no forge and no token: pass
+its full URL.</p>
+<p>The build gets a number. <code>maestro run &lt;build&gt;</code> runs its image, and
+<code>maestro builds</code> shows the builds you have. With --run, it starts a run as
+soon as the image is built. --watch does the same, then follows the run,
+not the build, until the run is over.</p>
 <p>To try a change without pushing it, send your own maestro.toml (-c), the
-generator it names (-g) or the Dockerfile (-f) from here: the server builds
-the repo with them in place of its own. Each may have any name here. A
-change to maestro.toml or the generator alone needs no new build: send them
-to <code>maestro run</code> instead, which runs the image you have.</p>
+generator it names (-g) or the Dockerfile (-f) from your computer. The
+server builds the repository with them in place of its own. Your files can
+have any name. A change to maestro.toml or the generator alone needs no new
+build: send the files to <code>maestro run</code> instead, which runs the image you
+have.</p>
 <p>Examples:</p>
 <pre><code class="language-sh">maestro build my-app
 maestro build some-org/my-app --ref v1.2.0
@@ -2382,19 +2384,19 @@ maestro build my-app -c bench.toml -g genvrs.py -f Dockerfile
 build=$(maestro build my-app -q)
 </code></pre>
 <p>Flags:</p>
-<pre><code class="language-text">  -c, --config string       a maestro.toml here to build with in place of the repo's
-  -f, --dockerfile string   a Dockerfile here to build from in place of the repo's
+<pre><code class="language-text">  -c, --config file         a file on your computer to build with as maestro.toml, in place of the repository's
+  -f, --dockerfile file     a file on your computer to build from as the Dockerfile, in place of the repository's
       --forge string        which forge to use (see 'maestro forges list')
-  -g, --generator string    a generator script here, in place of the one maestro.toml names
+  -g, --generator script    a generator script on your computer, in place of the one maestro.toml names
   -n, --interval duration   how often to refresh with --watch (at least 1s) (default 2s)
       --json                print the build (and its run, with --run) as JSON, and nothing else on stdout
   -q, --quiet               print only the number of the build (and its run, with --run), and nothing else on stdout
-      --ref string          branch, tag or commit to build (default: the default branch)
-      --run                 run the image once it is built
-  -w, --watch               run the image once it is built (as --run), and follow the run until it is over
+      --ref ref             build this ref, a branch, tag or commit (default: the repository's default branch)
+      --run                 start a run once the image is built
+  -w, --watch               start a run once the image is built, as --run does, and follow it until it is over
 </code></pre>
 <h2 id="maestro-builds"><a class="header" href="#maestro-builds">maestro builds</a></h2>
-<p>Commands for what <code>maestro build</code> built.</p>
+<p>List your builds and remove their images.</p>
 <pre><code class="language-text">maestro builds [flags]
 </code></pre>
 <p>Also: <code>image</code>.</p>
@@ -2404,7 +2406,7 @@ build=$(maestro build my-app -q)
 <p>Commands:</p>
 <ul>
 <li><a href="reference/cli.html#maestro-builds-list">maestro builds list</a>: List your builds, and whether each still has its image</li>
-<li><a href="reference/cli.html#maestro-builds-rm">maestro builds rm</a>: Remove the image a build produced</li>
+<li><a href="reference/cli.html#maestro-builds-rm">maestro builds rm</a>: Remove the image a build made</li>
 <li><a href="reference/cli.html#maestro-builds-run">maestro builds run</a>: Run a build's image on the machines (as maestro run)</li>
 </ul>
 <h2 id="maestro-builds-list"><a class="header" href="#maestro-builds-list">maestro builds list</a></h2>
@@ -2412,20 +2414,23 @@ build=$(maestro build my-app -q)
 <pre><code class="language-text">maestro builds list [flags]
 </code></pre>
 <p>Lists every build of yours, newest first: the ones that worked, the ones
-that failed and why, and any still going. IMAGE is the size of the image a
-build has, or "removed" once it is gone; only a build with an image can be
-run. BUILD is the number <code>maestro run</code> and <code>maestro builds rm</code> take.</p>
+that failed and why, and the ones still building. IMAGE is the size of the
+build's image, or "removed" once the image is gone. Only a build with an
+image can be run. BUILD is the number <code>maestro run</code> and
+<code>maestro builds rm</code> take.</p>
 <p>Flags:</p>
 <pre><code class="language-text">      --json   print the builds as JSON
 </code></pre>
 <h2 id="maestro-builds-rm"><a class="header" href="#maestro-builds-rm">maestro builds rm</a></h2>
-<p>Remove the image a build produced.</p>
+<p>Remove the image a build made.</p>
 <pre><code class="language-text">maestro builds rm &lt;build&gt; [flags]
 </code></pre>
 <p>Removes the image of a build, from the server and from the machines.
-Each user may keep a limited number of images; this frees a place for a new
-build. The build's record and its runs, with their files, are kept.</p>
-<p>&lt;build&gt; is the build number shown by <code>maestro builds list</code>, with or without #.</p>
+You keep at most 10 images, unless your administrator set another number,
+and removing one frees a place for a new build. Maestro keeps the build's
+record and its runs, with their files. It asks first.</p>
+<p>&lt;build&gt; is the build's number as <code>maestro builds list</code> shows it, with or
+without #.</p>
 <p>Also: <code>remove</code>.</p>
 <p>Flags:</p>
 <pre><code class="language-text">  -y, --yes    don't ask first
