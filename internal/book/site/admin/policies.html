@@ -200,9 +200,9 @@ until you press "Save changes", and Discard puts back what was saved last.</p>
 <h3 id="scheduler"><a class="header" href="#scheduler">Scheduler</a></h3>
 <p>This section holds the policy of each of the three queues.</p>
 <div class="table-wrapper"><table><thead><tr><th>Label</th><th>Setting</th><th>Can be</th></tr></thead><tbody>
-<tr><td>A user's head</td><td><code>user</code></td><td><code>fifo</code>, <code>lcfs</code>, <code>siro</code>, <code>pq</code></td></tr>
-<tr><td>Among a group's heads</td><td><code>dispatcher</code></td><td><code>fifo</code>, <code>lcfs</code>, <code>siro</code>, <code>pq</code></td></tr>
-<tr><td>On a machine</td><td><code>machine</code></td><td>Those four, and <code>fifo-skip</code>, <code>best-fit</code>, <code>weighted-best-fit</code>, <code>tetris</code></td></tr>
+<tr><td>User queue</td><td><code>user</code></td><td><code>fifo</code>, <code>lcfs</code>, <code>siro</code>, <code>pq</code></td></tr>
+<tr><td>Dispatcher queue</td><td><code>dispatcher</code></td><td><code>fifo</code>, <code>lcfs</code>, <code>siro</code>, <code>pq</code></td></tr>
+<tr><td>Machine queue</td><td><code>machine</code></td><td>Those four, and <code>fifo-skip</code>, <code>best-fit</code>, <code>weighted-best-fit</code>, <code>tetris</code></td></tr>
 </tbody></table>
 </div>
 <p>It also holds "Waiting on a machine" (<code>depth</code>, 3 by default) and the seed

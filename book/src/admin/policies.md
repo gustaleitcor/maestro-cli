@@ -28,9 +28,9 @@ This section holds the policy of each of the three queues.
 
 | Label | Setting | Can be |
 | --- | --- | --- |
-| A user's head | `user` | `fifo`, `lcfs`, `siro`, `pq` |
-| Among a group's heads | `dispatcher` | `fifo`, `lcfs`, `siro`, `pq` |
-| On a machine | `machine` | Those four, and `fifo-skip`, `best-fit`, `weighted-best-fit`, `tetris` |
+| User queue | `user` | `fifo`, `lcfs`, `siro`, `pq` |
+| Dispatcher queue | `dispatcher` | `fifo`, `lcfs`, `siro`, `pq` |
+| Machine queue | `machine` | Those four, and `fifo-skip`, `best-fit`, `weighted-best-fit`, `tetris` |
 
 It also holds "Waiting on a machine" (`depth`, 3 by default) and the seed
 that makes `siro` and the draw of a machine repeat.
