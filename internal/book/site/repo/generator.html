@@ -196,7 +196,7 @@ line of <a href="maestro-toml.html#parameters"><code>parameters</code></a> is.</
 <pre><code class="language-toml">generator = "genvrs.py"
 </code></pre>
 <p>Push and build. The build log now counts five containers:</p>
-<pre><code class="language-text">Read maestro.toml: 5 container(s) (3 from genvrs.py) on any machine, with 1 CPU and 512 MB each, keeping out.txt.
+<pre><code class="language-text">Read maestro.toml: 5 lines (3 from genvrs.py) on any machine, with 1 core and 512 MB each, keeping out.txt.
 </code></pre>
 <p>The two lines of <code>parameters</code> come first, then the three the generator
 yielded. If you delete <code>parameters</code>, the generator's lines are the whole run.</p>

@@ -88,7 +88,7 @@ The line asks for more `cpus` or `memory` than any machine it may use has
 for lines. Ask for less, or allow more machines in `machines`.
 `maestro machines` shows what each machine has.
 
-### "the image of build 12 was removed; build it again"
+### "the image of build #12 was removed; build it again"
 
 You keep a limited number of images, and this one went to make room for a
 newer build, or you removed it with `maestro builds rm`. Build the commit

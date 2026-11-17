@@ -62,7 +62,7 @@ A repository with a Dockerfile and no `maestro.toml` builds and runs. The
 build log says what its runs will do:
 
 ```text
-No maestro.toml; runs will use the default: 1 container running the image's own command on any machine, with 1 CPU and 512 MB each, keeping only its logs.
+No maestro.toml. Runs will use the default: 1 line running the image's own command on any machine, with 1 core and 512 MB each, keeping only its logs.
 ```
 
 A run of that build is one line:

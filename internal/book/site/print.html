@@ -281,7 +281,7 @@ is over. The build log streams to your terminal. These are the lines to look
 for in it:</p>
 <pre><code class="language-text">Building github.com/gustaleitcor/maestro-template@main...
 Cloning github.com/gustaleitcor/maestro-template@main...
-Read maestro.toml: 2 container(s) on any machine, with 1 CPU and 512 MB each, keeping out.txt.
+Read maestro.toml: 2 lines on any machine, with 1 core and 512 MB each, keeping out.txt.
 STEP 1/7: FROM docker.io/library/python:3.12-slim
 …
 Build #12 succeeded: 5d0c3a9f2e41…
@@ -458,7 +458,7 @@ CMD ["--help"]
 <h2 id="what-a-dockerfile-alone-gets-you"><a class="header" href="#what-a-dockerfile-alone-gets-you">What a Dockerfile alone gets you</a></h2>
 <p>A repository with a Dockerfile and no <code>maestro.toml</code> builds and runs. The
 build log says what its runs will do:</p>
-<pre><code class="language-text">No maestro.toml; runs will use the default: 1 container running the image's own command on any machine, with 1 CPU and 512 MB each, keeping only its logs.
+<pre><code class="language-text">No maestro.toml. Runs will use the default: 1 line running the image's own command on any machine, with 1 core and 512 MB each, keeping only its logs.
 </code></pre>
 <p>A run of that build is one line:</p>
 <pre><code class="language-text">Run 32 of ada/maestro-template@main (build #13): succeeded, on any machine
@@ -540,7 +540,7 @@ backslashes keep words together the way they do in a shell, so <code>'long run'<
 reaches the program as one argument. Nothing else is special, because no
 shell runs the line. A <code>$HOME</code> or a <code>*</code> reaches the program as typed. A
 program that needs a shell can be a shell script.</p>
-<p>Add a third line, and the next build says <code>3 container(s)</code>:</p>
+<p>Add a third line, and the next build says <code>3 lines</code>:</p>
 <pre><code class="language-toml">parameters = [
   "-t 10 out.txt",
   "-t 20 --label 'long run' out.txt",
@@ -646,7 +646,7 @@ line of <a href="repo/maestro-toml.html#parameters"><code>parameters</code></a> 
 <pre><code class="language-toml">generator = "genvrs.py"
 </code></pre>
 <p>Push and build. The build log now counts five containers:</p>
-<pre><code class="language-text">Read maestro.toml: 5 container(s) (3 from genvrs.py) on any machine, with 1 CPU and 512 MB each, keeping out.txt.
+<pre><code class="language-text">Read maestro.toml: 5 lines (3 from genvrs.py) on any machine, with 1 core and 512 MB each, keeping out.txt.
 </code></pre>
 <p>The two lines of <code>parameters</code> come first, then the three the generator
 yielded. If you delete <code>parameters</code>, the generator's lines are the whole run.</p>
@@ -3193,7 +3193,7 @@ end, or cancel one, and build again.</p>
 <p>The line asks for more <code>cpus</code> or <code>memory</code> than any machine it may use has
 for lines. Ask for less, or allow more machines in <code>machines</code>.
 <code>maestro machines</code> shows what each machine has.</p>
-<h3 id="the-image-of-build-12-was-removed-build-it-again"><a class="header" href="#the-image-of-build-12-was-removed-build-it-again">"the image of build 12 was removed; build it again"</a></h3>
+<h3 id="the-image-of-build-12-was-removed-build-it-again"><a class="header" href="#the-image-of-build-12-was-removed-build-it-again">"the image of build #12 was removed; build it again"</a></h3>
 <p>You keep a limited number of images, and this one went to make room for a
 newer build, or you removed it with <code>maestro builds rm</code>. Build the commit
 again.</p>

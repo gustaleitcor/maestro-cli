@@ -26,7 +26,7 @@ generator = "genvrs.py"
 Push and build. The build log now counts five containers:
 
 ```text
-Read maestro.toml: 5 container(s) (3 from genvrs.py) on any machine, with 1 CPU and 512 MB each, keeping out.txt.
+Read maestro.toml: 5 lines (3 from genvrs.py) on any machine, with 1 core and 512 MB each, keeping out.txt.
 ```
 
 The two lines of `parameters` come first, then the three the generator

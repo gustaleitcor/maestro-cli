@@ -44,7 +44,7 @@ reaches the program as one argument. Nothing else is special, because no
 shell runs the line. A `$HOME` or a `*` reaches the program as typed. A
 program that needs a shell can be a shell script.
 
-Add a third line, and the next build says `3 container(s)`:
+Add a third line, and the next build says `3 lines`:
 
 ```toml
 parameters = [

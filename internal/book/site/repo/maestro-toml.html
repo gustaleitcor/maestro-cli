@@ -212,7 +212,7 @@ backslashes keep words together the way they do in a shell, so <code>'long run'<
 reaches the program as one argument. Nothing else is special, because no
 shell runs the line. A <code>$HOME</code> or a <code>*</code> reaches the program as typed. A
 program that needs a shell can be a shell script.</p>
-<p>Add a third line, and the next build says <code>3 container(s)</code>:</p>
+<p>Add a third line, and the next build says <code>3 lines</code>:</p>
 <pre><code class="language-toml">parameters = [
   "-t 10 out.txt",
   "-t 20 --label 'long run' out.txt",

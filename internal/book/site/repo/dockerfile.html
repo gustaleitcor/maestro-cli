@@ -229,7 +229,7 @@ CMD ["--help"]
 <h2 id="what-a-dockerfile-alone-gets-you"><a class="header" href="#what-a-dockerfile-alone-gets-you">What a Dockerfile alone gets you</a></h2>
 <p>A repository with a Dockerfile and no <code>maestro.toml</code> builds and runs. The
 build log says what its runs will do:</p>
-<pre><code class="language-text">No maestro.toml; runs will use the default: 1 container running the image's own command on any machine, with 1 CPU and 512 MB each, keeping only its logs.
+<pre><code class="language-text">No maestro.toml. Runs will use the default: 1 line running the image's own command on any machine, with 1 core and 512 MB each, keeping only its logs.
 </code></pre>
 <p>A run of that build is one line:</p>
 <pre><code class="language-text">Run 32 of ada/maestro-template@main (build #13): succeeded, on any machine
