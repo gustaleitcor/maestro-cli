@@ -79,7 +79,7 @@ to the lines that were running.
 | Need | Detail |
 | --- | --- |
 | Its own Podman | Reached through `PODMAN_SOCKET`, to build images. The compose file mounts the host user's socket. |
-| Two volumes | `/data` for the SQLite database, and `/maestro/data` for the logs and outputs of runs. The second grows with every run. |
+| Three volumes | `/data` for the SQLite database, `/backups` for its daily copies, and `/maestro/data` for the logs and outputs of runs. The last grows with every run. |
 | Redis | At `REDIS_URL`, with a password. See [Redis](#redis). |
 | An identity provider | See [The identity provider](identity.md). |
 | `MACHINE_SECRET` | At least 32 characters. It encrypts the machines' SSH keys. See [Adding machines](machines.md). |

@@ -1879,7 +1879,7 @@ to the lines that were running.</p>
 <h2 id="what-orq-needs"><a class="header" href="#what-orq-needs">What orq needs</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Need</th><th>Detail</th></tr></thead><tbody>
 <tr><td>Its own Podman</td><td>Reached through <code>PODMAN_SOCKET</code>, to build images. The compose file mounts the host user's socket.</td></tr>
-<tr><td>Two volumes</td><td><code>/data</code> for the SQLite database, and <code>/maestro/data</code> for the logs and outputs of runs. The second grows with every run.</td></tr>
+<tr><td>Three volumes</td><td><code>/data</code> for the SQLite database, <code>/backups</code> for its daily copies, and <code>/maestro/data</code> for the logs and outputs of runs. The last grows with every run.</td></tr>
 <tr><td>Redis</td><td>At <code>REDIS_URL</code>, with a password. See <a href="admin/deploy.html#redis">Redis</a>.</td></tr>
 <tr><td>An identity provider</td><td>See <a href="admin/identity.html">The identity provider</a>.</td></tr>
 <tr><td><code>MACHINE_SECRET</code></td><td>At least 32 characters. It encrypts the machines' SSH keys. See <a href="admin/machines.html">Adding machines</a>.</td></tr>
@@ -2412,7 +2412,18 @@ count against the user's image limit. orq removes any image that build left
 behind.</p>
 <h3 id="backing-up-the-database"><a class="header" href="#backing-up-the-database">Backing up the database</a></h3>
 <p>The database is <code>MAESTRO_ORQ_DB</code>, which the compose file puts at
-<code>/data/maestro-orq.db</code> in the <code>maestro-orq-data</code> volume. orq opens it in WAL
+<code>/data/maestro-orq.db</code> in the <code>maestro-orq-data</code> volume.</p>
+<p>When <code>DB_BACKUP_DIR</code> is set, orq backs the database up there on its own.
+It writes the first copy a minute after it starts, and another every 24
+hours after that. Each copy is named after the day it was made, in UTC,
+such as <code>maestro-orq-2026-11-16.db</code>, and a second copy on the same day
+replaces the first. orq writes it with SQLite's <code>VACUUM INTO</code>, which is safe
+while orq runs. It keeps the 7 newest copies and removes the older ones.
+<code>DB_BACKUPS_KEPT</code> changes the number, and <code>0</code> keeps every copy. The compose
+file sets <code>DB_BACKUP_DIR</code> to <code>/backups</code>, in the <code>maestro-orq-backups</code>
+volume. That volume is on the same server as the database, so copy its
+files off the server too.</p>
+<p>You can also back the database up yourself. orq opens the database in WAL
 mode, so the latest writes sit in <code>maestro-orq.db-wal</code> beside it until
 SQLite moves them into the database. A copy of <code>maestro-orq.db</code> alone can
 miss them. Back the database up in one of two ways:</p>
@@ -2421,6 +2432,52 @@ miss them. Back the database up in one of two ways:</p>
 consistently: <code>sqlite3 maestro-orq.db ".backup maestro-orq-backup.db"</code>.</li>
 <li>Stop orq, then copy <code>maestro-orq.db</code> together with <code>maestro-orq.db-wal</code>
 and <code>maestro-orq.db-shm</code>, if they are there.</li>
+</ul>
+<h3 id="restoring-a-backup"><a class="header" href="#restoring-a-backup">Restoring a backup</a></h3>
+<ol>
+<li>
+<p>Stop orq:</p>
+<pre><code class="language-sh">podman compose stop orq
+</code></pre>
+</li>
+<li>
+<p>Put the database aside with its <code>-wal</code> and <code>-shm</code> files, and copy the
+backup in its place. Leave no <code>-wal</code> file of the old database beside
+the copy, because SQLite would read it as part of the copy.</p>
+<pre><code class="language-sh">podman compose run --rm --entrypoint sh orq -c '
+  mkdir -p /data/before-restore &amp;&amp;
+  mv /data/maestro-orq.db* /data/before-restore/ &amp;&amp;
+  cp /backups/maestro-orq-2026-11-16.db /data/maestro-orq.db'
+</code></pre>
+</li>
+<li>
+<p>Start orq:</p>
+<pre><code class="language-sh">podman compose start orq
+</code></pre>
+<p>If the copy was made by an older orq, orq brings the database up to
+date as it starts, as it does after an update.</p>
+</li>
+</ol>
+<p>The copy holds the database and nothing else. The logs and outputs of runs
+aren't in it, and a restore leaves <code>/maestro/data</code> as it is. A restore
+loses everything orq wrote to the database after the copy was made:</p>
+<ul>
+<li>Runs started after the copy aren't in it, and orq doesn't list them.
+Their files stay in <code>/maestro/data</code> and count toward their owners'
+<code>USER_DATA_MAX_GB</code>. orq gives their numbers to the next runs. Once orq
+is back, <code>maestro runs --all</code> shows the newest run it knows. Move the
+directories of runs numbered above it, <code>/maestro/data/&lt;user&gt;/&lt;run&gt;</code>, out
+of <code>/maestro/data</code> before new runs take those numbers.</li>
+<li>A line that was running when the copy was made, and ended after, is
+ended as <code>error</code>, with "the container disappeared from <machine>". Its
+container was removed after orq collected it, so orq can't collect it
+again.</li>
+<li>A run deleted after the copy is listed again, without its files.</li>
+<li>A line that was waiting when the copy was made starts again, even if it
+ran after the copy.</li>
+<li>Builds, machines, settings, groups and Maestro keys changed after the
+copy go back to what they were. A key issued after the copy stops
+working, and a key revoked after it works again.</li>
 </ul>
 <h2 id="files-in-maestrodata"><a class="header" href="#files-in-maestrodata">Files, in <code>/maestro/data</code></a></h2>
 <p>orq keeps the logs and outputs of runs under <code>DATA_DIR</code>, which is
@@ -3231,6 +3288,8 @@ maestro.toml: outputs_layout "merged" must be "per-line" (each line's outputs ap
 <tr><td><code>MODE</code></td><td>empty</td><td><code>dev</code> serves swagger to anyone and allows session cookies over plain http. Otherwise only someone signed in on the Maestro page sees swagger.</td></tr>
 <tr><td><code>MAESTRO_ORQ_ADDR</code></td><td><code>:8081</code></td><td>Where orq listens. The compose file uses <code>:3005</code>.</td></tr>
 <tr><td><code>MAESTRO_ORQ_DB</code></td><td><code>maestro-orq.db</code></td><td>The SQLite database</td></tr>
+<tr><td><code>DB_BACKUP_DIR</code></td><td>empty</td><td>Where orq writes a copy of the database every day, as <code>maestro-orq-&lt;date&gt;.db</code>. When empty, orq makes no copies. See <a href="reference/../admin/retention.html#backing-up-the-database">Backing up the database</a>.</td></tr>
+<tr><td><code>DB_BACKUPS_KEPT</code></td><td><code>7</code></td><td>How many copies orq keeps in <code>DB_BACKUP_DIR</code>. It removes the oldest beyond that. <code>0</code> keeps every copy.</td></tr>
 <tr><td><code>ALLOWED_ORIGINS</code></td><td>required</td><td>The origins of the Maestro page, separated by commas, for CORS</td></tr>
 <tr><td><code>VIEW_URL</code></td><td>The first of <code>ALLOWED_ORIGINS</code></td><td>Where the Maestro page is served. Sign-ins return there.</td></tr>
 <tr><td><code>PODMAN_SOCKET</code></td><td><code>unix:///run/podman/podman.sock</code></td><td>orq's own Podman, which builds images</td></tr>

@@ -240,7 +240,7 @@ to the lines that were running.</p>
 <h2 id="what-orq-needs"><a class="header" href="#what-orq-needs">What orq needs</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Need</th><th>Detail</th></tr></thead><tbody>
 <tr><td>Its own Podman</td><td>Reached through <code>PODMAN_SOCKET</code>, to build images. The compose file mounts the host user's socket.</td></tr>
-<tr><td>Two volumes</td><td><code>/data</code> for the SQLite database, and <code>/maestro/data</code> for the logs and outputs of runs. The second grows with every run.</td></tr>
+<tr><td>Three volumes</td><td><code>/data</code> for the SQLite database, <code>/backups</code> for its daily copies, and <code>/maestro/data</code> for the logs and outputs of runs. The last grows with every run.</td></tr>
 <tr><td>Redis</td><td>At <code>REDIS_URL</code>, with a password. See <a href="#redis">Redis</a>.</td></tr>
 <tr><td>An identity provider</td><td>See <a href="identity.html">The identity provider</a>.</td></tr>
 <tr><td><code>MACHINE_SECRET</code></td><td>At least 32 characters. It encrypts the machines' SSH keys. See <a href="machines.html">Adding machines</a>.</td></tr>

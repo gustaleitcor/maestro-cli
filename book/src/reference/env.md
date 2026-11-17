@@ -7,6 +7,8 @@
 | `MODE` | empty | `dev` serves swagger to anyone and allows session cookies over plain http. Otherwise only someone signed in on the Maestro page sees swagger. |
 | `MAESTRO_ORQ_ADDR` | `:8081` | Where orq listens. The compose file uses `:3005`. |
 | `MAESTRO_ORQ_DB` | `maestro-orq.db` | The SQLite database |
+| `DB_BACKUP_DIR` | empty | Where orq writes a copy of the database every day, as `maestro-orq-<date>.db`. When empty, orq makes no copies. See [Backing up the database](../admin/retention.md#backing-up-the-database). |
+| `DB_BACKUPS_KEPT` | `7` | How many copies orq keeps in `DB_BACKUP_DIR`. It removes the oldest beyond that. `0` keeps every copy. |
 | `ALLOWED_ORIGINS` | required | The origins of the Maestro page, separated by commas, for CORS |
 | `VIEW_URL` | The first of `ALLOWED_ORIGINS` | Where the Maestro page is served. Sign-ins return there. |
 | `PODMAN_SOCKET` | `unix:///run/podman/podman.sock` | orq's own Podman, which builds images |

@@ -20,7 +20,20 @@ behind.
 ### Backing up the database
 
 The database is `MAESTRO_ORQ_DB`, which the compose file puts at
-`/data/maestro-orq.db` in the `maestro-orq-data` volume. orq opens it in WAL
+`/data/maestro-orq.db` in the `maestro-orq-data` volume.
+
+When `DB_BACKUP_DIR` is set, orq backs the database up there on its own.
+It writes the first copy a minute after it starts, and another every 24
+hours after that. Each copy is named after the day it was made, in UTC,
+such as `maestro-orq-2026-11-16.db`, and a second copy on the same day
+replaces the first. orq writes it with SQLite's `VACUUM INTO`, which is safe
+while orq runs. It keeps the 7 newest copies and removes the older ones.
+`DB_BACKUPS_KEPT` changes the number, and `0` keeps every copy. The compose
+file sets `DB_BACKUP_DIR` to `/backups`, in the `maestro-orq-backups`
+volume. That volume is on the same server as the database, so copy its
+files off the server too.
+
+You can also back the database up yourself. orq opens the database in WAL
 mode, so the latest writes sit in `maestro-orq.db-wal` beside it until
 SQLite moves them into the database. A copy of `maestro-orq.db` alone can
 miss them. Back the database up in one of two ways:
@@ -29,6 +42,55 @@ miss them. Back the database up in one of two ways:
   consistently: `sqlite3 maestro-orq.db ".backup maestro-orq-backup.db"`.
 - Stop orq, then copy `maestro-orq.db` together with `maestro-orq.db-wal`
   and `maestro-orq.db-shm`, if they are there.
+
+### Restoring a backup
+
+1. Stop orq:
+
+   ```sh
+   podman compose stop orq
+   ```
+
+2. Put the database aside with its `-wal` and `-shm` files, and copy the
+   backup in its place. Leave no `-wal` file of the old database beside
+   the copy, because SQLite would read it as part of the copy.
+
+   ```sh
+   podman compose run --rm --entrypoint sh orq -c '
+     mkdir -p /data/before-restore &&
+     mv /data/maestro-orq.db* /data/before-restore/ &&
+     cp /backups/maestro-orq-2026-11-16.db /data/maestro-orq.db'
+   ```
+
+3. Start orq:
+
+   ```sh
+   podman compose start orq
+   ```
+
+   If the copy was made by an older orq, orq brings the database up to
+   date as it starts, as it does after an update.
+
+The copy holds the database and nothing else. The logs and outputs of runs
+aren't in it, and a restore leaves `/maestro/data` as it is. A restore
+loses everything orq wrote to the database after the copy was made:
+
+- Runs started after the copy aren't in it, and orq doesn't list them.
+  Their files stay in `/maestro/data` and count toward their owners'
+  `USER_DATA_MAX_GB`. orq gives their numbers to the next runs. Once orq
+  is back, `maestro runs --all` shows the newest run it knows. Move the
+  directories of runs numbered above it, `/maestro/data/<user>/<run>`, out
+  of `/maestro/data` before new runs take those numbers.
+- A line that was running when the copy was made, and ended after, is
+  ended as `error`, with "the container disappeared from <machine>". Its
+  container was removed after orq collected it, so orq can't collect it
+  again.
+- A run deleted after the copy is listed again, without its files.
+- A line that was waiting when the copy was made starts again, even if it
+  ran after the copy.
+- Builds, machines, settings, groups and Maestro keys changed after the
+  copy go back to what they were. A key issued after the copy stops
+  working, and a key revoked after it works again.
 
 ## Files, in `/maestro/data`
 
