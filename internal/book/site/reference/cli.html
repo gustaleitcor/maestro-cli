@@ -690,6 +690,7 @@ run=$(maestro run 12 -q) &amp;&amp; maestro runs show "$run" --watch
 <li><a href="#maestro-runs-get">maestro runs get</a>: Download the files kept from a run</li>
 <li><a href="#maestro-runs-list">maestro runs list</a>: List your runs</li>
 <li><a href="#maestro-runs-logs">maestro runs logs</a>: Print what a line's container wrote to standard output and standard error</li>
+<li><a href="#maestro-runs-retry">maestro runs retry</a>: Run some of a run's lines again, in a new run of the same build</li>
 <li><a href="#maestro-runs-rm">maestro runs rm</a>: Delete a finished run and the files kept from it</li>
 <li><a href="#maestro-runs-show">maestro runs show</a>: Show each line of a run: where it ran, how it ended, what it kept</li>
 </ul>
@@ -757,6 +758,31 @@ maestro runs logs 31 2 &gt;/dev/null    # only what it printed to standard error
 <p>Flags:</p>
 <pre><code class="language-text">  -f, --follow   wait for the line to start, and follow what it prints until it ends
       --tail n   only the last n lines of a line still running (default: all)
+</code></pre>
+<h2 id="maestro-runs-retry"><a class="header" href="#maestro-runs-retry">maestro runs retry</a></h2>
+<p>Run some of a run's lines again, in a new run of the same build.</p>
+<pre><code class="language-text">maestro runs retry &lt;run&gt; [flags]
+</code></pre>
+<p>Queues a new run of the same build with some of the run's lines. Each
+line runs with the arguments, cores, memory, environment and outputs it had,
+and keeps its number, so line 2 of the new run is line 2 of the old one.</p>
+<p>Without --line, it takes the lines that failed, ended in an error or were
+cancelled, as --failed does. With --line, it takes exactly the lines you
+name, whatever their status, so you can run a line that succeeded again
+too. A line still waiting or running can't run again until it ends.</p>
+<p>With --watch, it follows the new run until the run is over, as
+<code>maestro run --watch</code> does.</p>
+<p>Examples:</p>
+<pre><code class="language-sh">maestro runs retry 31
+maestro runs retry 31 --line 2 --watch
+</code></pre>
+<p>Flags:</p>
+<pre><code class="language-text">      --failed              the lines that failed, ended in an error or were cancelled (the default)
+  -n, --interval duration   how often to redraw with --watch, at least 1s (default 2s)
+      --json                print the queued run as JSON, and nothing else on standard output
+      --line n              line n (again for more)
+  -q, --quiet               print only the number of the queued run, and nothing else on standard output
+  -w, --watch               follow the new run until it is over, and exit with status 1 if it failed
 </code></pre>
 <h2 id="maestro-runs-rm"><a class="header" href="#maestro-runs-rm">maestro runs rm</a></h2>
 <p>Delete a finished run and the files kept from it.</p>

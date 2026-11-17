@@ -326,3 +326,41 @@ func TestRunsGetShared(t *testing.T) {
 		t.Errorf("summary.txt downloaded %d times, want once", summaries)
 	}
 }
+
+// A retry sends the lines named, or none for the failed ones, and answers
+// as `maestro run` does.
+func TestRunsRetry(t *testing.T) {
+	var bodies []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/runs/31/retry" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		body, _ := io.ReadAll(r.Body)
+		bodies = append(bodies, strings.TrimSpace(string(body)))
+		w.WriteHeader(http.StatusCreated)
+		fmt.Fprint(w, `{"id": 32, "build_id": 12, "retry_of": 31, "status": "queued", "line_detail": [{"line": 2, "status": "queued"}]}`)
+	}))
+	defer srv.Close()
+	t.Setenv("MAESTRO_ORQ_URL", srv.URL)
+	runsFlags(t, false, false, false)
+	t.Cleanup(func() { runsQuiet, runsRetryFailed, runsRetryLines = false, false, nil })
+
+	got, err := stdout(t, func() error { return runRunsRetry(background(), []string{"31"}) })
+	if err != nil || !strings.Contains(got, "Queued run 32 of build #12, a retry of run 31: 1 line(s)") {
+		t.Errorf("printed %q, %v", got, err)
+	}
+	runsQuiet, runsRetryLines = true, []int64{2, 5}
+	got, err = stdout(t, func() error { return runRunsRetry(background(), []string{"31"}) })
+	if err != nil || got != "32\n" {
+		t.Errorf("-q printed %q, %v", got, err)
+	}
+	if !reflect.DeepEqual(bodies, []string{`{}`, `{"lines":[2,5]}`}) {
+		t.Errorf("sent %q", bodies)
+	}
+
+	runsRetryFailed = true
+	if err := runRunsRetry(background(), []string{"31"}); err == nil || !strings.Contains(err.Error(), "pick one") {
+		t.Errorf("--failed with --line: %v", err)
+	}
+}

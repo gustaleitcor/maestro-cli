@@ -39,6 +39,9 @@ var (
 	runsFailed     bool
 	runsGetLines   []int64
 	runsGetForce   bool
+
+	runsRetryFailed bool
+	runsRetryLines  []int64
 )
 
 // followPoll is how often runs logs -f looks whether a line has started.
@@ -125,6 +128,27 @@ var runsCancelCmd = &cobra.Command{
 	RunE:              runRunsCancel,
 }
 
+var runsRetryCmd = &cobra.Command{
+	Use:   "retry <run>",
+	Short: "Run some of a run's lines again, in a new run of the same build",
+	Long: `Queues a new run of the same build with some of the run's lines. Each
+line runs with the arguments, cores, memory, environment and outputs it had,
+and keeps its number, so line 2 of the new run is line 2 of the old one.
+
+Without --line, it takes the lines that failed, ended in an error or were
+cancelled, as --failed does. With --line, it takes exactly the lines you
+name, whatever their status, so you can run a line that succeeded again
+too. A line still waiting or running can't run again until it ends.
+
+With --watch, it follows the new run until the run is over, as
+` + "`maestro run --watch`" + ` does.`,
+	Example: `  maestro runs retry 31
+  maestro runs retry 31 --line 2 --watch`,
+	Args:              cobra.MatchAll(numberArgs(1, 1, "run"), flagCheck(checkWatch)),
+	ValidArgsFunction: completeRuns,
+	RunE:              runRunsRetry,
+}
+
 var runsRmCmd = &cobra.Command{
 	Use:               "rm <run>",
 	Aliases:           []string{"remove"},
@@ -153,9 +177,14 @@ func init() {
 	// no other empty slice.
 	runsGetCmd.Flags().Lookup("line").DefValue = ""
 	runsGetCmd.Flags().BoolVar(&runsGetForce, "force", false, "download over a run already downloaded there")
+	addWatchFlags(runsRetryCmd, "follow the new run until it is over, and exit with status 1 if it failed")
+	runsRetryCmd.Flags().BoolVar(&runsRetryFailed, "failed", false, "the lines that failed, ended in an error or were cancelled (the default)")
+	runsRetryCmd.Flags().Int64SliceVar(&runsRetryLines, "line", nil, "line `n` (again for more)")
+	runsRetryCmd.Flags().Lookup("line").DefValue = ""
+	addAnswerFlags(runsRetryCmd, "the queued run")
 	rootCmd.AddCommand(runsCmd)
 	addYesFlag(runsRmCmd)
-	runsCmd.AddCommand(runsListCmd, runsShowCmd, runsLogsCmd, runsGetCmd, runsCancelCmd, runsRmCmd)
+	runsCmd.AddCommand(runsListCmd, runsShowCmd, runsLogsCmd, runsGetCmd, runsCancelCmd, runsRetryCmd, runsRmCmd)
 }
 
 // addWatchFlags gives a command --watch and --interval, for whatever ends
@@ -402,7 +431,11 @@ func writeRunShow(out io.Writer, run *maestroapi.Run, onlyFailed bool) error {
 	if len(run.Machines) > 0 {
 		where = strings.Join(run.Machines, ", ")
 	}
-	fmt.Fprintf(out, "Run %d of %s@%s (build #%d): %s, on %s\n", run.ID, run.Repo, run.Ref, run.BuildID, run.Status, where)
+	retry := ""
+	if run.RetryOf != 0 {
+		retry = fmt.Sprintf(", a retry of run %d", run.RetryOf)
+	}
+	fmt.Fprintf(out, "Run %d of %s@%s (build #%d%s): %s, on %s\n", run.ID, run.Repo, run.Ref, run.BuildID, retry, run.Status, where)
 	if len(run.LocalFiles) > 0 {
 		fmt.Fprintln(out, dimStyle.Render(fmt.Sprintf("Lines from your %s, not the build's.", strings.Join(run.LocalFiles, ", "))))
 	}
@@ -509,6 +542,10 @@ func pickLine(run *maestroapi.Run, args []string) (maestroapi.RunLine, error) {
 			return run.Detail[0], nil
 		}
 		first, last := run.Detail[0].Line, run.Detail[len(run.Detail)-1].Line
+		if last-first+1 != int64(len(run.Detail)) {
+			// A retry keeps the numbers of the lines it runs again.
+			return maestroapi.RunLine{}, usageError(fmt.Errorf("run %d has %d lines, numbered from %d to %d with gaps, which `maestro runs show %d` lists; name one, as in `maestro runs logs %d <line>`", run.ID, len(run.Detail), first, last, run.ID, run.ID))
+		}
 		return maestroapi.RunLine{}, usageError(fmt.Errorf("run %d has %d lines, numbered %d to %d; name one, as in `maestro runs logs %d <line>`", run.ID, len(run.Detail), first, last, run.ID))
 	}
 	line, err := parseID(args[0], "line")
@@ -784,6 +821,28 @@ func runRunsCancel(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println(successStyle.Render(fmt.Sprintf("Cancelled run %d.", id)) + " Its running containers stop soon, and Maestro keeps their files.")
 	return nil
+}
+
+func runRunsRetry(cmd *cobra.Command, args []string) error {
+	id, err := parseID(args[0], "run")
+	if err != nil {
+		return err
+	}
+	if err := checkWatch(); err != nil {
+		return err
+	}
+	if runsRetryFailed && len(runsRetryLines) > 0 {
+		return usageError(fmt.Errorf("--failed takes the lines that didn't succeed and --line the lines you name; pick one"))
+	}
+	run, err := maestroapi.RetryRun(cmd.Context(), maestroKey, id, runsRetryLines)
+	if err != nil {
+		return err
+	}
+	sayQueued(run)
+	if runsWatch {
+		return showRun(cmd.Context(), run.ID, true)
+	}
+	return printAnswer(run, run.ID)
 }
 
 func runRunsRm(cmd *cobra.Command, args []string) error {

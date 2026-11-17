@@ -133,6 +133,9 @@ type Run struct {
 	Lines      map[string]int `json:"lines"`
 	CreatedAt  time.Time      `json:"created_at"`
 	Detail     []RunLine      `json:"line_detail"`
+
+	// RetryOf is the run whose lines it runs again; 0 for a run of its own.
+	RetryOf int64 `json:"retry_of,omitempty"`
 }
 
 // RunLine is one container of a run. Status is queued (in its user's
@@ -483,6 +486,19 @@ func ListRuns(ctx context.Context, maestroKey string, all bool) ([]Run, error) {
 
 func CancelRun(ctx context.Context, maestroKey string, id int64) error {
 	return doWithKey(ctx, maestroKey, http.MethodPost, runPath(id)+"/cancel", nil, http.StatusNoContent, nil)
+}
+
+// RetryRun queues a new run of a run's build with the lines named, or with
+// none named those that failed, ended in an error or were cancelled.
+func RetryRun(ctx context.Context, maestroKey string, id int64, lines []int64) (*Run, error) {
+	var run Run
+	body := struct {
+		Lines []int64 `json:"lines,omitempty"`
+	}{lines}
+	if err := doWithKey(ctx, maestroKey, http.MethodPost, runPath(id)+"/retry", body, http.StatusCreated, &run); err != nil {
+		return nil, err
+	}
+	return &run, nil
 }
 
 func DeleteRun(ctx context.Context, maestroKey string, id int64) error {

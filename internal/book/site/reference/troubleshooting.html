@@ -246,6 +246,11 @@ for lines. Ask for less, or allow more machines in <code>machines</code>.
 <p>You keep a limited number of images, and this one went to make room for a
 newer build, or you removed it with <code>maestro builds rm</code>. Build the commit
 again.</p>
+<h3 id="build-12-no-longer-has-its-image-build-it-again-with-maestro-build"><a class="header" href="#build-12-no-longer-has-its-image-build-it-again-with-maestro-build">"build #12 no longer has its image; build it again with <code>maestro build</code>"</a></h3>
+<p><code>maestro runs retry</code> runs lines again on the image they ran on, and that
+image is gone. It went to make room for a newer build, or you removed it.
+Build the commit again with <code>maestro build</code>, and start the lines with
+<code>maestro run</code> on the new build.</p>
 <h3 id="lines-wait-for-a-long-time"><a class="header" href="#lines-wait-for-a-long-time">Lines wait for a long time</a></h3>
 <p>See <a href="../how/queue.html#why-a-line-is-waiting">Why a line is waiting</a>.</p>
 <h3 id="a-line-ends-failed"><a class="header" href="#a-line-ends-failed">A line ends <code>failed</code></a></h3>

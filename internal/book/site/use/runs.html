@@ -189,6 +189,7 @@ maestro runs show 31            # the lines of run 31
 maestro runs logs 31 2          # what line 2 printed
 maestro runs get 31             # download the outputs and logs
 maestro runs cancel 31          # stop it
+maestro runs retry 31           # run its failed lines again
 maestro runs rm 31              # delete it and its files
 </code></pre>
 <h2 id="listing-your-runs"><a class="header" href="#listing-your-runs">Listing your runs</a></h2>
@@ -209,7 +210,9 @@ LINE  PARAMETERS      MACHINE  STATUS           FILES
 2     -t ten out.txt  Q2       failed (exit 2)  out.txt (missing)
 </code></pre>
 <p><code>maestro runs show</code> with no number shows your newest run. <code>--failed</code> leaves
-only the lines that failed, ended in an error, or were cancelled.</p>
+only the lines that failed, ended in an error, or were cancelled. A run made
+by <code>maestro runs retry</code> says which run it retries, as in
+<code>Run 34 of ada/maestro-template@main (build #14, a retry of run 33)</code>.</p>
 <h2 id="following-a-run"><a class="header" href="#following-a-run">Following a run</a></h2>
 <p><code>--watch</code> redraws the output in place every 2 seconds, or as often as
 <code>--interval</code> says. It works on <code>maestro run</code>, <code>maestro runs show</code> and
@@ -238,6 +241,23 @@ were interleaved.</p>
 directory named after the run. <a href="results.html">What a line leaves behind</a>
 describes the layout. <code>--line</code> picks lines, a second argument picks the
 directory, and <code>--force</code> downloads over a run that is already there.</p>
+<h2 id="running-lines-again"><a class="header" href="#running-lines-again">Running lines again</a></h2>
+<p><code>maestro runs retry &lt;run&gt;</code> queues a new run of the same build with some of
+the run's lines. Each line runs with the arguments, cores, memory,
+environment and outputs it had. It keeps its number too, so line 2 of the
+new run is line 2 of the old one, and the new run's lines can skip numbers.</p>
+<pre><code class="language-sh">maestro runs retry 33                   # the lines that didn't succeed
+maestro runs retry 33 --line 2 --watch  # line 2, whatever its status
+</code></pre>
+<p>Without <code>--line</code>, it takes the lines that failed, ended in an error or were
+cancelled, as <code>--failed</code> does. With <code>--line</code>, again for more, it takes
+exactly the lines you name, including one that succeeded. A line still
+waiting or running can't run again, and the command says which status it
+has. Like <code>maestro run</code>, it takes <code>--watch</code>, <code>-q</code> and <code>--json</code>.</p>
+<p>The new run needs the build's image. When the image is gone, build the
+commit again with <code>maestro build</code>.</p>
+<p>On the Maestro page, a line's details have a "Run again" button that does
+the same for that one line.</p>
 <h2 id="cancelling-and-deleting"><a class="header" href="#cancelling-and-deleting">Cancelling and deleting</a></h2>
 <p><code>maestro runs cancel &lt;run&gt;</code> drops the lines that haven't started and stops
 the ones that are running. Lines that had already ended keep their status.</p>
@@ -256,8 +276,8 @@ length. When a line runs longer, Maestro stops it, keeps its logs and
 outputs, and ends it as <code>error</code> with the note "stopped after 168 hours, the
 longest a line may run on this server".</p>
 <p>Any other <code>error</code> comes from the system and says nothing about your
-program. The Maestro page shows such lines in amber with the reason, and you
-can run them again.</p>
+program. The Maestro page shows such lines in amber with the reason, and
+<code>maestro runs retry</code> runs them again.</p>
 <p>A machine that stops answering doesn't turn its waiting lines into errors.
 Maestro moves them back to <code>queued</code> so another machine can take them. Lines
 already running on that machine are left alone and checked again when it

@@ -182,7 +182,11 @@ func sayQueued(run *maestroapi.Run) {
 	if len(run.Machines) > 0 {
 		where = strings.Join(run.Machines, ", ")
 	}
-	fmt.Fprintf(out, "%s run %d of build #%d: %d line(s) on %s.\n", successStyle.Render("Queued"), run.ID, run.BuildID, len(run.Detail), where)
+	retry := ""
+	if run.RetryOf != 0 {
+		retry = fmt.Sprintf(", a retry of run %d", run.RetryOf)
+	}
+	fmt.Fprintf(out, "%s run %d of build #%d%s: %d line(s) on %s.\n", successStyle.Render("Queued"), run.ID, run.BuildID, retry, len(run.Detail), where)
 	if len(run.Outputs) > 0 {
 		fmt.Fprintf(out, "Keeping %s from each container.\n", strings.Join(run.Outputs, ", "))
 	}

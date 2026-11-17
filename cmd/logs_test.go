@@ -127,8 +127,11 @@ func TestPickLine(t *testing.T) {
 	several := &maestroapi.Run{ID: 31, Detail: []maestroapi.RunLine{{Line: 1}, {Line: 2}, {Line: 8}}}
 	_, err := pickLine(several, nil)
 	var exit *exitError
-	if !errors.As(err, &exit) || exit.code != exitUsage || !strings.Contains(err.Error(), "run 31 has 3 lines, numbered 1 to 8") {
+	if !errors.As(err, &exit) || exit.code != exitUsage || !strings.Contains(err.Error(), "run 31 has 3 lines, numbered from 1 to 8 with gaps") {
 		t.Errorf("several lines: %v", err)
+	}
+	if _, err := pickLine(&maestroapi.Run{ID: 31, Detail: []maestroapi.RunLine{{Line: 1}, {Line: 2}}}, nil); err == nil || !strings.Contains(err.Error(), "numbered 1 to 2;") {
+		t.Errorf("two lines: %v", err)
 	}
 	if l, err := pickLine(several, []string{"2"}); err != nil || l.Line != 2 {
 		t.Errorf("line 2: %+v, %v", l, err)

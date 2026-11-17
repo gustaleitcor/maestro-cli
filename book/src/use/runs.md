@@ -11,6 +11,7 @@ maestro runs show 31            # the lines of run 31
 maestro runs logs 31 2          # what line 2 printed
 maestro runs get 31             # download the outputs and logs
 maestro runs cancel 31          # stop it
+maestro runs retry 31           # run its failed lines again
 maestro runs rm 31              # delete it and its files
 ```
 
@@ -39,7 +40,9 @@ LINE  PARAMETERS      MACHINE  STATUS           FILES
 ```
 
 `maestro runs show` with no number shows your newest run. `--failed` leaves
-only the lines that failed, ended in an error, or were cancelled.
+only the lines that failed, ended in an error, or were cancelled. A run made
+by `maestro runs retry` says which run it retries, as in
+`Run 34 of ada/maestro-template@main (build #14, a retry of run 33)`.
 
 ## Following a run
 
@@ -81,6 +84,30 @@ directory named after the run. [What a line leaves behind](results.md)
 describes the layout. `--line` picks lines, a second argument picks the
 directory, and `--force` downloads over a run that is already there.
 
+## Running lines again
+
+`maestro runs retry <run>` queues a new run of the same build with some of
+the run's lines. Each line runs with the arguments, cores, memory,
+environment and outputs it had. It keeps its number too, so line 2 of the
+new run is line 2 of the old one, and the new run's lines can skip numbers.
+
+```sh
+maestro runs retry 33                   # the lines that didn't succeed
+maestro runs retry 33 --line 2 --watch  # line 2, whatever its status
+```
+
+Without `--line`, it takes the lines that failed, ended in an error or were
+cancelled, as `--failed` does. With `--line`, again for more, it takes
+exactly the lines you name, including one that succeeded. A line still
+waiting or running can't run again, and the command says which status it
+has. Like `maestro run`, it takes `--watch`, `-q` and `--json`.
+
+The new run needs the build's image. When the image is gone, build the
+commit again with `maestro build`.
+
+On the Maestro page, a line's details have a "Run again" button that does
+the same for that one line.
+
 ## Cancelling and deleting
 
 `maestro runs cancel <run>` drops the lines that haven't started and stops
@@ -104,8 +131,8 @@ outputs, and ends it as `error` with the note "stopped after 168 hours, the
 longest a line may run on this server".
 
 Any other `error` comes from the system and says nothing about your
-program. The Maestro page shows such lines in amber with the reason, and you
-can run them again.
+program. The Maestro page shows such lines in amber with the reason, and
+`maestro runs retry` runs them again.
 
 A machine that stops answering doesn't turn its waiting lines into errors.
 Maestro moves them back to `queued` so another machine can take them. Lines

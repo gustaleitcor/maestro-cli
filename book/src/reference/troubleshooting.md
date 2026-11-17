@@ -94,6 +94,13 @@ You keep a limited number of images, and this one went to make room for a
 newer build, or you removed it with `maestro builds rm`. Build the commit
 again.
 
+### "build #12 no longer has its image; build it again with `maestro build`"
+
+`maestro runs retry` runs lines again on the image they ran on, and that
+image is gone. It went to make room for a newer build, or you removed it.
+Build the commit again with `maestro build`, and start the lines with
+`maestro run` on the new build.
+
 ### Lines wait for a long time
 
 See [Why a line is waiting](../how/queue.md#why-a-line-is-waiting).
