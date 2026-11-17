@@ -17,6 +17,7 @@
 | `RUN_PIDS` | `512` | The limit on processes in each container. `0` means no limit. |
 | `REDIS_URL` | required | `redis://[:password@]host:port/db` of a Redis, Valkey or KeyDB |
 | `SESSION_TTL` | `12h` | How long a session of the Maestro page lasts |
+| `KEY_TTL` | `2160h` (90 days) | How long a Maestro key works after it was issued. `0` means keys never expire. |
 | `COOKIE_SECURE` | `true`, or `false` with `MODE=dev` | Set it to `false` only when you serve over plain http. |
 | `OIDC_ISSUER` | required | The issuer URL. It must serve `/.well-known/openid-configuration`. |
 | `OIDC_CLIENT_ID` | required | |

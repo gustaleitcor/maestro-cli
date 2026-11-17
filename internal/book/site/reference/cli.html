@@ -487,8 +487,10 @@ maestro forges add work --kind forgejo --url https://git.example.com
 </code></pre>
 <p>Lists the Maestro keys you have on the server, newest first. Each
 <code>maestro login</code> issues one, on whichever computer you run it. A key is shown by
-its prefix, the first 10 characters, and never in full. The one this
-computer uses is marked.</p>
+its prefix, the first 10 characters, and never in full, with when it was
+created and when it expires. The one this computer uses is marked.</p>
+<p>A key expires 90 days after it was issued, unless your administrator set
+another length. Run <code>maestro login</code> again for a new one.</p>
 <p>Examples:</p>
 <pre><code class="language-sh">maestro keys
 maestro keys rm mk_Q3xv9aZ

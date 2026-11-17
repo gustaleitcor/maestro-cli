@@ -28,6 +28,7 @@ Then configure orq with these variables:
 | `VIEW_URL` | The first of `ALLOWED_ORIGINS` | Where the Maestro page is served. Sign-ins return there. |
 | `REDIS_URL` | required | `redis://[:password@]host:port/db` of the Redis, Valkey or KeyDB that keeps sessions |
 | `SESSION_TTL` | `12h` | How long a Maestro session lasts |
+| `KEY_TTL` | `2160h` (90 days) | How long a Maestro key works after it was issued. `0` means keys never expire. |
 | `COOKIE_SECURE` | `true`, or `false` with `MODE=dev` | Set it to `false` only when you serve over plain http. |
 
 The page needs `VITE_ORQ_URL`, and optionally `VITE_IDP_NAME` for the label
@@ -62,7 +63,8 @@ session running until it expires.
 
 The CLI doesn't use sessions. `maestro login` has the user approve a code on
 the page, and orq then gives the CLI a Maestro key of its own. orq stores
-only the key's hash.
+only the key's hash. A key expires `KEY_TTL` after it was issued, 90 days by
+default.
 
 A key can be revoked three ways. Its owner revokes it with `maestro keys rm`,
 `maestro logout` revokes the key it holds, and an administrator revokes every
@@ -71,5 +73,5 @@ at once.
 
 Whether a user is an administrator is read from their row in `users` on every
 request. That row is as fresh as their last sign-in on the page. A user
-removed at the identity provider keeps a working key until it is revoked, so
-revoke their keys when you remove them.
+removed at the identity provider keeps a working key for at most `KEY_TTL`,
+so revoke their keys when you remove them.

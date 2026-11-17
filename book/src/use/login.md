@@ -23,6 +23,10 @@ maestro login
 link, sign in there if the page asks, and approve the code. The CLI then
 receives a key of its own and uses it for every command.
 
+A key expires 90 days after it was issued, unless your administrator set
+another length. After that, commands say "this Maestro key expired; run
+`maestro login`", and `maestro login` gives you a new one.
+
 The CLI doesn't open the link for you. You can open it in a browser on
 another computer, which is how you sign in on a machine you reach over SSH.
 
@@ -69,8 +73,8 @@ on. To see the keys you have:
 maestro keys
 ```
 
-It lists each key by its prefix, the first 10 characters, and when it was
-created. It marks the key this computer uses.
+It lists each key by its prefix, the first 10 characters, with when it was
+created and when it expires. It marks the key this computer uses.
 
 If you no longer trust a computer you signed in on, revoke its key from
 another one:

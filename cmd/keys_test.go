@@ -17,13 +17,14 @@ func TestWriteKeysList(t *testing.T) {
 
 	out.Reset()
 	created := time.Date(2026, 10, 7, 9, 30, 0, 0, time.Local)
-	keys := []maestroapi.Key{{Prefix: "mk_zzzzzzz", CreatedAt: created}, {Prefix: "mk_abcdefg", CreatedAt: created}}
+	expires := created.AddDate(0, 0, 90)
+	keys := []maestroapi.Key{{Prefix: "mk_zzzzzzz", CreatedAt: created}, {Prefix: "mk_abcdefg", CreatedAt: created, ExpiresAt: expires}}
 	if err := writeKeysList(&out, keys, "mk_abcdefghijkl"); err != nil {
 		t.Fatal(err)
 	}
 	wantTable(t, strings.TrimSuffix(out.String(), "\n"), [][]string{
-		{"KEY", "CREATED"},
-		{"mk_zzzzzzz", "2026-10-07", "09:30"},
-		{"mk_abcdefg", "2026-10-07", "09:30", "this", "computer"},
+		{"KEY", "CREATED", "EXPIRES"},
+		{"mk_zzzzzzz", "2026-10-07", "09:30", "never"},
+		{"mk_abcdefg", "2026-10-07", "09:30", "2027-01-05", "09:30", "this", "computer"},
 	})
 }

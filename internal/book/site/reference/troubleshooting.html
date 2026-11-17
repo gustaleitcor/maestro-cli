@@ -190,6 +190,10 @@ pass <code>--server</code>, or set <code>MAESTRO_ORQ_URL</code>.</p>
 <p><code>--server</code> or <code>MAESTRO_ORQ_URL</code> points the command at a server other than
 the one that issued your key. Run the <code>maestro login --server</code> command the
 message gives. It forgets the key you had for the other server.</p>
+<h3 id="this-maestro-key-expired-run-maestro-login"><a class="header" href="#this-maestro-key-expired-run-maestro-login">"this Maestro key expired; run <code>maestro login</code>"</a></h3>
+<p>A Maestro key works for 90 days after it was issued, unless your
+administrator set another length (<code>KEY_TTL</code>). Run <code>maestro login</code> for a new
+key. <code>maestro keys</code> shows when each of your keys expires.</p>
 <h3 id="the-keyring-asks-for-a-password-every-time-or-there-is-no-keyring"><a class="header" href="#the-keyring-asks-for-a-password-every-time-or-there-is-no-keyring">The keyring asks for a password every time, or there is no keyring</a></h3>
 <p>Sign in with <code>maestro login --store-in-file</code>, which keeps the key in the
 CLI's config file.</p>

@@ -19,8 +19,11 @@ var keysCmd = &cobra.Command{
 	Short: "List and revoke your Maestro keys",
 	Long: `Lists the Maestro keys you have on the server, newest first. Each
 ` + "`maestro login`" + ` issues one, on whichever computer you run it. A key is shown by
-its prefix, the first 10 characters, and never in full. The one this
-computer uses is marked.`,
+its prefix, the first 10 characters, and never in full, with when it was
+created and when it expires. The one this computer uses is marked.
+
+A key expires 90 days after it was issued, unless your administrator set
+another length. Run ` + "`maestro login`" + ` again for a new one.`,
 	Example: `  maestro keys
   maestro keys rm mk_Q3xv9aZ`,
 	Args:              nounArgs,
@@ -70,9 +73,13 @@ func writeKeysList(out io.Writer, keys []maestroapi.Key, current string) error {
 		return err
 	}
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "KEY\tCREATED")
+	fmt.Fprintln(w, "KEY\tCREATED\tEXPIRES")
 	for _, k := range keys {
-		fmt.Fprintf(w, "%s\t%s", k.Prefix, k.CreatedAt.Local().Format("2006-01-02 15:04"))
+		expires := "never"
+		if !k.ExpiresAt.IsZero() {
+			expires = k.ExpiresAt.Local().Format("2006-01-02 15:04")
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s", k.Prefix, k.CreatedAt.Local().Format("2006-01-02 15:04"), expires)
 		if strings.HasPrefix(current, k.Prefix) {
 			fmt.Fprint(w, "\tthis computer")
 		}

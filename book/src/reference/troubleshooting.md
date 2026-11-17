@@ -15,6 +15,12 @@ pass `--server`, or set `MAESTRO_ORQ_URL`.
 the one that issued your key. Run the `maestro login --server` command the
 message gives. It forgets the key you had for the other server.
 
+### "this Maestro key expired; run `maestro login`"
+
+A Maestro key works for 90 days after it was issued, unless your
+administrator set another length (`KEY_TTL`). Run `maestro login` for a new
+key. `maestro keys` shows when each of your keys expires.
+
 ### The keyring asks for a password every time, or there is no keyring
 
 Sign in with `maestro login --store-in-file`, which keeps the key in the

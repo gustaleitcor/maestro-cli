@@ -203,6 +203,7 @@ production orq is on the page's host, so the URI looks like
 <tr><td><code>VIEW_URL</code></td><td>The first of <code>ALLOWED_ORIGINS</code></td><td>Where the Maestro page is served. Sign-ins return there.</td></tr>
 <tr><td><code>REDIS_URL</code></td><td>required</td><td><code>redis://[:password@]host:port/db</code> of the Redis, Valkey or KeyDB that keeps sessions</td></tr>
 <tr><td><code>SESSION_TTL</code></td><td><code>12h</code></td><td>How long a Maestro session lasts</td></tr>
+<tr><td><code>KEY_TTL</code></td><td><code>2160h</code> (90 days)</td><td>How long a Maestro key works after it was issued. <code>0</code> means keys never expire.</td></tr>
 <tr><td><code>COOKIE_SECURE</code></td><td><code>true</code>, or <code>false</code> with <code>MODE=dev</code></td><td>Set it to <code>false</code> only when you serve over plain http.</td></tr>
 </tbody></table>
 </div>
@@ -230,15 +231,16 @@ in at the provider. Signing out at the provider leaves an open Maestro
 session running until it expires.</p>
 <p>The CLI doesn't use sessions. <code>maestro login</code> has the user approve a code on
 the page, and orq then gives the CLI a Maestro key of its own. orq stores
-only the key's hash.</p>
+only the key's hash. A key expires <code>KEY_TTL</code> after it was issued, 90 days by
+default.</p>
 <p>A key can be revoked three ways. Its owner revokes it with <code>maestro keys rm</code>,
 <code>maestro logout</code> revokes the key it holds, and an administrator revokes every
 key of a user with Revoke keys in Admin › Groups. A revoked key stops working
 at once.</p>
 <p>Whether a user is an administrator is read from their row in <code>users</code> on every
 request. That row is as fresh as their last sign-in on the page. A user
-removed at the identity provider keeps a working key until it is revoked, so
-revoke their keys when you remove them.</p>
+removed at the identity provider keeps a working key for at most <code>KEY_TTL</code>,
+so revoke their keys when you remove them.</p>
 
                     </main>
 

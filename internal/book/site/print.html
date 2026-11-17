@@ -927,6 +927,9 @@ is already open.</p>
 <p><code>maestro login</code> prints a link to the Maestro page and a short code. Open the
 link, sign in there if the page asks, and approve the code. The CLI then
 receives a key of its own and uses it for every command.</p>
+<p>A key expires 90 days after it was issued, unless your administrator set
+another length. After that, commands say "this Maestro key expired; run
+<code>maestro login</code>", and <code>maestro login</code> gives you a new one.</p>
 <p>The CLI doesn't open the link for you. You can open it in a browser on
 another computer, which is how you sign in on a machine you reach over SSH.</p>
 <h2 id="where-the-key-is-kept"><a class="header" href="#where-the-key-is-kept">Where the key is kept</a></h2>
@@ -955,8 +958,8 @@ which forges.</p>
 on. To see the keys you have:</p>
 <pre><code class="language-sh">maestro keys
 </code></pre>
-<p>It lists each key by its prefix, the first 10 characters, and when it was
-created. It marks the key this computer uses.</p>
+<p>It lists each key by its prefix, the first 10 characters, with when it was
+created and when it expires. It marks the key this computer uses.</p>
 <p>If you no longer trust a computer you signed in on, revoke its key from
 another one:</p>
 <pre><code class="language-sh">maestro keys rm mk_Q3xv9aZ
@@ -1882,6 +1885,7 @@ production orq is on the page's host, so the URI looks like
 <tr><td><code>VIEW_URL</code></td><td>The first of <code>ALLOWED_ORIGINS</code></td><td>Where the Maestro page is served. Sign-ins return there.</td></tr>
 <tr><td><code>REDIS_URL</code></td><td>required</td><td><code>redis://[:password@]host:port/db</code> of the Redis, Valkey or KeyDB that keeps sessions</td></tr>
 <tr><td><code>SESSION_TTL</code></td><td><code>12h</code></td><td>How long a Maestro session lasts</td></tr>
+<tr><td><code>KEY_TTL</code></td><td><code>2160h</code> (90 days)</td><td>How long a Maestro key works after it was issued. <code>0</code> means keys never expire.</td></tr>
 <tr><td><code>COOKIE_SECURE</code></td><td><code>true</code>, or <code>false</code> with <code>MODE=dev</code></td><td>Set it to <code>false</code> only when you serve over plain http.</td></tr>
 </tbody></table>
 </div>
@@ -1909,15 +1913,16 @@ in at the provider. Signing out at the provider leaves an open Maestro
 session running until it expires.</p>
 <p>The CLI doesn't use sessions. <code>maestro login</code> has the user approve a code on
 the page, and orq then gives the CLI a Maestro key of its own. orq stores
-only the key's hash.</p>
+only the key's hash. A key expires <code>KEY_TTL</code> after it was issued, 90 days by
+default.</p>
 <p>A key can be revoked three ways. Its owner revokes it with <code>maestro keys rm</code>,
 <code>maestro logout</code> revokes the key it holds, and an administrator revokes every
 key of a user with Revoke keys in Admin › Groups. A revoked key stops working
 at once.</p>
 <p>Whether a user is an administrator is read from their row in <code>users</code> on every
 request. That row is as fresh as their last sign-in on the page. A user
-removed at the identity provider keeps a working key until it is revoked, so
-revoke their keys when you remove them.</p>
+removed at the identity provider keeps a working key for at most <code>KEY_TTL</code>,
+so revoke their keys when you remove them.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="adding-machines"><a class="header" href="#adding-machines">Adding machines</a></h1>
 <p>A machine is a host whose Podman runs users' containers. orq connects to it
 over SSH and talks to the Podman socket through that connection. The
@@ -2577,8 +2582,10 @@ maestro forges add work --kind forgejo --url https://git.example.com
 </code></pre>
 <p>Lists the Maestro keys you have on the server, newest first. Each
 <code>maestro login</code> issues one, on whichever computer you run it. A key is shown by
-its prefix, the first 10 characters, and never in full. The one this
-computer uses is marked.</p>
+its prefix, the first 10 characters, and never in full, with when it was
+created and when it expires. The one this computer uses is marked.</p>
+<p>A key expires 90 days after it was issued, unless your administrator set
+another length. Run <code>maestro login</code> again for a new one.</p>
 <p>Examples:</p>
 <pre><code class="language-sh">maestro keys
 maestro keys rm mk_Q3xv9aZ
@@ -2989,6 +2996,7 @@ maestro.toml: outputs_layout "merged" must be "per-line" (each line's outputs ap
 <tr><td><code>RUN_PIDS</code></td><td><code>512</code></td><td>The limit on processes in each container. <code>0</code> means no limit.</td></tr>
 <tr><td><code>REDIS_URL</code></td><td>required</td><td><code>redis://[:password@]host:port/db</code> of a Redis, Valkey or KeyDB</td></tr>
 <tr><td><code>SESSION_TTL</code></td><td><code>12h</code></td><td>How long a session of the Maestro page lasts</td></tr>
+<tr><td><code>KEY_TTL</code></td><td><code>2160h</code> (90 days)</td><td>How long a Maestro key works after it was issued. <code>0</code> means keys never expire.</td></tr>
 <tr><td><code>COOKIE_SECURE</code></td><td><code>true</code>, or <code>false</code> with <code>MODE=dev</code></td><td>Set it to <code>false</code> only when you serve over plain http.</td></tr>
 <tr><td><code>OIDC_ISSUER</code></td><td>required</td><td>The issuer URL. It must serve <code>/.well-known/openid-configuration</code>.</td></tr>
 <tr><td><code>OIDC_CLIENT_ID</code></td><td>required</td><td></td></tr>
@@ -3042,6 +3050,10 @@ pass <code>--server</code>, or set <code>MAESTRO_ORQ_URL</code>.</p>
 <p><code>--server</code> or <code>MAESTRO_ORQ_URL</code> points the command at a server other than
 the one that issued your key. Run the <code>maestro login --server</code> command the
 message gives. It forgets the key you had for the other server.</p>
+<h3 id="this-maestro-key-expired-run-maestro-login"><a class="header" href="#this-maestro-key-expired-run-maestro-login">"this Maestro key expired; run <code>maestro login</code>"</a></h3>
+<p>A Maestro key works for 90 days after it was issued, unless your
+administrator set another length (<code>KEY_TTL</code>). Run <code>maestro login</code> for a new
+key. <code>maestro keys</code> shows when each of your keys expires.</p>
 <h3 id="the-keyring-asks-for-a-password-every-time-or-there-is-no-keyring"><a class="header" href="#the-keyring-asks-for-a-password-every-time-or-there-is-no-keyring">The keyring asks for a password every time, or there is no keyring</a></h3>
 <p>Sign in with <code>maestro login --store-in-file</code>, which keeps the key in the
 CLI's config file.</p>
@@ -3158,7 +3170,7 @@ terminal.</p>
 <tr><td>Generator</td><td>A Python script in the repository whose <code>genvrs</code> function yields lines.</td><td><a href="reference/../repo/generator.html">Generating lines with Python</a></td></tr>
 <tr><td>Outputs</td><td>The files <code>maestro.toml</code> names, copied out of each container when it ends. They are kept beside what the container printed, <code>stdout.log</code> and <code>stderr.log</code>. <code>maestro runs get</code> downloads all of it.</td><td><a href="reference/../use/results.html">What a line leaves behind</a></td></tr>
 <tr><td>Machine</td><td>A computer whose Podman runs the containers. Maestro reaches it over SSH. A line runs on one machine, the first allowed one that has room for its cores and memory.</td><td><a href="reference/../use/machines.html">Watching the machines</a></td></tr>
-<tr><td>Maestro key</td><td>What the CLI signs in with. <code>maestro login</code> has the server issue one for your computer, and the CLI sends it with every command. A key is shown by its prefix, its first 10 characters, such as <code>mk_Q3xv9aZ</code>. <code>maestro keys rm</code> revokes one, <code>maestro logout</code> revokes the one it holds, and an administrator can revoke all of a user's. A revoked key stops working at once.</td><td><a href="reference/../use/login.html#your-keys">Signing in</a></td></tr>
+<tr><td>Maestro key</td><td>What the CLI signs in with. <code>maestro login</code> has the server issue one for your computer, and the CLI sends it with every command. A key is shown by its prefix, its first 10 characters, such as <code>mk_Q3xv9aZ</code>. It expires 90 days after it was issued, unless your administrator set another length. <code>maestro keys rm</code> revokes one, <code>maestro logout</code> revokes the one it holds, and an administrator can revoke all of a user's. A revoked key stops working at once.</td><td><a href="reference/../use/login.html#your-keys">Signing in</a></td></tr>
 <tr><td>Group</td><td>A set of users. Groups take turns at the machines, so a lab of ten doesn't crowd out a lab of two. Everyone is in one group until an administrator makes more.</td><td><a href="reference/../admin/groups.html">Groups</a></td></tr>
 </tbody></table>
 </div>

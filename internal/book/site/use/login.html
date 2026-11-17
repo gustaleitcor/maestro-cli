@@ -195,6 +195,9 @@ is already open.</p>
 <p><code>maestro login</code> prints a link to the Maestro page and a short code. Open the
 link, sign in there if the page asks, and approve the code. The CLI then
 receives a key of its own and uses it for every command.</p>
+<p>A key expires 90 days after it was issued, unless your administrator set
+another length. After that, commands say "this Maestro key expired; run
+<code>maestro login</code>", and <code>maestro login</code> gives you a new one.</p>
 <p>The CLI doesn't open the link for you. You can open it in a browser on
 another computer, which is how you sign in on a machine you reach over SSH.</p>
 <h2 id="where-the-key-is-kept"><a class="header" href="#where-the-key-is-kept">Where the key is kept</a></h2>
@@ -223,8 +226,8 @@ which forges.</p>
 on. To see the keys you have:</p>
 <pre><code class="language-sh">maestro keys
 </code></pre>
-<p>It lists each key by its prefix, the first 10 characters, and when it was
-created. It marks the key this computer uses.</p>
+<p>It lists each key by its prefix, the first 10 characters, with when it was
+created and when it expires. It marks the key this computer uses.</p>
 <p>If you no longer trust a computer you signed in on, revoke its key from
 another one:</p>
 <pre><code class="language-sh">maestro keys rm mk_Q3xv9aZ

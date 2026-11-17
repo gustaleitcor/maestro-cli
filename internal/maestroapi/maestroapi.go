@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,6 +26,8 @@ var Server func() string
 type verifyKeyResponse struct {
 	Valid bool   `json:"valid"`
 	Email string `json:"email"`
+	// Error says why the key isn't valid.
+	Error string `json:"error"`
 }
 
 type CLILogin struct {
@@ -390,6 +393,9 @@ func VerifyKey(ctx context.Context, key string) (string, error) {
 		return "", fmt.Errorf("decoding response: %w", err)
 	}
 	if !result.Valid {
+		if result.Error != "" {
+			return "", errors.New(result.Error)
+		}
 		return "", fmt.Errorf("invalid maestro key")
 	}
 	return result.Email, nil
@@ -399,6 +405,8 @@ func VerifyKey(ctx context.Context, key string) (string, error) {
 type Key struct {
 	Prefix    string    `json:"prefix"`
 	CreatedAt time.Time `json:"created_at"`
+	// ExpiresAt is zero when the server's keys don't expire.
+	ExpiresAt time.Time `json:"expires_at,omitzero"`
 }
 
 // ListKeys returns the caller's Maestro keys, newest first.
