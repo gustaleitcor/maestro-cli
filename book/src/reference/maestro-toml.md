@@ -12,6 +12,7 @@ introduces the keys one at a time, and this page is the lookup table.
 | [`generator`](../repo/maestro-toml.md#generator) | String | None | A Python script in the repository whose `genvrs` function yields more lines |
 | [`outputs`](../repo/maestro-toml.md#outputs) | List of strings | None, so only the logs are kept | The files and directories to keep from each container |
 | [`outputs_layout`](../repo/maestro-toml.md#outputs_layout) | `"per-line"` or `"shared"` | `"per-line"` | Whether each line's outputs go in a directory of their own or all into one tree for the run |
+| [`outputs_every`](../repo/maestro-toml.md#outputs_every) | Duration, such as `"30m"` | None, so outputs are copied only when a line ends | How often a running line's logs and outputs are copied out |
 | [`cpus`](../repo/maestro-toml.md#cpus-and-memory) | Whole number | 1 | The cores each container can use, and the cores a machine must have free to start it |
 | [`memory`](../repo/maestro-toml.md#cpus-and-memory) | Whole number, in MB | 512 | The memory each container can use, and the memory a machine must have free to start it |
 | [`env`](../repo/maestro-toml.md#env) | Table of strings | None | Environment variables set in every container |
@@ -31,6 +32,7 @@ introduces the keys one at a time, and this page is the lookup table.
 | An `env` name | Letters, digits and `_`. It can't start with a digit or with `MAESTRO_`. |
 | `time` | At least `"1m"`, and at most the server's limit |
 | `retries` | 0 to 5 |
+| `outputs_every` | At least `"10m"` |
 | A path in `outputs` | A file or directory inside the container. It can't be `/` or the working directory itself, and it can't begin with `..`. |
 | `generator` and `dockerfile` | A file inside the repository |
 | The generator script | 1 MiB |
@@ -72,6 +74,7 @@ parameters = [
 generator      = "genvrs.py"
 outputs        = ["results/", "summary.json"]
 outputs_layout = "per-line"
+outputs_every  = "30m"
 cpus           = 4
 memory         = 8192
 env            = { MODE = "fast" }
@@ -86,7 +89,7 @@ dockerfile     = "docker/Dockerfile"
 An unknown key fails the build and lists the keys Maestro knows:
 
 ```text
-maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env, time, retries)
+maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, outputs_every, cpus, memory, env, time, retries)
 ```
 
 The other messages name the key and the value at fault, as these do:

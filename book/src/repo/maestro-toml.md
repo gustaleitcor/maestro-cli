@@ -185,6 +185,24 @@ lines write the same path, the one Maestro collects last overwrites the
 other, so give each line paths of its own. Logs stay separate for each line
 in both layouts.
 
+## `outputs_every`
+
+```toml
+outputs_every = "30m"   # default: only when the line ends
+```
+
+This is how often Maestro copies a line's logs and outputs out of its
+container while it runs. Each copy takes the place of the one before, in the
+same directory and within the same limit. If the line then loses its
+machine, it keeps the last copy, and its note says when that copy was taken.
+It must be at least `"10m"`. It suits a line that runs for days and writes
+results as it goes. A line that ends within hours doesn't need it.
+
+The copy holds what the program had written when Maestro took it, so a file
+it was in the middle of writing can be cut short. A program that writes its
+results to a new file and then renames it over the old one leaves a whole
+file to copy.
+
 ## `dockerfile`
 
 ```toml
@@ -213,7 +231,7 @@ log say why. A misspelt key is an error too, so that a typo isn't silently
 ignored:
 
 ```text
-maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env, time, retries)
+maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, outputs_every, cpus, memory, env, time, retries)
 ```
 
 [maestro.toml keys](../reference/maestro-toml.md) lists every key with its

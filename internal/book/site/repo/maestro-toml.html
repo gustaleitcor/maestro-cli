@@ -307,6 +307,19 @@ one results directory, such as <code>results/&lt;instance&gt;/&lt;seed&gt;.json<
 lines write the same path, the one Maestro collects last overwrites the
 other, so give each line paths of its own. Logs stay separate for each line
 in both layouts.</p>
+<h2 id="outputs_every"><a class="header" href="#outputs_every"><code>outputs_every</code></a></h2>
+<pre><code class="language-toml">outputs_every = "30m"   # default: only when the line ends
+</code></pre>
+<p>This is how often Maestro copies a line's logs and outputs out of its
+container while it runs. Each copy takes the place of the one before, in the
+same directory and within the same limit. If the line then loses its
+machine, it keeps the last copy, and its note says when that copy was taken.
+It must be at least <code>"10m"</code>. It suits a line that runs for days and writes
+results as it goes. A line that ends within hours doesn't need it.</p>
+<p>The copy holds what the program had written when Maestro took it, so a file
+it was in the middle of writing can be cut short. A program that writes its
+results to a new file and then renames it over the old one leaves a whole
+file to copy.</p>
 <h2 id="dockerfile"><a class="header" href="#dockerfile"><code>dockerfile</code></a></h2>
 <pre><code class="language-toml">dockerfile = "docker/Dockerfile"
 </code></pre>
@@ -324,7 +337,7 @@ its own <code>cpus</code>, <code>memory</code>, <code>env</code>, <code>outputs<
 <p>An invalid <code>maestro.toml</code> fails the build, and the last lines of the build
 log say why. A misspelt key is an error too, so that a typo isn't silently
 ignored:</p>
-<pre><code class="language-text">maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env, time, retries)
+<pre><code class="language-text">maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, outputs_every, cpus, memory, env, time, retries)
 </code></pre>
 <p><a href="../reference/maestro-toml.html">maestro.toml keys</a> lists every key with its
 default and its limits on one page.</p>

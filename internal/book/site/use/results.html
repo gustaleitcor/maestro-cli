@@ -183,6 +183,15 @@
 <p>When a container ends, Maestro keeps what it printed and the files that
 <a href="../repo/maestro-toml.html#outputs"><code>outputs</code></a> names, then removes the
 container. Everything else the program wrote inside it is gone.</p>
+<h2 id="while-a-line-runs"><a class="header" href="#while-a-line-runs">While a line runs</a></h2>
+<p>With <a href="../repo/maestro-toml.html#outputs_every"><code>outputs_every</code></a>, Maestro also
+copies the logs and outputs of a running line that often, into the same
+place. Each copy takes the place of the one before, and the copy taken when
+the line ends takes the place of the last. A line that loses its machine
+keeps the last copy, and its note says when it was taken:</p>
+<pre><code class="language-text">q7 restarted while this line ran there, and its container was lost; its logs and outputs are those copied at 2026-11-17 14:30 UTC
+</code></pre>
+<p>Without <code>outputs_every</code>, a line that loses its machine keeps nothing.</p>
 <h2 id="the-layout-of-a-download"><a class="header" href="#the-layout-of-a-download">The layout of a download</a></h2>
 <p><code>maestro runs get &lt;run&gt;</code> downloads a run into a directory named after it,
 with one directory for each line:</p>

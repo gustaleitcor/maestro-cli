@@ -4,6 +4,20 @@ When a container ends, Maestro keeps what it printed and the files that
 [`outputs`](../repo/maestro-toml.md#outputs) names, then removes the
 container. Everything else the program wrote inside it is gone.
 
+## While a line runs
+
+With [`outputs_every`](../repo/maestro-toml.md#outputs_every), Maestro also
+copies the logs and outputs of a running line that often, into the same
+place. Each copy takes the place of the one before, and the copy taken when
+the line ends takes the place of the last. A line that loses its machine
+keeps the last copy, and its note says when it was taken:
+
+```text
+q7 restarted while this line ran there, and its container was lost; its logs and outputs are those copied at 2026-11-17 14:30 UTC
+```
+
+Without `outputs_every`, a line that loses its machine keeps nothing.
+
 ## The layout of a download
 
 `maestro runs get <run>` downloads a run into a directory named after it,

@@ -189,6 +189,7 @@ introduces the keys one at a time, and this page is the lookup table.</p>
 <tr><td><a href="../repo/maestro-toml.html#generator"><code>generator</code></a></td><td>String</td><td>None</td><td>A Python script in the repository whose <code>genvrs</code> function yields more lines</td></tr>
 <tr><td><a href="../repo/maestro-toml.html#outputs"><code>outputs</code></a></td><td>List of strings</td><td>None, so only the logs are kept</td><td>The files and directories to keep from each container</td></tr>
 <tr><td><a href="../repo/maestro-toml.html#outputs_layout"><code>outputs_layout</code></a></td><td><code>"per-line"</code> or <code>"shared"</code></td><td><code>"per-line"</code></td><td>Whether each line's outputs go in a directory of their own or all into one tree for the run</td></tr>
+<tr><td><a href="../repo/maestro-toml.html#outputs_every"><code>outputs_every</code></a></td><td>Duration, such as <code>"30m"</code></td><td>None, so outputs are copied only when a line ends</td><td>How often a running line's logs and outputs are copied out</td></tr>
 <tr><td><a href="../repo/maestro-toml.html#cpus-and-memory"><code>cpus</code></a></td><td>Whole number</td><td>1</td><td>The cores each container can use, and the cores a machine must have free to start it</td></tr>
 <tr><td><a href="../repo/maestro-toml.html#cpus-and-memory"><code>memory</code></a></td><td>Whole number, in MB</td><td>512</td><td>The memory each container can use, and the memory a machine must have free to start it</td></tr>
 <tr><td><a href="../repo/maestro-toml.html#env"><code>env</code></a></td><td>Table of strings</td><td>None</td><td>Environment variables set in every container</td></tr>
@@ -207,6 +208,7 @@ introduces the keys one at a time, and this page is the lookup table.</p>
 <tr><td>An <code>env</code> name</td><td>Letters, digits and <code>_</code>. It can't start with a digit or with <code>MAESTRO_</code>.</td></tr>
 <tr><td><code>time</code></td><td>At least <code>"1m"</code>, and at most the server's limit</td></tr>
 <tr><td><code>retries</code></td><td>0 to 5</td></tr>
+<tr><td><code>outputs_every</code></td><td>At least <code>"10m"</code></td></tr>
 <tr><td>A path in <code>outputs</code></td><td>A file or directory inside the container. It can't be <code>/</code> or the working directory itself, and it can't begin with <code>..</code>.</td></tr>
 <tr><td><code>generator</code> and <code>dockerfile</code></td><td>A file inside the repository</td></tr>
 <tr><td>The generator script</td><td>1 MiB</td></tr>
@@ -241,6 +243,7 @@ shows how.</p>
 generator      = "genvrs.py"
 outputs        = ["results/", "summary.json"]
 outputs_layout = "per-line"
+outputs_every  = "30m"
 cpus           = 4
 memory         = 8192
 env            = { MODE = "fast" }
@@ -251,7 +254,7 @@ dockerfile     = "docker/Dockerfile"
 </code></pre>
 <h2 id="errors"><a class="header" href="#errors">Errors</a></h2>
 <p>An unknown key fails the build and lists the keys Maestro knows:</p>
-<pre><code class="language-text">maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, cpus, memory, env, time, retries)
+<pre><code class="language-text">maestro.toml: unknown key "paramters" (known: machines, parameters, generator, dockerfile, outputs, outputs_layout, outputs_every, cpus, memory, env, time, retries)
 </code></pre>
 <p>The other messages name the key and the value at fault, as these do:</p>
 <pre><code class="language-text">maestro.toml: cpus is 0; give between 1 and 1024 cores
