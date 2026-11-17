@@ -167,6 +167,8 @@ func parseID(arg, what string) (int64, error) {
 	return id, nil
 }
 
+// lineCounts says how many lines are in each status. staged is only from a
+// server from before the three queues, and is shown as it answers.
 func lineCounts(counts map[string]int) string {
 	var parts []string
 	for _, status := range []string{"queued", "staged", "assigned", "starting", "running", "succeeded", "failed", "error", "cancelled"} {

@@ -23,9 +23,9 @@ var exportCmd = &cobra.Command{
 	Short: "Write what happened to your lines over a period, as CSV",
 	Long: `Writes a row for each line of the runs queued over a period: its run and
 line, whose it is, its cores and memory, the machine it ran on, its status,
-the scheduler settings it was chosen under, and when it was submitted,
-staged, assigned, started and finished, and the group its user was in when
-it was staged. It is what ` + "`sim evaluate`" + `, in maestro-orq, measures
+the scheduler settings it was assigned under, when it was submitted,
+assigned, started and finished, and the group its user was in when it was
+assigned. It is what ` + "`sim evaluate`" + `, in maestro-orq, measures
 waits, slowdowns, utilization, fairness and the objective Z from, the same
 as for a simulation.
 

@@ -29,10 +29,12 @@ LINE
   and ` + "`maestro runs logs <run> <line>`" + ` what it printed.
 
 WAITING
-  A line waits at three levels before it runs:
-    queued    among your own lines
-    staged    chosen from them, waiting for a machine
-    assigned  given to a machine, waiting for room on it
+  A line passes three queues before it runs:
+    user queue        queued, among your own lines. The first of them is
+                      your head.
+    dispatcher queue  your head, with the heads of your group's other
+                      users, until one is given a machine
+    machine queue     assigned to a machine, waiting for room on it
   then starting, running, and one of succeeded, failed (it exited non-zero),
   error (it couldn't run) or cancelled. ` + "`maestro queue`" + ` shows how many wait
   where, and your share of the machines.

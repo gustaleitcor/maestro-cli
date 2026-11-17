@@ -18,8 +18,8 @@ var settingsCmd = &cobra.Command{
 	Use:   "settings",
 	Short: "Show the server's settings: the image limit and how lines are scheduled",
 	Long: `Shows how many images each user may keep, and how the scheduler chooses
-whose line goes next and where: the policy of each level, the score's
-weights and how a user's share of the machines is measured. An
+whose line goes next and where: the policy of each of the three queues,
+the score's weights and how a user's share of the machines is measured. An
 administrator changes them on the Maestro page.`,
 	Args:              cobra.NoArgs,
 	ValidArgsFunction: cobra.NoFileCompletions,
@@ -44,11 +44,6 @@ func writeSettings(out io.Writer, s *maestroapi.Settings) error {
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(w, "images per user\t%d\n", s.ImagesPerUser)
 	if c := s.Scheduler; c != nil {
-		staged := fmt.Sprint(c.StagedCapacity)
-		if c.StagedCapacity == 0 {
-			staged = "twice the machines"
-		}
-		staged += ", per group"
 		var weights []string
 		for _, u := range c.Weights {
 			weights = append(weights, fmt.Sprintf("user %d: %g cpu, %g memory", u.User, u.CPUs, u.Memory))
@@ -56,12 +51,27 @@ func writeSettings(out io.Writer, s *maestroapi.Settings) error {
 		if len(weights) == 0 {
 			weights = []string{"everyone 1"}
 		}
-		for _, row := range [][2]string{
-			{"within a user", c.User},
-			{"among users", c.Select},
-			{"staged lines, in turn between groups", c.Allocate},
+		policies := [][2]string{
+			{"a user's head", c.User},
+			{"among a group's heads", c.Dispatcher},
 			{"on a machine", c.Machine},
-			{"staged at most", staged},
+		}
+		if c.Dispatcher == "" && c.Select != "" {
+			// A server from before the three queues has four policies and
+			// a limit on staged lines, and is shown as it answers.
+			staged := fmt.Sprint(c.StagedCapacity)
+			if c.StagedCapacity == 0 {
+				staged = "twice the machines"
+			}
+			policies = [][2]string{
+				{"within a user", c.User},
+				{"among users", c.Select},
+				{"staged lines, in turn between groups", c.Allocate},
+				{"on a machine", c.Machine},
+				{"staged at most", staged + ", per group"},
+			}
+		}
+		for _, row := range append(policies, [][2]string{
 			{"waiting on a machine", fmt.Sprint(c.Depth)},
 			{"score weights", fmt.Sprintf("cpu %g · memory %g · waiting %g · share %g", c.CPUWeight, c.MemoryWeight, c.AgingWeight, c.ShareWeight)},
 			{"waiting horizon", fmt.Sprintf("%g min", c.HorizonMinutes)},
@@ -69,7 +79,7 @@ func writeSettings(out io.Writer, s *maestroapi.Settings) error {
 			{"half-life", fmt.Sprintf("%g h", c.HalfLifeHours)},
 			{"seed (siro, machine draw)", fmt.Sprint(c.Seed)},
 			{"user weights", strings.Join(weights, "; ")},
-		} {
+		}...) {
 			fmt.Fprintf(w, "%s\t%s\n", row[0], row[1])
 		}
 	}

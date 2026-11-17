@@ -132,11 +132,11 @@ type Run struct {
 	Detail     []RunLine      `json:"line_detail"`
 }
 
-// RunLine is one container of a run. Status is queued (among its user's
-// lines), staged (chosen from them, waiting for a machine), assigned
-// (waiting for room on Machine), starting, running, succeeded, failed
-// (non-zero exit), error (it couldn't run) or cancelled. Active is whether
-// it isn't over: any of the first five.
+// RunLine is one container of a run. Status is queued (in its user's
+// queue), assigned (waiting for room on Machine), starting, running,
+// succeeded, failed (non-zero exit), error (it couldn't run) or cancelled;
+// a server from before the three queues may say staged, between queued and
+// assigned. Active is whether it isn't over.
 type RunLine struct {
 	Line       int64     `json:"line"`
 	Args       []string  `json:"args"`
@@ -174,16 +174,18 @@ type Settings struct {
 	Scheduler     *Scheduler `json:"scheduler"`
 }
 
-// Scheduler is how waiting lines are chosen and given machines: the four
-// policies and their parameters. User, Select and Allocate are fifo, lcfs,
-// siro or pq; Machine may also fit lines in what a machine has free.
-// StagedCapacity is per group.
+// Scheduler is how waiting lines are chosen and given machines: the three
+// policies and their parameters. User and Dispatcher are fifo, lcfs, siro
+// or pq; Machine may also fit lines in what a machine has free. A server
+// from before the three queues sends Select, Allocate and StagedCapacity
+// (per group) in place of Dispatcher.
 type Scheduler struct {
 	User           string       `json:"user"`
-	Select         string       `json:"select"`
-	Allocate       string       `json:"allocate"`
+	Dispatcher     string       `json:"dispatcher,omitempty"`
 	Machine        string       `json:"machine"`
-	StagedCapacity int          `json:"staged_capacity"`
+	Select         string       `json:"select,omitempty"`
+	Allocate       string       `json:"allocate,omitempty"`
+	StagedCapacity int          `json:"staged_capacity,omitempty"`
 	Depth          int          `json:"depth"`
 	CPUWeight      float64      `json:"cpu_weight"`
 	MemoryWeight   float64      `json:"memory_weight"`

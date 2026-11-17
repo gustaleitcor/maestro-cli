@@ -415,9 +415,9 @@ maestro docs queue --web --url
 </code></pre>
 <p>Writes a row for each line of the runs queued over a period: its run and
 line, whose it is, its cores and memory, the machine it ran on, its status,
-the scheduler settings it was chosen under, and when it was submitted,
-staged, assigned, started and finished, and the group its user was in when
-it was staged. It is what <code>sim evaluate</code>, in maestro-orq, measures
+the scheduler settings it was assigned under, when it was submitted,
+assigned, started and finished, and the group its user was in when it was
+assigned. It is what <code>sim evaluate</code>, in maestro-orq, measures
 waits, slowdowns, utilization, fairness and the objective Z from, the same
 as for a simulation.</p>
 <p>Administrators can export everyone's lines with --all.</p>
@@ -544,18 +544,20 @@ containers once. With --json, prints everything Maestro knows, for scripts.</p>
 <p>Show where lines wait, and your share of the machines.</p>
 <pre><code class="language-text">maestro queue [flags]
 </code></pre>
-<p>Shows how many lines wait at each level, everyone's together and yours:</p>
-<pre><code class="language-text">queued    among their user's lines
-staged    chosen from them, waiting for a machine
+<p>Shows how many lines wait and run, everyone's together and yours:</p>
+<pre><code class="language-text">queued    in their user's queue
+heads     how many of those are their user's head, in the dispatcher queue
 assigned  given to a machine, waiting for room on it
 starting, running
 </code></pre>
-<p>and your share of the machines, as the scheduler weighs it when it chooses
-whose line goes next. Users are in groups: each group's lines are staged
-apart, up to its own capacity, and groups take turns at the machines. You
-see your group and how much of it is staged; administrators see every user,
-with the number an administrator gives a user a weight by, and every group.
-It ends with how the scheduler is set up; <code>maestro settings</code> says it all.</p>
+<p>It also shows your share of the machines, as the scheduler weighs it when
+it chooses whose line goes next.</p>
+<p>A user's head is the first of their queued lines. Users are in groups, and
+the heads of a group's users make its dispatcher queue. Groups take turns
+at the machines, and in a group's turn one of its heads goes to a machine.
+You see your group. Administrators see every user and every group, with
+the number an administrator weighs a user by.</p>
+<p>It ends with how the scheduler is set up. <code>maestro settings</code> shows all of it.</p>
 <p>Flags:</p>
 <pre><code class="language-text">      --json   print the queue as JSON
 </code></pre>
@@ -727,8 +729,8 @@ cancelled.</p>
 <pre><code class="language-text">maestro settings [flags]
 </code></pre>
 <p>Shows how many images each user may keep, and how the scheduler chooses
-whose line goes next and where: the policy of each level, the score's
-weights and how a user's share of the machines is measured. An
+whose line goes next and where: the policy of each of the three queues,
+the score's weights and how a user's share of the machines is measured. An
 administrator changes them on the Maestro page.</p>
 <p>Flags:</p>
 <pre><code class="language-text">      --json   print the settings as JSON
