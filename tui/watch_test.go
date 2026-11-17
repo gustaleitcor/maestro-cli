@@ -73,7 +73,7 @@ func TestWatchRedrawsInPlaceUntilDone(t *testing.T) {
 	}
 
 	plain := ansi.Strip(got)
-	for _, want := range []string{"every 1ms · updated 15:04:05 · ctrl-c to stop", "1    queued", "1    running", "1    succeeded", "updated 15:04:05 · over"} {
+	for _, want := range []string{"every 1ms · updated 15:04:05 · Ctrl-C to stop", "1    queued", "1    running", "1    succeeded", "updated 15:04:05 · over"} {
 		if !strings.Contains(plain, want) {
 			t.Errorf("lacks %q in %q", want, plain)
 		}
@@ -108,7 +108,7 @@ func TestWatchKeepsWhatItShowedWhenAnUpdateFails(t *testing.T) {
 	}
 	shown := strings.Split(ansi.Strip(out.String()), "\x1b")
 	plain := strings.Join(shown, "")
-	failed := strings.Index(plain, "update failed: maestro-orq is unreachable · showing 15:04:05 · ctrl-c to stop")
+	failed := strings.Index(plain, "couldn't update: maestro-orq is unreachable · showing 15:04:05 · Ctrl-C to stop")
 	if failed < 0 {
 		t.Fatalf("doesn't say an update failed: %q", plain)
 	}
@@ -144,7 +144,7 @@ func TestWatchStopsWhenTheContextEnds(t *testing.T) {
 	if !errors.Is(err, ErrInterrupted) || calls != 2 {
 		t.Errorf("err = %v after %d renders; want ErrInterrupted, for the caller to judge", err, calls)
 	}
-	if strings.Contains(out.String(), "update failed") {
+	if strings.Contains(out.String(), "couldn't update") {
 		t.Error("being stopped was drawn as a failed update")
 	}
 }
@@ -163,7 +163,7 @@ func TestWatchIntoAPipePrintsOnlyWhatChanged(t *testing.T) {
 	if got, want := out.String(), "queued\n\nrunning\n\nsucceeded\n"; got != want {
 		t.Errorf("printed %q, want %q", got, want)
 	}
-	if got := ansi.Strip(errOut.String()); got != "update failed: orq is away\n" {
+	if got := ansi.Strip(errOut.String()); got != "couldn't update: orq is away\n" {
 		t.Errorf("stderr = %q", got)
 	}
 }

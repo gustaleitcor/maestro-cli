@@ -98,7 +98,7 @@ func (w watcher) run(ctx context.Context, render Render) error {
 			}
 		} else if !onTerminal && err.Error() != lastFailure {
 			lastFailure = err.Error()
-			fmt.Fprintln(w.errOut, topWarn.Render("update failed: "+lastFailure))
+			fmt.Fprintln(w.errOut, topWarn.Render("couldn't update: "+lastFailure))
 		}
 		if onTerminal {
 			w.draw(first, w.status(shownAt, over, err), shown)
@@ -120,11 +120,11 @@ func (w watcher) status(shownAt time.Time, over string, err error) string {
 	at := shownAt.Format("15:04:05")
 	switch {
 	case err != nil:
-		return topWarn.Render("update failed: "+strings.Join(strings.Fields(err.Error()), " ")) + topDim.Render(fmt.Sprintf(" · showing %s · ctrl-c to stop", at))
+		return topWarn.Render("couldn't update: "+strings.Join(strings.Fields(err.Error()), " ")) + topDim.Render(fmt.Sprintf(" · showing %s · Ctrl-C to stop", at))
 	case over != "":
 		return topDim.Render(fmt.Sprintf("updated %s · ", at)) + over
 	}
-	return topDim.Render(fmt.Sprintf("every %s · updated %s · ctrl-c to stop", w.interval, at))
+	return topDim.Render(fmt.Sprintf("every %s · updated %s · Ctrl-C to stop", w.interval, at))
 }
 
 // draw writes the status and as much of the body as fits over what was

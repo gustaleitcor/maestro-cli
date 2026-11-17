@@ -43,7 +43,7 @@ func (m model) repoListView() string {
 	if !m.loading && m.err == nil {
 		title += fmt.Sprintf(" (%d)", len(m.repos))
 	}
-	keys := "↑/↓ navigate · q to quit"
+	keys := "↑/↓ scroll · q quit"
 	if len(m.forges) > 1 {
 		title += "  "
 		for i, f := range m.forges {
@@ -59,7 +59,7 @@ func (m model) repoListView() string {
 	var body string
 	switch {
 	case m.err != nil:
-		body = "\n  " + errorStyle.Render(fmt.Sprintf("Error: %v", m.err)) + "\n"
+		body = "\n  " + errorStyle.Render(m.err.Error()) + "\n"
 	case m.loading:
 		body = fmt.Sprintf("\n  %s Loading...\n", m.spinner.View())
 	default:

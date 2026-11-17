@@ -28,11 +28,11 @@ another length. After that, commands say "this Maestro key expired; run
 `maestro login`", and `maestro login` gives you a new one.
 
 The CLI doesn't open the link for you. You can open it in a browser on
-another computer, which is how you sign in on a machine you reach over SSH.
+another computer, which is how you sign in on a computer you reach over SSH.
 
 ## Where the key is kept
 
-The CLI stores the key in your system's keyring. On a machine without a
+The CLI stores the key in your system's keyring. On a computer without a
 keyring, or one whose keyring asks for a password each time, sign in with:
 
 ```sh

@@ -237,7 +237,7 @@ func (m topModel) View() string {
 	var body []string
 	switch {
 	case m.err != nil && !m.loaded:
-		body = []string{"", "  " + topBad.Render("Error: "+m.err.Error())}
+		body = []string{"", "  " + topBad.Render(m.err.Error())}
 	case !m.loaded:
 		body = []string{"", "  Reading the machines..."}
 	case m.detail:
@@ -273,7 +273,7 @@ func (m topModel) header() string {
 	status := ""
 	switch {
 	case m.err != nil && m.loaded:
-		status = topBad.Render("update failed: " + m.err.Error())
+		status = topBad.Render("couldn't update: " + m.err.Error())
 	case m.paused:
 		status = topBad.Render("paused")
 	case m.loaded:
@@ -487,7 +487,7 @@ func usageLines(m maestroapi.MachineMetrics) []string {
 func (m topModel) detailLines() []string {
 	i := m.find(m.selected)
 	if i < 0 {
-		return []string{"", "  No machine " + m.selected}
+		return []string{"", "  There is no machine " + m.selected + "; list them with `maestro machines`."}
 	}
 	machine := m.machines[i]
 	var lines []string
@@ -503,7 +503,7 @@ func (m topModel) detailLines() []string {
 	}
 	sys := machine.System
 	if sys == nil {
-		add("", " "+topDim.Render("Maestro reaches this machine's Podman, but can't run commands on it, so there is nothing to show but its containers."), " "+topDim.Render(machine.SystemError))
+		add("", " "+topDim.Render("Maestro reaches this machine's Podman but can't run commands on it. All it can show is the machine's containers."), " "+topDim.Render(machine.SystemError))
 		for _, l := range usageLines(machine) {
 			add(" " + topDim.Render(l))
 		}

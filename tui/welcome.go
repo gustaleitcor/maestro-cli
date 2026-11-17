@@ -60,9 +60,9 @@ func RenderWelcome(w Welcome, width int) string {
 
 func renderWelcomeInfo(w Welcome) string {
 	if !w.SignedIn && w.SignedInTo == "" && len(w.Forges) == 0 {
-		return "Not signed in to " + w.Server + ".\n\n" +
+		return "You aren't signed in to " + w.Server + ".\n\n" +
 			"maestro login    Sign in to Maestro\n" +
-			"maestro --help   More information"
+			"maestro --help   List the commands"
 	}
 
 	// What couldn't be reached is said once, below, not on every row.
@@ -71,7 +71,7 @@ func renderWelcomeInfo(w Welcome) string {
 	var b strings.Builder
 	switch {
 	case w.SignedInTo != "":
-		fmt.Fprintln(&b, labelStyle.Render("Account:")+" "+warnStyle.Render("not signed in here")+"; signed in to "+w.SignedInTo)
+		fmt.Fprintln(&b, labelStyle.Render("Account:")+" "+warnStyle.Render("not signed in to this server")+"; signed in to "+w.SignedInTo)
 	case !w.SignedIn:
 		fmt.Fprintln(&b, labelStyle.Render("Account:")+" not signed in; run `maestro login`")
 	case errors.Is(w.AccountErr, netfail.ErrUnreachable):
@@ -115,7 +115,7 @@ func renderWelcomeInfo(w Welcome) string {
 		fmt.Fprintln(&b, "\n"+warnStyle.Render("Warning: check your internet connection"))
 	}
 
-	fmt.Fprint(&b, "\n"+helpStyle.Render("maestro --help for more information"))
+	fmt.Fprint(&b, "\n"+helpStyle.Render("`maestro --help` lists the commands."))
 	return b.String()
 }
 

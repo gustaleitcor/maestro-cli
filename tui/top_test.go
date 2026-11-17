@@ -211,13 +211,13 @@ func TestTopKeepsWhatItShowedWhenAnUpdateFails(t *testing.T) {
 	updated, _ := m.Update(topDataMsg{err: fmt.Errorf("maestro-orq is unreachable")})
 	m = updated.(topModel)
 	view := ansi.Strip(m.View())
-	if !strings.Contains(view, "update failed: maestro-orq is unreachable") || !strings.Contains(view, "Q1") {
+	if !strings.Contains(view, "couldn't update: maestro-orq is unreachable") || !strings.Contains(view, "Q1") {
 		t.Errorf("an update that failed hid the machines:\n%s", view)
 	}
 
 	first := topModel{ctx: context.Background(), interval: time.Second, width: 80, height: 20}
 	updated, _ = first.Update(topDataMsg{err: fmt.Errorf("no key")})
-	if view := ansi.Strip(updated.(topModel).View()); !strings.Contains(view, "Error: no key") {
+	if view := ansi.Strip(updated.(topModel).View()); !strings.Contains(view, "no key") {
 		t.Errorf("a first fetch that failed says nothing:\n%s", view)
 	}
 }
