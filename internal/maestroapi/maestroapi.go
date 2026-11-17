@@ -488,6 +488,11 @@ func CancelRun(ctx context.Context, maestroKey string, id int64) error {
 	return doWithKey(ctx, maestroKey, http.MethodPost, runPath(id)+"/cancel", nil, http.StatusNoContent, nil)
 }
 
+// CancelRunLine cancels one line of a run and leaves the others.
+func CancelRunLine(ctx context.Context, maestroKey string, id, line int64) error {
+	return doWithKey(ctx, maestroKey, http.MethodPost, fmt.Sprintf("%s/lines/%d/cancel", runPath(id), line), nil, http.StatusNoContent, nil)
+}
+
 // RetryRun queues a new run of a run's build with the lines named, or with
 // none named those that failed, ended in an error or were cancelled.
 func RetryRun(ctx context.Context, maestroKey string, id int64, lines []int64) (*Run, error) {

@@ -38,7 +38,7 @@ It then ends in one of four ways.
 | `succeeded` | The program exited with 0. |
 | `failed` | The program exited with another code. |
 | `error` | The line couldn't run, for a reason on Maestro's side and outside your program. A line that runs longer than the server allows is stopped and ends as `error` too. |
-| `cancelled` | Its run was cancelled before it ended. |
+| `cancelled` | It or its run was cancelled before it ended. |
 
 [The queue](../how/queue.md) explains the three queues, and
 [How a line ends](../use/runs.md#how-a-line-ends) the endings.

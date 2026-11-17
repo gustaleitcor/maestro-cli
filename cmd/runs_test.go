@@ -364,3 +364,37 @@ func TestRunsRetry(t *testing.T) {
 		t.Errorf("--failed with --line: %v", err)
 	}
 }
+
+// --line cancels each line named once, and says which; a refusal stops it
+// after saying which were cancelled before.
+func TestRunsCancelLines(t *testing.T) {
+	var asked []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		asked = append(asked, r.URL.Path)
+		if r.URL.Path == "/api/runs/31/lines/7/cancel" {
+			w.WriteHeader(http.StatusConflict)
+			fmt.Fprint(w, `{"error": "line 7 of run 31 has already ended, with status succeeded, so there is nothing to cancel"}`)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	t.Setenv("MAESTRO_ORQ_URL", srv.URL)
+	runsFlags(t, false, false, false)
+	t.Cleanup(func() { runsCancelLines = nil })
+
+	runsCancelLines = []int64{2, 5, 2}
+	got, err := stdout(t, func() error { return runRunsCancel(background(), []string{"31"}) })
+	if err != nil || !strings.Contains(got, "Cancelled lines 2 and 5 of run 31.") {
+		t.Errorf("printed %q, %v", got, err)
+	}
+	if !reflect.DeepEqual(asked, []string{"/api/runs/31/lines/2/cancel", "/api/runs/31/lines/5/cancel"}) {
+		t.Errorf("asked %q", asked)
+	}
+
+	runsCancelLines = []int64{2, 7, 9}
+	got, err = stdout(t, func() error { return runRunsCancel(background(), []string{"31"}) })
+	if err == nil || !strings.Contains(err.Error(), "already ended") || !strings.Contains(got, "Cancelled line 2 of run 31.") {
+		t.Errorf("printed %q, %v", got, err)
+	}
+}

@@ -189,6 +189,7 @@ maestro runs show 31            # the lines of run 31
 maestro runs logs 31 2          # what line 2 printed
 maestro runs get 31             # download the outputs and logs
 maestro runs cancel 31          # stop it
+maestro runs cancel 31 --line 2 # stop only line 2
 maestro runs retry 31           # run its failed lines again
 maestro runs rm 31              # delete it and its files
 </code></pre>
@@ -261,6 +262,13 @@ the same for that one line.</p>
 <h2 id="cancelling-and-deleting"><a class="header" href="#cancelling-and-deleting">Cancelling and deleting</a></h2>
 <p><code>maestro runs cancel &lt;run&gt;</code> drops the lines that haven't started and stops
 the ones that are running. Lines that had already ended keep their status.</p>
+<p>With <code>--line</code>, again for more, it cancels only the lines you name and leaves
+the rest of the run going. A line still waiting ends as <code>cancelled</code> at once.
+A running line stops soon, and Maestro keeps its logs and outputs. A line
+that is already over can't be cancelled, and the command says how it ended.
+A run whose lines you cancelled this way ends as its other lines do, so it
+can still end <code>succeeded</code>. On the Maestro page, a line's details have a
+"Cancel" button that does the same for that line.</p>
 <p><code>maestro runs rm &lt;run&gt;</code> deletes the run with all its logs and files. It asks
 first.</p>
 <h2 id="how-a-line-ends"><a class="header" href="#how-a-line-ends">How a line ends</a></h2>
@@ -268,7 +276,7 @@ first.</p>
 <tr><td><code>succeeded</code></td><td>The program exited with 0.</td></tr>
 <tr><td><code>failed</code></td><td>The program exited with another code, or the kernel killed it for using more memory than the line asked for.</td></tr>
 <tr><td><code>error</code></td><td>The line couldn't run. Most often it couldn't start on its machine, or the machine restarted while it ran and the container was lost.</td></tr>
-<tr><td><code>cancelled</code></td><td>You cancelled the run before the line ended.</td></tr>
+<tr><td><code>cancelled</code></td><td>You cancelled the line or its run before the line ended.</td></tr>
 </tbody></table>
 </div>
 <p>A line runs for at most a week, unless your administrator set another

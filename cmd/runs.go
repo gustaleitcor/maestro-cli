@@ -42,6 +42,7 @@ var (
 
 	runsRetryFailed bool
 	runsRetryLines  []int64
+	runsCancelLines []int64
 )
 
 // followPoll is how often runs logs -f looks whether a line has started.
@@ -121,8 +122,15 @@ run already downloaded there.`,
 }
 
 var runsCancelCmd = &cobra.Command{
-	Use:               "cancel <run>",
-	Short:             "Cancel a run: drop what hasn't started and stop what has",
+	Use:   "cancel <run>",
+	Short: "Cancel a run: drop what hasn't started and stop what has",
+	Long: `Cancels a run. Its lines that haven't started end as cancelled at once.
+Its running lines stop soon, and Maestro keeps their logs and outputs.
+
+With --line, it cancels only the lines you name and leaves the rest. A line
+that is already over can't be cancelled.`,
+	Example: `  maestro runs cancel 31
+  maestro runs cancel 31 --line 2 --line 5`,
 	Args:              numberArgs(1, 1, "run"),
 	ValidArgsFunction: completeRuns,
 	RunE:              runRunsCancel,
@@ -181,6 +189,8 @@ func init() {
 	runsRetryCmd.Flags().BoolVar(&runsRetryFailed, "failed", false, "the lines that failed, ended in an error or were cancelled (the default)")
 	runsRetryCmd.Flags().Int64SliceVar(&runsRetryLines, "line", nil, "line `n` (again for more)")
 	runsRetryCmd.Flags().Lookup("line").DefValue = ""
+	runsCancelCmd.Flags().Int64SliceVar(&runsCancelLines, "line", nil, "only line `n` (again for more)")
+	runsCancelCmd.Flags().Lookup("line").DefValue = ""
 	addAnswerFlags(runsRetryCmd, "the queued run")
 	rootCmd.AddCommand(runsCmd)
 	addYesFlag(runsRmCmd)
@@ -816,6 +826,9 @@ func runRunsCancel(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if len(runsCancelLines) > 0 {
+		return cancelLines(cmd.Context(), id, runsCancelLines)
+	}
 	if err := maestroapi.CancelRun(cmd.Context(), maestroKey, id); err != nil {
 		return err
 	}
@@ -843,6 +856,41 @@ func runRunsRetry(cmd *cobra.Command, args []string) error {
 		return showRun(cmd.Context(), run.ID, true)
 	}
 	return printAnswer(run, run.ID)
+}
+
+// cancelLines cancels the lines of a run one after another, and stops at
+// the first the server refuses, saying which it had cancelled.
+func cancelLines(ctx context.Context, id int64, lines []int64) error {
+	var once []int64
+	for _, l := range lines {
+		if !slices.Contains(once, l) {
+			once = append(once, l)
+		}
+	}
+	lines = once
+	for i, line := range lines {
+		if err := maestroapi.CancelRunLine(ctx, maestroKey, id, line); err != nil {
+			if i > 0 {
+				fmt.Println(successStyle.Render(fmt.Sprintf("Cancelled %s of run %d.", lineList(lines[:i]), id)))
+			}
+			return err
+		}
+	}
+	fmt.Println(successStyle.Render(fmt.Sprintf("Cancelled %s of run %d.", lineList(lines), id)) + " A running line stops soon, and Maestro keeps its files. The other lines go on.")
+	return nil
+}
+
+// lineList names lines as a sentence does: line 2, lines 2 and 5, lines 2, 5
+// and 7.
+func lineList(lines []int64) string {
+	if len(lines) == 1 {
+		return fmt.Sprintf("line %d", lines[0])
+	}
+	words := make([]string, len(lines))
+	for i, l := range lines {
+		words[i] = strconv.FormatInt(l, 10)
+	}
+	return "lines " + strings.Join(words[:len(words)-1], ", ") + " and " + words[len(words)-1]
 }
 
 func runRunsRm(cmd *cobra.Command, args []string) error {

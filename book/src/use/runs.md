@@ -11,6 +11,7 @@ maestro runs show 31            # the lines of run 31
 maestro runs logs 31 2          # what line 2 printed
 maestro runs get 31             # download the outputs and logs
 maestro runs cancel 31          # stop it
+maestro runs cancel 31 --line 2 # stop only line 2
 maestro runs retry 31           # run its failed lines again
 maestro runs rm 31              # delete it and its files
 ```
@@ -113,6 +114,14 @@ the same for that one line.
 `maestro runs cancel <run>` drops the lines that haven't started and stops
 the ones that are running. Lines that had already ended keep their status.
 
+With `--line`, again for more, it cancels only the lines you name and leaves
+the rest of the run going. A line still waiting ends as `cancelled` at once.
+A running line stops soon, and Maestro keeps its logs and outputs. A line
+that is already over can't be cancelled, and the command says how it ended.
+A run whose lines you cancelled this way ends as its other lines do, so it
+can still end `succeeded`. On the Maestro page, a line's details have a
+"Cancel" button that does the same for that line.
+
 `maestro runs rm <run>` deletes the run with all its logs and files. It asks
 first.
 
@@ -123,7 +132,7 @@ first.
 | `succeeded` | The program exited with 0. |
 | `failed` | The program exited with another code, or the kernel killed it for using more memory than the line asked for. |
 | `error` | The line couldn't run. Most often it couldn't start on its machine, or the machine restarted while it ran and the container was lost. |
-| `cancelled` | You cancelled the run before the line ended. |
+| `cancelled` | You cancelled the line or its run before the line ended. |
 
 A line runs for at most a week, unless your administrator set another
 length. When a line runs longer, Maestro stops it, keeps its logs and
