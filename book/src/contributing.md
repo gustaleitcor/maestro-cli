@@ -19,6 +19,48 @@ Read it before you add a file.
 [Deploying Maestro](admin/deploy.md#a-development-stack) describes the
 development stack.
 
+## The end-to-end test
+
+`dev/e2e.sh`, in the maestro repository, uses Maestro the way a user does,
+against the development stack. Start the stack, then run the script from
+the root of your clone:
+
+```sh
+podman compose -f docker-compose-dev.yml up --build    # in one terminal
+sh dev/e2e.sh                                          # in another
+```
+
+The script follows the [Quickstart](start/quickstart.md), with a machine
+added first:
+
+1. It signs in to the Maestro page through Dex as `dev@example.com`, by
+   filling in Dex's sign-in form.
+2. It runs `maestro login` and approves the code with that session.
+3. It starts an SSH server of its own on `127.0.0.1`, with a key pair it
+   makes, and adds it as a machine that offers your Podman socket. orq
+   reaches it because the development stack uses host networking.
+4. It builds maestro-template and runs it. Then it downloads the run with
+   `maestro runs get` and checks what each line wrote in `out.txt`.
+
+It ends with `e2e: passed`, or says which step went wrong. Either way, it
+then deletes the run, removes the build's image and the machine, revokes
+its Maestro key with `maestro logout`, signs out, and stops its SSH server.
+It keeps the CLI's configuration in a temporary directory, so your own
+configuration and `~/.ssh` stay as they were. Two things stay on the
+server: the build, listed by `maestro builds` with its image removed, and
+the lines in Admin › History for adding and removing the machine.
+
+The script needs `curl`, `python3`, `ssh-keygen`, `sshd` (from the
+openssh-server package), Go to build the CLI from `maestro-cli`, and your
+Podman socket (`systemctl --user enable --now podman.socket`). The
+variables at the top of the script point it at another `sshd`, another
+`maestro` binary or another server.
+
+Without a forge, the CLI reads the template from GitHub without a token.
+GitHub allows 60 such requests an hour, and each run of the script makes a
+few of them. When they run out, the build stops with "github.com is rate
+limiting this token" and the time to try again.
+
 ## This book
 
 The book is in `maestro-cli/book` and is written with

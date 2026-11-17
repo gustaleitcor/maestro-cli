@@ -3755,6 +3755,41 @@ at the root of the maestro repository, says where code goes in each part.
 Read it before you add a file.
 <a href="admin/deploy.html#a-development-stack">Deploying Maestro</a> describes the
 development stack.</p>
+<h2 id="the-end-to-end-test"><a class="header" href="#the-end-to-end-test">The end-to-end test</a></h2>
+<p><code>dev/e2e.sh</code>, in the maestro repository, uses Maestro the way a user does,
+against the development stack. Start the stack, then run the script from
+the root of your clone:</p>
+<pre><code class="language-sh">podman compose -f docker-compose-dev.yml up --build    # in one terminal
+sh dev/e2e.sh                                          # in another
+</code></pre>
+<p>The script follows the <a href="start/quickstart.html">Quickstart</a>, with a machine
+added first:</p>
+<ol>
+<li>It signs in to the Maestro page through Dex as <code>dev@example.com</code>, by
+filling in Dex's sign-in form.</li>
+<li>It runs <code>maestro login</code> and approves the code with that session.</li>
+<li>It starts an SSH server of its own on <code>127.0.0.1</code>, with a key pair it
+makes, and adds it as a machine that offers your Podman socket. orq
+reaches it because the development stack uses host networking.</li>
+<li>It builds maestro-template and runs it. Then it downloads the run with
+<code>maestro runs get</code> and checks what each line wrote in <code>out.txt</code>.</li>
+</ol>
+<p>It ends with <code>e2e: passed</code>, or says which step went wrong. Either way, it
+then deletes the run, removes the build's image and the machine, revokes
+its Maestro key with <code>maestro logout</code>, signs out, and stops its SSH server.
+It keeps the CLI's configuration in a temporary directory, so your own
+configuration and <code>~/.ssh</code> stay as they were. Two things stay on the
+server: the build, listed by <code>maestro builds</code> with its image removed, and
+the lines in Admin › History for adding and removing the machine.</p>
+<p>The script needs <code>curl</code>, <code>python3</code>, <code>ssh-keygen</code>, <code>sshd</code> (from the
+openssh-server package), Go to build the CLI from <code>maestro-cli</code>, and your
+Podman socket (<code>systemctl --user enable --now podman.socket</code>). The
+variables at the top of the script point it at another <code>sshd</code>, another
+<code>maestro</code> binary or another server.</p>
+<p>Without a forge, the CLI reads the template from GitHub without a token.
+GitHub allows 60 such requests an hour, and each run of the script makes a
+few of them. When they run out, the build stops with "github.com is rate
+limiting this token" and the time to try again.</p>
 <h2 id="this-book"><a class="header" href="#this-book">This book</a></h2>
 <p>The book is in <code>maestro-cli/book</code> and is written with
 <a href="https://rust-lang.github.io/mdBook/">mdBook</a>. Every <code>maestro</code> binary
