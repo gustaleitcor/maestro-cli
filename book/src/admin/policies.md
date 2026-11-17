@@ -94,6 +94,31 @@ If orq can't read the saved settings after an upgrade, it falls back to
 FIFO in every queue so that lines keep starting, and its log says why. Save
 the settings again to fix it.
 
+## What administrators changed
+
+orq records every change an administrator makes to the settings, to the
+groups and who is in them, and to the machines. It also records each time
+an administrator revokes a user's Maestro keys. A record says who made the
+change, when, what it was, and the values before and after it, as JSON.
+Admin › History lists the records, newest first, 50 at a time. Show what
+changed lists the fields that differ.
+
+A record never holds a secret. A machine's record has its address, its
+host key, its reserve and the names of its proxy variables, but not its SSH
+key or the values of those variables. Revoked keys are named by their
+prefixes.
+
+Saving the settings without changing them records nothing. A refused change
+records nothing, and saves none of what it asked for.
+
+The export of lines doesn't include the records. When you measure a period
+for the thesis, History shows when the settings changed, so you can cut the
+period there. Each line also keeps the settings it was assigned under.
+
+The records are in orq's database, and orq keeps them as long as the
+database. `GET /api/admin/actions` returns them, and with `before` set to a
+record's `id`, the 50 older than it.
+
 ## Trying policies before choosing
 
 [Comparing policies offline](sim.md) runs the same scheduler over a recorded

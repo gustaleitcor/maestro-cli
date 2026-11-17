@@ -184,7 +184,8 @@
 files runs leave, the images, and short-lived answers in Redis.</p>
 <h2 id="the-record-in-sqlite"><a class="header" href="#the-record-in-sqlite">The record, in SQLite</a></h2>
 <p>orq keeps everything about builds, runs and lines in its database, which
-lets it restart in the middle of a run. When it comes back:</p>
+lets it restart in the middle of a run. The database also holds what
+administrators changed, which Admin › History lists. When orq comes back:</p>
 <ul>
 <li>it starts again the lines it was about to start</li>
 <li>it picks up the containers it had started, where they are</li>
@@ -261,7 +262,8 @@ again.</li>
 ran after the copy.</li>
 <li>Builds, machines, settings, groups and Maestro keys changed after the
 copy go back to what they were. A key issued after the copy stops
-working, and a key revoked after it works again.</li>
+working, and a key revoked after it works again. History doesn't list
+those changes any more.</li>
 </ul>
 <h2 id="files-in-maestrodata"><a class="header" href="#files-in-maestrodata">Files, in <code>/maestro/data</code></a></h2>
 <p>orq keeps the logs and outputs of runs under <code>DATA_DIR</code>, which is

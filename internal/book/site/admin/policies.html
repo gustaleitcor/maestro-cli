@@ -254,6 +254,25 @@ anything.</p>
 <p>If orq can't read the saved settings after an upgrade, it falls back to
 FIFO in every queue so that lines keep starting, and its log says why. Save
 the settings again to fix it.</p>
+<h2 id="what-administrators-changed"><a class="header" href="#what-administrators-changed">What administrators changed</a></h2>
+<p>orq records every change an administrator makes to the settings, to the
+groups and who is in them, and to the machines. It also records each time
+an administrator revokes a user's Maestro keys. A record says who made the
+change, when, what it was, and the values before and after it, as JSON.
+Admin › History lists the records, newest first, 50 at a time. Show what
+changed lists the fields that differ.</p>
+<p>A record never holds a secret. A machine's record has its address, its
+host key, its reserve and the names of its proxy variables, but not its SSH
+key or the values of those variables. Revoked keys are named by their
+prefixes.</p>
+<p>Saving the settings without changing them records nothing. A refused change
+records nothing, and saves none of what it asked for.</p>
+<p>The export of lines doesn't include the records. When you measure a period
+for the thesis, History shows when the settings changed, so you can cut the
+period there. Each line also keeps the settings it was assigned under.</p>
+<p>The records are in orq's database, and orq keeps them as long as the
+database. <code>GET /api/admin/actions</code> returns them, and with <code>before</code> set to a
+record's <code>id</code>, the 50 older than it.</p>
 <h2 id="trying-policies-before-choosing"><a class="header" href="#trying-policies-before-choosing">Trying policies before choosing</a></h2>
 <p><a href="sim.html">Comparing policies offline</a> runs the same scheduler over a recorded
 or generated workload, so you can compare two setups without waiting for the

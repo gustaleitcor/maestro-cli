@@ -6,7 +6,8 @@ files runs leave, the images, and short-lived answers in Redis.
 ## The record, in SQLite
 
 orq keeps everything about builds, runs and lines in its database, which
-lets it restart in the middle of a run. When it comes back:
+lets it restart in the middle of a run. The database also holds what
+administrators changed, which Admin › History lists. When orq comes back:
 
 - it starts again the lines it was about to start
 - it picks up the containers it had started, where they are
@@ -90,7 +91,8 @@ loses everything orq wrote to the database after the copy was made:
   ran after the copy.
 - Builds, machines, settings, groups and Maestro keys changed after the
   copy go back to what they were. A key issued after the copy stops
-  working, and a key revoked after it works again.
+  working, and a key revoked after it works again. History doesn't list
+  those changes any more.
 
 ## Files, in `/maestro/data`
 
