@@ -1187,6 +1187,7 @@ maestro runs get 31             # download the outputs and logs
 maestro runs cancel 31          # stop it
 maestro runs cancel 31 --line 2 # stop only line 2
 maestro runs retry 31           # run its failed lines again
+maestro runs keep 31            # keep it from expiring
 maestro runs rm 31              # delete it and its files
 </code></pre>
 <h2 id="listing-your-runs"><a class="header" href="#listing-your-runs">Listing your runs</a></h2>
@@ -1198,6 +1199,10 @@ maestro runs rm 31              # delete it and its files
 <p><code>maestro runs</code> shows your 20 newest runs. <code>--limit</code> changes the number, and
 0 means all of them. <code>--status</code> and <code>--repo</code> narrow the list. An
 administrator sees everyone's runs with <code>--all</code>.</p>
+<p>When a run in the list expires within a week, the list has an <code>EXPIRES</code>
+column. It reads <code>in 3d</code> for that run, <code>kept</code> for a run you kept, and <code>-</code>
+for the others. <a href="use/runs.html#how-long-a-run-is-kept">How long a run is kept</a> explains
+when a run expires.</p>
 <h2 id="looking-at-one-run"><a class="header" href="#looking-at-one-run">Looking at one run</a></h2>
 <pre><code class="language-text">Run 33 of ada/maestro-template@main (build #14): failed, on any machine
 2 line(s): 1 succeeded, 1 failed
@@ -1270,6 +1275,27 @@ can still end <code>succeeded</code>. On the Maestro page, a line's details have
 "Cancel" button that does the same for that line.</p>
 <p><code>maestro runs rm &lt;run&gt;</code> deletes the run with all its logs and files. It asks
 first.</p>
+<h2 id="how-long-a-run-is-kept"><a class="header" href="#how-long-a-run-is-kept">How long a run is kept</a></h2>
+<p>Maestro keeps every run until you delete it, unless your administrator set
+a number of days. <code>maestro settings</code> shows it as <code>runs kept</code>. With 30 days,
+Maestro deletes a run 30 days after its last line ended, with all its logs
+and files, as <code>maestro runs rm</code> does. It looks for such runs once an hour.
+A run with a line still waiting or running doesn't expire.</p>
+<p>Once a run expires within a week, <code>maestro runs</code> shows when in its
+<code>EXPIRES</code> column. <code>maestro runs show</code> says when too, as in
+"Maestro deletes this run and its files on 2026-11-20 at 14:00. Keep it
+with <code>maestro runs keep 31</code>." The Maestro page shows it beside the run.</p>
+<pre><code class="language-sh">maestro runs keep 31        # Maestro never deletes run 31 for being old
+maestro runs keep 31 --off  # run 31 expires again
+</code></pre>
+<p><code>maestro runs keep &lt;run&gt;</code> keeps a run until you delete it yourself.
+<code>--off</code> lets it expire again and says when. An administrator can keep
+anyone's run, or let it go.</p>
+<p>A run that <code>maestro runs retry</code> made expires on its own days, whether or
+not the run it retries is still there. It doesn't need that run, because
+it has its own copy of each line and of the files you sent. Once the
+earlier run is deleted, <code>maestro runs show</code> still says which run the retry
+came from, but that run can't be opened.</p>
 <h2 id="how-a-line-ends"><a class="header" href="#how-a-line-ends">How a line ends</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Status</th><th>What happened</th></tr></thead><tbody>
 <tr><td><code>succeeded</code></td><td>The program exited with 0.</td></tr>
@@ -1349,8 +1375,10 @@ the other.</p>
 administrator set another limit with <code>RUN_OUTPUT_MAX_MB</code>. It drops what goes
 over, and the line carries a note that its logs or outputs were cut.</p>
 <h2 id="how-long-it-is-kept"><a class="header" href="#how-long-it-is-kept">How long it is kept</a></h2>
-<p>A run's files stay until you delete the run with <code>maestro runs rm &lt;run&gt;</code>.
-Maestro deletes none of them on its own. Removing a build's image to make
+<p>A run's files stay until you delete the run with <code>maestro runs rm &lt;run&gt;</code>,
+or until the run expires, if your administrator set a number of days.
+<a href="use/runs.html#how-long-a-run-is-kept">How long a run is kept</a> says when that is
+and how to keep a run. Removing a build's image to make
 room for a newer build keeps the build's runs and their files.</p>
 <h2 id="where-the-files-are-on-the-server"><a class="header" href="#where-the-files-are-on-the-server">Where the files are on the server</a></h2>
 <p>An administrator finds the same files under the server's data directory:</p>
@@ -1377,7 +1405,9 @@ link to a run, a line or a file, and it opens for anyone allowed to see it.</p>
 <h2 id="my-runs"><a class="header" href="#my-runs">My runs</a></h2>
 <p>My runs lists your runs, newest first. You can narrow the list to active or
 finished runs, and search it by run number or repository. Administrators
-find everyone's runs under All users.</p>
+find everyone's runs under All users. A run that expires within a week
+says when under its Created time, in the list and in the run's details.
+<a href="use/runs.html#how-long-a-run-is-kept">How long a run is kept</a> explains it.</p>
 <p>Opening a run shows its lines, with the cores and memory each one asked for.
 You can sort them by line number, arguments, cores, memory, machine or
 number of files kept. Click a column's heading to sort by it, and click
@@ -2265,6 +2295,7 @@ for both. <code>maestro queue</code> shows an administrator each user's number, 
 <div class="table-wrapper"><table><thead><tr><th>Label</th><th>Setting</th><th>Default</th></tr></thead><tbody>
 <tr><td>Images per user</td><td><code>images_per_user</code></td><td>10, and at most 1000</td></tr>
 <tr><td>Cores per user</td><td><code>user_max_cpus</code></td><td>0, which means no ceiling</td></tr>
+<tr><td>Days a run is kept</td><td><code>run_retention_days</code></td><td>0, which means until someone deletes it, and at most 3650</td></tr>
 </tbody></table>
 </div>
 <p>Lowering "Images per user" removes nobody's images at that moment. A user
@@ -2281,6 +2312,11 @@ until enough of theirs end. A line that asks for more cores than the
 ceiling never starts, and while it is its user's head, their lines behind
 it wait too. <code>maestro queue</code> tells a user when their next line waits for
 the ceiling.</p>
+<p>"Days a run is kept" has orq delete each run, with its files, that many
+days after its last line ended. A run with a line still waiting or running
+doesn't expire, and neither does one its owner kept with
+<code>maestro runs keep</code>. Lowering it deletes the runs it makes old within the
+hour. <a href="admin/retention.html#files-in-maestrodata">What orq keeps</a> says how.</p>
 <h2 id="checking-what-is-in-force"><a class="header" href="#checking-what-is-in-force">Checking what is in force</a></h2>
 <p><code>maestro settings</code> prints the saved settings for any user, and
 <code>maestro queue</code> ends with a one-line summary of them.</p>
@@ -2582,9 +2618,33 @@ working, and a key revoked after it works again.</li>
 <p>orq keeps the logs and outputs of runs under <code>DATA_DIR</code>, which is
 <code>/maestro/data</code> by default, as <code>&lt;user&gt;/&lt;run&gt;/&lt;line&gt;/&lt;file&gt;</code>. Each line
 keeps at most <code>RUN_OUTPUT_MAX_MB</code> of logs and outputs, 1024 by default.</p>
-<p>The files stay until someone deletes the run. orq deletes none of them on
-its own, so size the volume for that, and ask users to remove the runs they
-no longer need with <code>maestro runs rm</code>.</p>
+<p>The files stay until the run is deleted. A user deletes a run with
+<code>maestro runs rm</code>. orq deletes runs on its own too, once you set "Days a
+run is kept" (<code>run_retention_days</code>) under Admin › Settings › Limits. It is
+0 by default, which keeps every run until someone deletes it, so size the
+volume for that.</p>
+<p>With a number of days set, the runner looks once an hour for runs whose
+last line ended more than that many days ago. It deletes each of them with
+its lines, the record of its files and its directory under
+<code>/maestro/data</code>, as <code>maestro runs rm</code> does, and its log names the run. Two
+kinds of run never expire:</p>
+<ul>
+<li>A run with a line still waiting or running. Its days start when its last
+line ends.</li>
+<li>A run its owner, or an administrator, kept with <code>maestro runs keep</code>. It
+stays until someone deletes it, or lets it expire again with
+<code>maestro runs keep &lt;run&gt; --off</code>.</li>
+</ul>
+<p>Lowering the number deletes the runs it makes old within the hour.
+<code>maestro runs --all</code> shows, in its <code>EXPIRES</code> column, the runs that expire
+within a week.</p>
+<p>A run that a newer run retries expires on its own days. The retry has its
+own copy of each line, of its machines and of the files sent from the CLI,
+so it runs and keeps its files without the run it came from. Its
+<code>retry_of</code> still names that run after it is gone.</p>
+<p>An expired run's lines are gone from <code>maestro export</code>, as those of a run
+deleted with <code>maestro runs rm</code> are. What each user used is kept apart, so
+the scheduler's shares and <code>maestro usage</code> don't change.</p>
 <p><code>USER_DATA_MAX_GB</code> limits what all of a user's runs keep, and is off by
 default. orq adds up the user's files when they start a run. Once they keep
 that much or more, it refuses the run with "your runs keep 52 GB of the 50 GB
@@ -2606,7 +2666,7 @@ everyone out of the page. The CLI stays signed in, because its keys are in
 the database.</p>
 <div class="table-wrapper"><table><thead><tr><th>Answer</th><th>Kept for</th><th>Dropped sooner when</th></tr></thead><tbody>
 <tr><td>A user's images (<code>maestro builds</code>, completing <code>maestro run</code>)</td><td>60 s</td><td>A build of theirs ends, or one of their images is removed</td></tr>
-<tr><td>Runs (<code>maestro runs</code>, completing a run, the page)</td><td>2 s</td><td>Their owner or an administrator starts, cancels or deletes one</td></tr>
+<tr><td>Runs (<code>maestro runs</code>, completing a run, the page)</td><td>2 s</td><td>Their owner or an administrator starts, cancels, keeps or deletes one</td></tr>
 <tr><td>A machine's status</td><td>10 min. An answer older than 30 s, or 10 s if the machine was unreachable, triggers a new check in the background.</td><td>The machine is edited</td></tr>
 <tr><td>A machine's load (<code>maestro top</code>)</td><td>2 s</td><td></td></tr>
 </tbody></table>
@@ -3135,6 +3195,7 @@ run=$(maestro run 12 -q) &amp;&amp; maestro runs show "$run" --watch
 <ul>
 <li><a href="reference/cli.html#maestro-runs-cancel">maestro runs cancel</a>: Cancel a run: drop what hasn't started and stop what has</li>
 <li><a href="reference/cli.html#maestro-runs-get">maestro runs get</a>: Download the files kept from a run</li>
+<li><a href="reference/cli.html#maestro-runs-keep">maestro runs keep</a>: Keep a run from expiring, or let it expire again</li>
 <li><a href="reference/cli.html#maestro-runs-list">maestro runs list</a>: List your runs</li>
 <li><a href="reference/cli.html#maestro-runs-logs">maestro runs logs</a>: Print what a line's container wrote to standard output and standard error</li>
 <li><a href="reference/cli.html#maestro-runs-retry">maestro runs retry</a>: Run some of a run's lines again, in a new run of the same build</li>
@@ -3172,6 +3233,22 @@ maestro runs get 31 results/ --line 2 --line 5
 <p>Flags:</p>
 <pre><code class="language-text">      --force    download over a run already downloaded there
       --line n   only line n (again for more)
+</code></pre>
+<h2 id="maestro-runs-keep"><a class="header" href="#maestro-runs-keep">maestro runs keep</a></h2>
+<p>Keep a run from expiring, or let it expire again.</p>
+<pre><code class="language-text">maestro runs keep &lt;run&gt; [flags]
+</code></pre>
+<p>Keeps a run, so that Maestro never deletes it for being old. Your
+administrator can have Maestro delete each run some days after its last
+line ends, and <code>maestro settings</code> shows how many. A run you keep stays until
+you delete it with <code>maestro runs rm</code>.</p>
+<p>With --off, it lets the run expire again and says when it will.</p>
+<p>Examples:</p>
+<pre><code class="language-sh">maestro runs keep 31
+maestro runs keep 31 --off
+</code></pre>
+<p>Flags:</p>
+<pre><code class="language-text">      --off    let the run expire again
 </code></pre>
 <h2 id="maestro-runs-list"><a class="header" href="#maestro-runs-list">maestro runs list</a></h2>
 <p>List your runs.</p>
@@ -3265,8 +3342,8 @@ status 1 if the run failed.</p>
 <p>Show the server's settings: the limits on each user and how lines are scheduled.</p>
 <pre><code class="language-text">maestro settings [flags]
 </code></pre>
-<p>Shows how many images each user may keep and how many cores each user's
-lines may hold, and how the scheduler chooses whose line goes next and where: the policy of each of the three queues,
+<p>Shows how many images each user may keep, how many cores each user's
+lines may hold and how long runs are kept, and how the scheduler chooses whose line goes next and where: the policy of each of the three queues,
 the score's weights and how a user's share of the machines is measured. An
 administrator changes them on the Maestro page.</p>
 <p>Flags:</p>
@@ -3589,7 +3666,7 @@ terminal.</p>
 <tr><td>Forge</td><td>The place a repository lives, as Maestro reaches it: the forge's API and a read-only token of yours. The CLI keeps the token and sends it to the server when the server needs to clone. A forge never signs anyone in.</td><td><a href="reference/../use/forges.html">Git forges</a></td></tr>
 <tr><td>Build</td><td>The result of <code>maestro build &lt;repo&gt;</code>, which clones a repository at one commit and builds a container image from it. A build has a number, written <code>#12</code>. The build also reads <code>maestro.toml</code> and computes the lines, so every run of a build has the same lines.</td><td><a href="reference/../use/builds.html">Builds and images</a></td></tr>
 <tr><td>Image</td><td>What a build makes: your program and everything it needs, ready to start as a container. You keep 10 at a time unless your administrator set another number. When a new build needs room, the image you ran least recently is removed.</td><td><a href="reference/../use/builds.html#how-many-images-you-keep">How many images you keep</a></td></tr>
-<tr><td>Run</td><td>The result of <code>maestro run &lt;build&gt;</code>, which runs a build's image on the machines. A run has a number of its own, written <code>run 31</code>. Build numbers and run numbers count separately.</td><td><a href="reference/../use/runs.html">Runs and lines</a></td></tr>
+<tr><td>Run</td><td>The result of <code>maestro run &lt;build&gt;</code>, which runs a build's image on the machines. A run has a number of its own, written <code>run 31</code>. Build numbers and run numbers count separately. If your administrator set a number of days, a run expires that many days after its last line ended, and Maestro deletes it with its files, unless you kept it with <code>maestro runs keep</code>.</td><td><a href="reference/../use/runs.html">Runs and lines</a></td></tr>
 <tr><td>Line</td><td>One container of a run. <code>maestro.toml</code> lists lines of parameters and can name a generator that computes more. A run starts one container for each line, with the line's words in place of the image's <code>CMD</code>. Without a <code>maestro.toml</code>, a run is one line that runs the image's own command. A run has at most 5000 lines.</td><td><a href="reference/../repo/maestro-toml.html#parameters"><code>parameters</code></a></td></tr>
 <tr><td>Retry</td><td>A run that <code>maestro runs retry</code> made from some lines of an earlier run of the same build. Each line keeps its number, so a retry's lines can skip numbers.</td><td><a href="reference/../use/runs.html#running-lines-again">Running lines again</a></td></tr>
 <tr><td>Generator</td><td>A Python script in the repository whose <code>genvrs</code> function yields lines.</td><td><a href="reference/../repo/generator.html">Generating lines with Python</a></td></tr>

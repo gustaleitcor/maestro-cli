@@ -191,6 +191,7 @@ maestro runs get 31             # download the outputs and logs
 maestro runs cancel 31          # stop it
 maestro runs cancel 31 --line 2 # stop only line 2
 maestro runs retry 31           # run its failed lines again
+maestro runs keep 31            # keep it from expiring
 maestro runs rm 31              # delete it and its files
 </code></pre>
 <h2 id="listing-your-runs"><a class="header" href="#listing-your-runs">Listing your runs</a></h2>
@@ -202,6 +203,10 @@ maestro runs rm 31              # delete it and its files
 <p><code>maestro runs</code> shows your 20 newest runs. <code>--limit</code> changes the number, and
 0 means all of them. <code>--status</code> and <code>--repo</code> narrow the list. An
 administrator sees everyone's runs with <code>--all</code>.</p>
+<p>When a run in the list expires within a week, the list has an <code>EXPIRES</code>
+column. It reads <code>in 3d</code> for that run, <code>kept</code> for a run you kept, and <code>-</code>
+for the others. <a href="#how-long-a-run-is-kept">How long a run is kept</a> explains
+when a run expires.</p>
 <h2 id="looking-at-one-run"><a class="header" href="#looking-at-one-run">Looking at one run</a></h2>
 <pre><code class="language-text">Run 33 of ada/maestro-template@main (build #14): failed, on any machine
 2 line(s): 1 succeeded, 1 failed
@@ -274,6 +279,27 @@ can still end <code>succeeded</code>. On the Maestro page, a line's details have
 "Cancel" button that does the same for that line.</p>
 <p><code>maestro runs rm &lt;run&gt;</code> deletes the run with all its logs and files. It asks
 first.</p>
+<h2 id="how-long-a-run-is-kept"><a class="header" href="#how-long-a-run-is-kept">How long a run is kept</a></h2>
+<p>Maestro keeps every run until you delete it, unless your administrator set
+a number of days. <code>maestro settings</code> shows it as <code>runs kept</code>. With 30 days,
+Maestro deletes a run 30 days after its last line ended, with all its logs
+and files, as <code>maestro runs rm</code> does. It looks for such runs once an hour.
+A run with a line still waiting or running doesn't expire.</p>
+<p>Once a run expires within a week, <code>maestro runs</code> shows when in its
+<code>EXPIRES</code> column. <code>maestro runs show</code> says when too, as in
+"Maestro deletes this run and its files on 2026-11-20 at 14:00. Keep it
+with <code>maestro runs keep 31</code>." The Maestro page shows it beside the run.</p>
+<pre><code class="language-sh">maestro runs keep 31        # Maestro never deletes run 31 for being old
+maestro runs keep 31 --off  # run 31 expires again
+</code></pre>
+<p><code>maestro runs keep &lt;run&gt;</code> keeps a run until you delete it yourself.
+<code>--off</code> lets it expire again and says when. An administrator can keep
+anyone's run, or let it go.</p>
+<p>A run that <code>maestro runs retry</code> made expires on its own days, whether or
+not the run it retries is still there. It doesn't need that run, because
+it has its own copy of each line and of the files you sent. Once the
+earlier run is deleted, <code>maestro runs show</code> still says which run the retry
+came from, but that run can't be opened.</p>
 <h2 id="how-a-line-ends"><a class="header" href="#how-a-line-ends">How a line ends</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Status</th><th>What happened</th></tr></thead><tbody>
 <tr><td><code>succeeded</code></td><td>The program exited with 0.</td></tr>

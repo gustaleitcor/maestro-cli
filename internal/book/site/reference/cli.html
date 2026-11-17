@@ -690,6 +690,7 @@ run=$(maestro run 12 -q) &amp;&amp; maestro runs show "$run" --watch
 <ul>
 <li><a href="#maestro-runs-cancel">maestro runs cancel</a>: Cancel a run: drop what hasn't started and stop what has</li>
 <li><a href="#maestro-runs-get">maestro runs get</a>: Download the files kept from a run</li>
+<li><a href="#maestro-runs-keep">maestro runs keep</a>: Keep a run from expiring, or let it expire again</li>
 <li><a href="#maestro-runs-list">maestro runs list</a>: List your runs</li>
 <li><a href="#maestro-runs-logs">maestro runs logs</a>: Print what a line's container wrote to standard output and standard error</li>
 <li><a href="#maestro-runs-retry">maestro runs retry</a>: Run some of a run's lines again, in a new run of the same build</li>
@@ -727,6 +728,22 @@ maestro runs get 31 results/ --line 2 --line 5
 <p>Flags:</p>
 <pre><code class="language-text">      --force    download over a run already downloaded there
       --line n   only line n (again for more)
+</code></pre>
+<h2 id="maestro-runs-keep"><a class="header" href="#maestro-runs-keep">maestro runs keep</a></h2>
+<p>Keep a run from expiring, or let it expire again.</p>
+<pre><code class="language-text">maestro runs keep &lt;run&gt; [flags]
+</code></pre>
+<p>Keeps a run, so that Maestro never deletes it for being old. Your
+administrator can have Maestro delete each run some days after its last
+line ends, and <code>maestro settings</code> shows how many. A run you keep stays until
+you delete it with <code>maestro runs rm</code>.</p>
+<p>With --off, it lets the run expire again and says when it will.</p>
+<p>Examples:</p>
+<pre><code class="language-sh">maestro runs keep 31
+maestro runs keep 31 --off
+</code></pre>
+<p>Flags:</p>
+<pre><code class="language-text">      --off    let the run expire again
 </code></pre>
 <h2 id="maestro-runs-list"><a class="header" href="#maestro-runs-list">maestro runs list</a></h2>
 <p>List your runs.</p>
@@ -820,8 +837,8 @@ status 1 if the run failed.</p>
 <p>Show the server's settings: the limits on each user and how lines are scheduled.</p>
 <pre><code class="language-text">maestro settings [flags]
 </code></pre>
-<p>Shows how many images each user may keep and how many cores each user's
-lines may hold, and how the scheduler chooses whose line goes next and where: the policy of each of the three queues,
+<p>Shows how many images each user may keep, how many cores each user's
+lines may hold and how long runs are kept, and how the scheduler chooses whose line goes next and where: the policy of each of the three queues,
 the score's weights and how a user's share of the machines is measured. An
 administrator changes them on the Maestro page.</p>
 <p>Flags:</p>

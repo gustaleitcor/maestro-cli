@@ -22,6 +22,16 @@ func TestWriteSettings(t *testing.T) {
 	if !regexp.MustCompile(`cores per user\s+no ceiling\n`).MatchString(out.String()) {
 		t.Errorf("no ceiling on cores:\n%s", out.String())
 	}
+	if !regexp.MustCompile(`runs kept\s+until someone deletes them\n`).MatchString(out.String()) {
+		t.Errorf("runs aren't kept for ever:\n%s", out.String())
+	}
+	out.Reset()
+	s.RunRetentionDays = 30
+	writeSettings(&out, s)
+	if !regexp.MustCompile(`runs kept\s+30 days after their last line ends\n`).MatchString(out.String()) {
+		t.Errorf("runs aren't kept 30 days:\n%s", out.String())
+	}
+	s.RunRetentionDays = 0
 	out.Reset()
 	s.UserMaxCPUs = 16
 	writeSettings(&out, s)

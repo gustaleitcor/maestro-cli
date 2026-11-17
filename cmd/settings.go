@@ -17,8 +17,8 @@ var settingsAsJSON bool
 var settingsCmd = &cobra.Command{
 	Use:   "settings",
 	Short: "Show the server's settings: the limits on each user and how lines are scheduled",
-	Long: `Shows how many images each user may keep and how many cores each user's
-lines may hold, and how the scheduler chooses whose line goes next and where: the policy of each of the three queues,
+	Long: `Shows how many images each user may keep, how many cores each user's
+lines may hold and how long runs are kept, and how the scheduler chooses whose line goes next and where: the policy of each of the three queues,
 the score's weights and how a user's share of the machines is measured. An
 administrator changes them on the Maestro page.`,
 	Args:              cobra.NoArgs,
@@ -48,6 +48,11 @@ func writeSettings(out io.Writer, s *maestroapi.Settings) error {
 		cores = fmt.Sprint(s.UserMaxCPUs)
 	}
 	fmt.Fprintf(w, "cores per user\t%s\n", cores)
+	kept := "until someone deletes them"
+	if s.RunRetentionDays > 0 {
+		kept = fmt.Sprintf("%d days after their last line ends", s.RunRetentionDays)
+	}
+	fmt.Fprintf(w, "runs kept\t%s\n", kept)
 	if c := s.Scheduler; c != nil {
 		var weights []string
 		for _, u := range c.Weights {

@@ -13,6 +13,7 @@ maestro runs get 31             # download the outputs and logs
 maestro runs cancel 31          # stop it
 maestro runs cancel 31 --line 2 # stop only line 2
 maestro runs retry 31           # run its failed lines again
+maestro runs keep 31            # keep it from expiring
 maestro runs rm 31              # delete it and its files
 ```
 
@@ -28,6 +29,11 @@ RUN  REPO                                BUILD  STATUS     LINES                
 `maestro runs` shows your 20 newest runs. `--limit` changes the number, and
 0 means all of them. `--status` and `--repo` narrow the list. An
 administrator sees everyone's runs with `--all`.
+
+When a run in the list expires within a week, the list has an `EXPIRES`
+column. It reads `in 3d` for that run, `kept` for a run you kept, and `-`
+for the others. [How long a run is kept](#how-long-a-run-is-kept) explains
+when a run expires.
 
 ## Looking at one run
 
@@ -128,6 +134,34 @@ can still end `succeeded`. On the Maestro page, a line's details have a
 
 `maestro runs rm <run>` deletes the run with all its logs and files. It asks
 first.
+
+## How long a run is kept
+
+Maestro keeps every run until you delete it, unless your administrator set
+a number of days. `maestro settings` shows it as `runs kept`. With 30 days,
+Maestro deletes a run 30 days after its last line ended, with all its logs
+and files, as `maestro runs rm` does. It looks for such runs once an hour.
+A run with a line still waiting or running doesn't expire.
+
+Once a run expires within a week, `maestro runs` shows when in its
+`EXPIRES` column. `maestro runs show` says when too, as in
+"Maestro deletes this run and its files on 2026-11-20 at 14:00. Keep it
+with `maestro runs keep 31`." The Maestro page shows it beside the run.
+
+```sh
+maestro runs keep 31        # Maestro never deletes run 31 for being old
+maestro runs keep 31 --off  # run 31 expires again
+```
+
+`maestro runs keep <run>` keeps a run until you delete it yourself.
+`--off` lets it expire again and says when. An administrator can keep
+anyone's run, or let it go.
+
+A run that `maestro runs retry` made expires on its own days, whether or
+not the run it retries is still there. It doesn't need that run, because
+it has its own copy of each line and of the files you sent. Once the
+earlier run is deleted, `maestro runs show` still says which run the retry
+came from, but that run can't be opened.
 
 ## How a line ends
 

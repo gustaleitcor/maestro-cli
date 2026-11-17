@@ -23,6 +23,19 @@ func Ago(t, now time.Time) string {
 	return t.Local().Format("2006-01-02")
 }
 
+// In says how long after now t is, as a list shows it: "in 3d", "in 5h",
+// and "within the hour" for less than an hour, or a time already past.
+func In(t, now time.Time) string {
+	d := t.Sub(now)
+	switch {
+	case d < time.Hour:
+		return "within the hour"
+	case d < 24*time.Hour:
+		return fmt.Sprintf("in %dh", int(d.Hours()))
+	}
+	return fmt.Sprintf("in %dd", int(d.Hours()/24))
+}
+
 // Bytes writes n in binary units, to three digits: 512B, 1.5K, 16G.
 func Bytes(n uint64) string {
 	const units = "KMGTPE"

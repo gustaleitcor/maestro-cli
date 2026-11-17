@@ -45,6 +45,60 @@ func TestWriteRunsList(t *testing.T) {
 	}
 }
 
+// The list says when a run expires once one of them does within a week,
+// and has no such column otherwise.
+func TestWriteRunsListExpiring(t *testing.T) {
+	now := time.Now()
+	runs := []maestroapi.Run{
+		{ID: 33, Repo: "lab/sim", Ref: "main", BuildID: 12, Status: "running", CreatedAt: now},
+		{ID: 32, Repo: "lab/sim", Ref: "main", BuildID: 12, Status: "succeeded", CreatedAt: now, ExpiresAt: now.Add(30 * 24 * time.Hour)},
+		{ID: 31, Repo: "lab/sim", Ref: "main", BuildID: 12, Status: "succeeded", CreatedAt: now, Kept: true},
+	}
+	var out bytes.Buffer
+	writeRunsList(&out, runs, false, 3)
+	if strings.Contains(out.String(), "EXPIRES") {
+		t.Errorf("an EXPIRES column with no run expiring within a week:\n%s", out.String())
+	}
+	runs[1].ExpiresAt = now.Add(3*24*time.Hour + time.Minute)
+	out.Reset()
+	writeRunsList(&out, runs, false, 3)
+	wantTable(t, out.String(), [][]string{
+		{"RUN", "REPO", "BUILD", "STATUS", "LINES", "CREATED", "EXPIRES"},
+		{"33", "lab/sim@main", "#12", "running", "just now", "-"},
+		{"32", "lab/sim@main", "#12", "succeeded", "just now", "in 3d"},
+		{"31", "lab/sim@main", "#12", "succeeded", "just now", "kept"},
+	})
+
+	out.Reset()
+	writeRunShow(&out, &runs[1], false)
+	if !strings.Contains(out.String(), "Maestro deletes this run and its files on ") || !strings.Contains(out.String(), "`maestro runs keep 32`") {
+		t.Errorf("run 32 doesn't say when it expires:\n%s", out.String())
+	}
+	out.Reset()
+	writeRunShow(&out, &runs[2], false)
+	if strings.Contains(out.String(), "deletes") {
+		t.Errorf("kept run 31 says it expires:\n%s", out.String())
+	}
+}
+
+func TestWriteKept(t *testing.T) {
+	var out bytes.Buffer
+	writeKept(&out, &maestroapi.Run{ID: 31, Kept: true}, true)
+	if !strings.Contains(out.String(), "Kept run 31.") || !strings.Contains(out.String(), "`maestro runs keep 31 --off`") {
+		t.Errorf("keeping: %q", out.String())
+	}
+	out.Reset()
+	writeKept(&out, &maestroapi.Run{ID: 31, ExpiresAt: time.Date(2026, 11, 20, 14, 0, 0, 0, time.Local)}, false)
+	if !strings.Contains(out.String(), "Run 31 is no longer kept. Maestro deletes it and its files on 2026-11-20 at 14:00.") {
+		t.Errorf("letting it go: %q", out.String())
+	}
+	out.Reset()
+	writeKept(&out, &maestroapi.Run{ID: 31}, false)
+	if !strings.Contains(out.String(), "It expires as your other runs do.") {
+		t.Errorf("letting go a run that doesn't expire: %q", out.String())
+	}
+}
+
 // With everyone's runs, each says whose it is: by name, or by email for
 // someone the provider gave no name.
 func TestWriteRunsListOfEveryone(t *testing.T) {

@@ -267,9 +267,33 @@ working, and a key revoked after it works again.</li>
 <p>orq keeps the logs and outputs of runs under <code>DATA_DIR</code>, which is
 <code>/maestro/data</code> by default, as <code>&lt;user&gt;/&lt;run&gt;/&lt;line&gt;/&lt;file&gt;</code>. Each line
 keeps at most <code>RUN_OUTPUT_MAX_MB</code> of logs and outputs, 1024 by default.</p>
-<p>The files stay until someone deletes the run. orq deletes none of them on
-its own, so size the volume for that, and ask users to remove the runs they
-no longer need with <code>maestro runs rm</code>.</p>
+<p>The files stay until the run is deleted. A user deletes a run with
+<code>maestro runs rm</code>. orq deletes runs on its own too, once you set "Days a
+run is kept" (<code>run_retention_days</code>) under Admin › Settings › Limits. It is
+0 by default, which keeps every run until someone deletes it, so size the
+volume for that.</p>
+<p>With a number of days set, the runner looks once an hour for runs whose
+last line ended more than that many days ago. It deletes each of them with
+its lines, the record of its files and its directory under
+<code>/maestro/data</code>, as <code>maestro runs rm</code> does, and its log names the run. Two
+kinds of run never expire:</p>
+<ul>
+<li>A run with a line still waiting or running. Its days start when its last
+line ends.</li>
+<li>A run its owner, or an administrator, kept with <code>maestro runs keep</code>. It
+stays until someone deletes it, or lets it expire again with
+<code>maestro runs keep &lt;run&gt; --off</code>.</li>
+</ul>
+<p>Lowering the number deletes the runs it makes old within the hour.
+<code>maestro runs --all</code> shows, in its <code>EXPIRES</code> column, the runs that expire
+within a week.</p>
+<p>A run that a newer run retries expires on its own days. The retry has its
+own copy of each line, of its machines and of the files sent from the CLI,
+so it runs and keeps its files without the run it came from. Its
+<code>retry_of</code> still names that run after it is gone.</p>
+<p>An expired run's lines are gone from <code>maestro export</code>, as those of a run
+deleted with <code>maestro runs rm</code> are. What each user used is kept apart, so
+the scheduler's shares and <code>maestro usage</code> don't change.</p>
 <p><code>USER_DATA_MAX_GB</code> limits what all of a user's runs keep, and is off by
 default. orq adds up the user's files when they start a run. Once they keep
 that much or more, it refuses the run with "your runs keep 52 GB of the 50 GB
@@ -291,7 +315,7 @@ everyone out of the page. The CLI stays signed in, because its keys are in
 the database.</p>
 <div class="table-wrapper"><table><thead><tr><th>Answer</th><th>Kept for</th><th>Dropped sooner when</th></tr></thead><tbody>
 <tr><td>A user's images (<code>maestro builds</code>, completing <code>maestro run</code>)</td><td>60 s</td><td>A build of theirs ends, or one of their images is removed</td></tr>
-<tr><td>Runs (<code>maestro runs</code>, completing a run, the page)</td><td>2 s</td><td>Their owner or an administrator starts, cancels or deletes one</td></tr>
+<tr><td>Runs (<code>maestro runs</code>, completing a run, the page)</td><td>2 s</td><td>Their owner or an administrator starts, cancels, keeps or deletes one</td></tr>
 <tr><td>A machine's status</td><td>10 min. An answer older than 30 s, or 10 s if the machine was unreachable, triggers a new check in the background.</td><td>The machine is edited</td></tr>
 <tr><td>A machine's load (<code>maestro top</code>)</td><td>2 s</td><td></td></tr>
 </tbody></table>

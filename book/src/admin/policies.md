@@ -52,6 +52,7 @@ for both. `maestro queue` shows an administrator each user's number, as in
 | --- | --- | --- |
 | Images per user | `images_per_user` | 10, and at most 1000 |
 | Cores per user | `user_max_cpus` | 0, which means no ceiling |
+| Days a run is kept | `run_retention_days` | 0, which means until someone deletes it, and at most 3650 |
 
 Lowering "Images per user" removes nobody's images at that moment. A user
 who is over the new number loses images at their next build, which removes
@@ -68,6 +69,12 @@ until enough of theirs end. A line that asks for more cores than the
 ceiling never starts, and while it is its user's head, their lines behind
 it wait too. `maestro queue` tells a user when their next line waits for
 the ceiling.
+
+"Days a run is kept" has orq delete each run, with its files, that many
+days after its last line ended. A run with a line still waiting or running
+doesn't expire, and neither does one its owner kept with
+`maestro runs keep`. Lowering it deletes the runs it makes old within the
+hour. [What orq keeps](retention.md#files-in-maestrodata) says how.
 
 ## Checking what is in force
 

@@ -21,7 +21,9 @@ link to a run, a line or a file, and it opens for anyone allowed to see it.
 
 My runs lists your runs, newest first. You can narrow the list to active or
 finished runs, and search it by run number or repository. Administrators
-find everyone's runs under All users.
+find everyone's runs under All users. A run that expires within a week
+says when under its Created time, in the list and in the run's details.
+[How long a run is kept](runs.md#how-long-a-run-is-kept) explains it.
 
 Opening a run shows its lines, with the cores and memory each one asked for.
 You can sort them by line number, arguments, cores, memory, machine or

@@ -98,9 +98,36 @@ orq keeps the logs and outputs of runs under `DATA_DIR`, which is
 `/maestro/data` by default, as `<user>/<run>/<line>/<file>`. Each line
 keeps at most `RUN_OUTPUT_MAX_MB` of logs and outputs, 1024 by default.
 
-The files stay until someone deletes the run. orq deletes none of them on
-its own, so size the volume for that, and ask users to remove the runs they
-no longer need with `maestro runs rm`.
+The files stay until the run is deleted. A user deletes a run with
+`maestro runs rm`. orq deletes runs on its own too, once you set "Days a
+run is kept" (`run_retention_days`) under Admin › Settings › Limits. It is
+0 by default, which keeps every run until someone deletes it, so size the
+volume for that.
+
+With a number of days set, the runner looks once an hour for runs whose
+last line ended more than that many days ago. It deletes each of them with
+its lines, the record of its files and its directory under
+`/maestro/data`, as `maestro runs rm` does, and its log names the run. Two
+kinds of run never expire:
+
+- A run with a line still waiting or running. Its days start when its last
+  line ends.
+- A run its owner, or an administrator, kept with `maestro runs keep`. It
+  stays until someone deletes it, or lets it expire again with
+  `maestro runs keep <run> --off`.
+
+Lowering the number deletes the runs it makes old within the hour.
+`maestro runs --all` shows, in its `EXPIRES` column, the runs that expire
+within a week.
+
+A run that a newer run retries expires on its own days. The retry has its
+own copy of each line, of its machines and of the files sent from the CLI,
+so it runs and keeps its files without the run it came from. Its
+`retry_of` still names that run after it is gone.
+
+An expired run's lines are gone from `maestro export`, as those of a run
+deleted with `maestro runs rm` are. What each user used is kept apart, so
+the scheduler's shares and `maestro usage` don't change.
 
 `USER_DATA_MAX_GB` limits what all of a user's runs keep, and is off by
 default. orq adds up the user's files when they start a run. Once they keep
@@ -130,7 +157,7 @@ the database.
 | Answer | Kept for | Dropped sooner when |
 | --- | --- | --- |
 | A user's images (`maestro builds`, completing `maestro run`) | 60 s | A build of theirs ends, or one of their images is removed |
-| Runs (`maestro runs`, completing a run, the page) | 2 s | Their owner or an administrator starts, cancels or deletes one |
+| Runs (`maestro runs`, completing a run, the page) | 2 s | Their owner or an administrator starts, cancels, keeps or deletes one |
 | A machine's status | 10 min. An answer older than 30 s, or 10 s if the machine was unreachable, triggers a new check in the background. | The machine is edited |
 | A machine's load (`maestro top`) | 2 s | |
 

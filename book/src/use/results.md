@@ -71,8 +71,10 @@ over, and the line carries a note that its logs or outputs were cut.
 
 ## How long it is kept
 
-A run's files stay until you delete the run with `maestro runs rm <run>`.
-Maestro deletes none of them on its own. Removing a build's image to make
+A run's files stay until you delete the run with `maestro runs rm <run>`,
+or until the run expires, if your administrator set a number of days.
+[How long a run is kept](runs.md#how-long-a-run-is-kept) says when that is
+and how to keep a run. Removing a build's image to make
 room for a newer build keeps the build's runs and their files.
 
 ## Where the files are on the server

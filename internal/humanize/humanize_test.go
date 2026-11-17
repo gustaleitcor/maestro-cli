@@ -36,6 +36,17 @@ func TestRateAndFraction(t *testing.T) {
 	}
 }
 
+func TestIn(t *testing.T) {
+	now := time.Date(2026, 11, 14, 12, 0, 0, 0, time.Local)
+	for after, want := range map[time.Duration]string{
+		-time.Minute: "within the hour", 30 * time.Minute: "within the hour", 3 * time.Hour: "in 3h", 50 * time.Hour: "in 2d",
+	} {
+		if got := In(now.Add(after), now); got != want {
+			t.Errorf("In(%s after) = %q, want %q", after, got, want)
+		}
+	}
+}
+
 func TestAgo(t *testing.T) {
 	now := time.Date(2026, 11, 14, 12, 0, 0, 0, time.Local)
 	for before, want := range map[time.Duration]string{

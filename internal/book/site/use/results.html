@@ -229,8 +229,10 @@ the other.</p>
 administrator set another limit with <code>RUN_OUTPUT_MAX_MB</code>. It drops what goes
 over, and the line carries a note that its logs or outputs were cut.</p>
 <h2 id="how-long-it-is-kept"><a class="header" href="#how-long-it-is-kept">How long it is kept</a></h2>
-<p>A run's files stay until you delete the run with <code>maestro runs rm &lt;run&gt;</code>.
-Maestro deletes none of them on its own. Removing a build's image to make
+<p>A run's files stay until you delete the run with <code>maestro runs rm &lt;run&gt;</code>,
+or until the run expires, if your administrator set a number of days.
+<a href="runs.html#how-long-a-run-is-kept">How long a run is kept</a> says when that is
+and how to keep a run. Removing a build's image to make
 room for a newer build keeps the build's runs and their files.</p>
 <h2 id="where-the-files-are-on-the-server"><a class="header" href="#where-the-files-are-on-the-server">Where the files are on the server</a></h2>
 <p>An administrator finds the same files under the server's data directory:</p>

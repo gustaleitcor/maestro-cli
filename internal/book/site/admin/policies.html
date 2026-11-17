@@ -219,6 +219,7 @@ for both. <code>maestro queue</code> shows an administrator each user's number, 
 <div class="table-wrapper"><table><thead><tr><th>Label</th><th>Setting</th><th>Default</th></tr></thead><tbody>
 <tr><td>Images per user</td><td><code>images_per_user</code></td><td>10, and at most 1000</td></tr>
 <tr><td>Cores per user</td><td><code>user_max_cpus</code></td><td>0, which means no ceiling</td></tr>
+<tr><td>Days a run is kept</td><td><code>run_retention_days</code></td><td>0, which means until someone deletes it, and at most 3650</td></tr>
 </tbody></table>
 </div>
 <p>Lowering "Images per user" removes nobody's images at that moment. A user
@@ -235,6 +236,11 @@ until enough of theirs end. A line that asks for more cores than the
 ceiling never starts, and while it is its user's head, their lines behind
 it wait too. <code>maestro queue</code> tells a user when their next line waits for
 the ceiling.</p>
+<p>"Days a run is kept" has orq delete each run, with its files, that many
+days after its last line ended. A run with a line still waiting or running
+doesn't expire, and neither does one its owner kept with
+<code>maestro runs keep</code>. Lowering it deletes the runs it makes old within the
+hour. <a href="retention.html#files-in-maestrodata">What orq keeps</a> says how.</p>
 <h2 id="checking-what-is-in-force"><a class="header" href="#checking-what-is-in-force">Checking what is in force</a></h2>
 <p><code>maestro settings</code> prints the saved settings for any user, and
 <code>maestro queue</code> ends with a one-line summary of them.</p>

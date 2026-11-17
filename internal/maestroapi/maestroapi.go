@@ -136,6 +136,10 @@ type Run struct {
 
 	// RetryOf is the run whose lines it runs again; 0 for a run of its own.
 	RetryOf int64 `json:"retry_of,omitempty"`
+	// Kept is whether it was kept from expiring, and ExpiresAt when the
+	// server deletes it; zero when it doesn't.
+	Kept      bool      `json:"kept,omitempty"`
+	ExpiresAt time.Time `json:"expires_at,omitzero"`
 }
 
 // RunLine is one container of a run. Status is queued (in its user's
@@ -183,8 +187,11 @@ type Settings struct {
 	ImagesPerUser int `json:"images_per_user"`
 	// UserMaxCPUs is the most cores a user's lines assigned, starting and
 	// running may take together; 0 means no ceiling.
-	UserMaxCPUs int64      `json:"user_max_cpus"`
-	Scheduler   *Scheduler `json:"scheduler"`
+	UserMaxCPUs int64 `json:"user_max_cpus"`
+	// RunRetentionDays is how many days after its last line ended a run
+	// is deleted; 0 means never.
+	RunRetentionDays int64      `json:"run_retention_days"`
+	Scheduler        *Scheduler `json:"scheduler"`
 }
 
 // Scheduler is how waiting lines are chosen and given machines: the three
@@ -508,6 +515,20 @@ func RetryRun(ctx context.Context, maestroKey string, id int64, lines []int64) (
 		Lines []int64 `json:"lines,omitempty"`
 	}{lines}
 	if err := doWithKey(ctx, maestroKey, http.MethodPost, runPath(id)+"/retry", body, http.StatusCreated, &run); err != nil {
+		return nil, err
+	}
+	return &run, nil
+}
+
+// KeepRun keeps a run from expiring, or with keep false lets it expire
+// again, and returns the run.
+func KeepRun(ctx context.Context, maestroKey string, id int64, keep bool) (*Run, error) {
+	method := http.MethodPost
+	if !keep {
+		method = http.MethodDelete
+	}
+	var run Run
+	if err := doWithKey(ctx, maestroKey, method, runPath(id)+"/keep", nil, http.StatusOK, &run); err != nil {
 		return nil, err
 	}
 	return &run, nil

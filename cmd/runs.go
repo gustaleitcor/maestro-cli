@@ -43,7 +43,12 @@ var (
 	runsRetryFailed bool
 	runsRetryLines  []int64
 	runsCancelLines []int64
+	runsKeepOff     bool
 )
+
+// expiresSoon is how long before a run expires that the CLI starts to say
+// when.
+const expiresSoon = 7 * 24 * time.Hour
 
 // followPoll is how often runs logs -f looks whether a line has started.
 var followPoll = 2 * time.Second
@@ -157,6 +162,22 @@ With --watch, it follows the new run until the run is over, as
 	RunE:              runRunsRetry,
 }
 
+var runsKeepCmd = &cobra.Command{
+	Use:   "keep <run>",
+	Short: "Keep a run from expiring, or let it expire again",
+	Long: `Keeps a run, so that Maestro never deletes it for being old. Your
+administrator can have Maestro delete each run some days after its last
+line ends, and ` + "`maestro settings`" + ` shows how many. A run you keep stays until
+you delete it with ` + "`maestro runs rm`" + `.
+
+With --off, it lets the run expire again and says when it will.`,
+	Example: `  maestro runs keep 31
+  maestro runs keep 31 --off`,
+	Args:              numberArgs(1, 1, "run"),
+	ValidArgsFunction: completeRuns,
+	RunE:              runRunsKeep,
+}
+
 var runsRmCmd = &cobra.Command{
 	Use:               "rm <run>",
 	Aliases:           []string{"remove"},
@@ -194,7 +215,8 @@ func init() {
 	addAnswerFlags(runsRetryCmd, "the queued run")
 	rootCmd.AddCommand(runsCmd)
 	addYesFlag(runsRmCmd)
-	runsCmd.AddCommand(runsListCmd, runsShowCmd, runsLogsCmd, runsGetCmd, runsCancelCmd, runsRetryCmd, runsRmCmd)
+	runsKeepCmd.Flags().BoolVar(&runsKeepOff, "off", false, "let the run expire again")
+	runsCmd.AddCommand(runsListCmd, runsShowCmd, runsLogsCmd, runsGetCmd, runsCancelCmd, runsRetryCmd, runsKeepCmd, runsRmCmd)
 }
 
 // addWatchFlags gives a command --watch and --interval, for whatever ends
@@ -308,7 +330,13 @@ func writeRunsList(out io.Writer, runs []maestroapi.Run, all bool, matching int)
 	if all {
 		user = "USER\t"
 	}
-	fmt.Fprintln(w, "RUN\t"+user+"REPO\tBUILD\tSTATUS\tLINES\tCREATED")
+	// EXPIRES is there only while a run shown expires within a week.
+	expiring := slices.ContainsFunc(runs, func(r maestroapi.Run) bool { return expiresWithin(r, now) })
+	headings := "RUN\t" + user + "REPO\tBUILD\tSTATUS\tLINES\tCREATED"
+	if expiring {
+		headings += "\tEXPIRES"
+	}
+	fmt.Fprintln(w, headings)
 	for _, r := range runs {
 		if all {
 			user = r.User.Name
@@ -317,7 +345,11 @@ func writeRunsList(out io.Writer, runs []maestroapi.Run, all bool, matching int)
 			}
 			user += "\t"
 		}
-		fmt.Fprintf(w, "%d\t%s%s\t#%d\t%s\t%s\t%s\n", r.ID, user, r.Repo+"@"+r.Ref, r.BuildID, r.Status, lineCounts(r.Lines), humanize.Ago(r.CreatedAt, now))
+		row := fmt.Sprintf("%d\t%s%s\t#%d\t%s\t%s\t%s", r.ID, user, r.Repo+"@"+r.Ref, r.BuildID, r.Status, lineCounts(r.Lines), humanize.Ago(r.CreatedAt, now))
+		if expiring {
+			row += "\t" + expiresCell(r, now)
+		}
+		fmt.Fprintln(w, row)
 	}
 	if err := w.Flush(); err != nil {
 		return err
@@ -327,6 +359,22 @@ func writeRunsList(out io.Writer, runs []maestroapi.Run, all bool, matching int)
 		return err
 	}
 	return nil
+}
+
+// expiresWithin says whether the server deletes run within a week of now.
+func expiresWithin(run maestroapi.Run, now time.Time) bool {
+	return !run.ExpiresAt.IsZero() && run.ExpiresAt.Sub(now) <= expiresSoon
+}
+
+// expiresCell is when a run expires, in the list's EXPIRES column.
+func expiresCell(run maestroapi.Run, now time.Time) string {
+	switch {
+	case run.Kept:
+		return "kept"
+	case expiresWithin(run, now):
+		return humanize.In(run.ExpiresAt, now)
+	}
+	return "-"
 }
 
 func runRunsShow(cmd *cobra.Command, args []string) error {
@@ -448,6 +496,9 @@ func writeRunShow(out io.Writer, run *maestroapi.Run, onlyFailed bool) error {
 	fmt.Fprintf(out, "Run %d of %s@%s (build #%d%s): %s, on %s\n", run.ID, run.Repo, run.Ref, run.BuildID, retry, run.Status, where)
 	if len(run.LocalFiles) > 0 {
 		fmt.Fprintln(out, dimStyle.Render(fmt.Sprintf("Lines from your %s, not the build's.", strings.Join(run.LocalFiles, ", "))))
+	}
+	if expiresWithin(*run, time.Now()) {
+		fmt.Fprintln(out, warnStyle.Render(fmt.Sprintf("Maestro deletes this run and its files on %s. Keep it with `maestro runs keep %d`.", run.ExpiresAt.Local().Format("2006-01-02 at 15:04"), run.ID)))
 	}
 	if run.OutputsLayout == "shared" {
 		fmt.Fprintln(out, dimStyle.Render("Every line's outputs go in one shared tree, so a later line overwrites a path an earlier one wrote."))
@@ -909,6 +960,32 @@ func lineList(lines []int64) string {
 		words[i] = strconv.FormatInt(l, 10)
 	}
 	return "lines " + strings.Join(words[:len(words)-1], ", ") + " and " + words[len(words)-1]
+}
+
+func runRunsKeep(cmd *cobra.Command, args []string) error {
+	id, err := parseID(args[0], "run")
+	if err != nil {
+		return err
+	}
+	run, err := maestroapi.KeepRun(cmd.Context(), maestroKey, id, !runsKeepOff)
+	if err != nil {
+		return err
+	}
+	return writeKept(os.Stdout, run, !runsKeepOff)
+}
+
+// writeKept says what keeping run, or letting it go, did.
+func writeKept(out io.Writer, run *maestroapi.Run, keep bool) error {
+	var err error
+	switch {
+	case keep:
+		_, err = fmt.Fprintf(out, "%s Maestro won't delete it on its own. Let it expire again with `maestro runs keep %d --off`.\n", successStyle.Render(fmt.Sprintf("Kept run %d.", run.ID)), run.ID)
+	case !run.ExpiresAt.IsZero():
+		_, err = fmt.Fprintf(out, "%s Maestro deletes it and its files on %s.\n", successStyle.Render(fmt.Sprintf("Run %d is no longer kept.", run.ID)), run.ExpiresAt.Local().Format("2006-01-02 at 15:04"))
+	default:
+		_, err = fmt.Fprintf(out, "%s It expires as your other runs do.\n", successStyle.Render(fmt.Sprintf("Run %d is no longer kept.", run.ID)))
+	}
+	return err
 }
 
 func runRunsRm(cmd *cobra.Command, args []string) error {
