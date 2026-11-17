@@ -2386,7 +2386,7 @@ build=$(maestro build my-app -q)
 <p>Flags:</p>
 <pre><code class="language-text">  -c, --config file         a file on your computer to build with as maestro.toml, in place of the repository's
   -f, --dockerfile file     a file on your computer to build from as the Dockerfile, in place of the repository's
-      --forge string        which forge to use (see 'maestro forges list')
+      --forge name          the name of the forge to use, as maestro forges list shows it
   -g, --generator script    a generator script on your computer, in place of the one maestro.toml names
   -n, --interval duration   how often to redraw with --watch, at least 1s (default 2s)
       --json                print the build (and its run, with --run) as JSON, and nothing else on standard output
@@ -2605,11 +2605,12 @@ maestro export --since 30d -o month.csv
       --until string    until before this day, time or so long ago; now when left out
 </code></pre>
 <h2 id="maestro-forges"><a class="header" href="#maestro-forges">maestro forges</a></h2>
-<p>Manage the git forges Maestro reads repositories from.</p>
+<p>Add, list and remove the git forges Maestro reads repositories from.</p>
 <pre><code class="language-text">maestro forges [flags]
 </code></pre>
-<p>A forge is where your repositories live: GitHub, Forgejo (Codeberg,
-Gitea) or GitLab. Maestro only reads from it.</p>
+<p>Lists the git forges the CLI keeps. A forge is where your repositories
+live: GitHub, GitLab, Codeberg, or another Forgejo or Gitea server. Maestro
+only reads from it.</p>
 <p>Also: <code>forge</code>.</p>
 <p>Flags:</p>
 <pre><code class="language-text">      --json   print the forges as JSON
@@ -2617,29 +2618,30 @@ Gitea) or GitLab. Maestro only reads from it.</p>
 <p>Commands:</p>
 <ul>
 <li><a href="reference/cli.html#maestro-forges-add">maestro forges add</a>: Add a forge and its token</li>
-<li><a href="reference/cli.html#maestro-forges-list">maestro forges list</a>: List the configured forges</li>
+<li><a href="reference/cli.html#maestro-forges-list">maestro forges list</a>: List your forges</li>
 <li><a href="reference/cli.html#maestro-forges-rm">maestro forges rm</a>: Remove a forge and forget its token</li>
 </ul>
 <h2 id="maestro-forges-add"><a class="header" href="#maestro-forges-add">maestro forges add</a></h2>
 <p>Add a forge and its token.</p>
 <pre><code class="language-text">maestro forges add [name] [flags]
 </code></pre>
-<p>Adds a forge, or replaces the one with the same name. The token is
-checked before it is stored. Only Forgejo takes a --url.</p>
-<p>The token is kept in the system keyring. Without --store-in-file, adding a
-forge goes back to the keyring; with it, secrets are kept in the config file.</p>
+<p>Adds a forge, or replaces the one with the same name. It checks the
+token before it keeps it. Only a Forgejo forge takes --url.</p>
+<p>The CLI keeps the token in the system keyring. Without --store-in-file,
+adding a forge goes back to the keyring. With it, the CLI keeps secrets in
+the config file.</p>
 <p>Examples:</p>
 <pre><code class="language-sh">maestro forges add
 maestro forges add --kind gitlab
 maestro forges add work --kind forgejo --url https://git.example.com
 </code></pre>
 <p>Flags:</p>
-<pre><code class="language-text">      --kind string     forge kind: github, forgejo, gitlab
+<pre><code class="language-text">      --kind kind       the kind of forge: github, forgejo, gitlab
       --store-in-file   keep secrets in the config file from now on, instead of the system keyring
-      --url string      Forgejo instance URL (default: https://codeberg.org)
+      --url url         the Forgejo server's url (default: https://codeberg.org)
 </code></pre>
 <h2 id="maestro-forges-list"><a class="header" href="#maestro-forges-list">maestro forges list</a></h2>
-<p>List the configured forges.</p>
+<p>List your forges.</p>
 <pre><code class="language-text">maestro forges list [flags]
 </code></pre>
 <p>Flags:</p>
@@ -2781,8 +2783,8 @@ the number an administrator weighs a user by.</p>
 </code></pre>
 <p>Also: <code>repo</code>.</p>
 <p>Flags:</p>
-<pre><code class="language-text">      --forge string   which forge to use (see 'maestro forges list')
-      --json           print the repositories as JSON
+<pre><code class="language-text">      --forge name   the name of the forge to use, as maestro forges list shows it
+      --json         print the repositories as JSON
 </code></pre>
 <p>Commands:</p>
 <ul>
@@ -2792,13 +2794,13 @@ the number an administrator weighs a user by.</p>
 <p>List the repositories your forge tokens can see.</p>
 <pre><code class="language-text">maestro repos list [flags]
 </code></pre>
-<p>Lists one forge's repositories. Left and right arrows switch forge;
---forge picks the one shown first.</p>
-<p>Piped somewhere, or with --json, it prints every forge's repositories once
-instead, or only those of --forge.</p>
+<p>Lists one forge's repositories. The left and right arrows switch to
+another forge, and --forge picks the one shown first.</p>
+<p>When its output goes to a pipe, or with --json, it prints every forge's
+repositories once instead, or only those of --forge.</p>
 <p>Flags:</p>
-<pre><code class="language-text">      --forge string   which forge to use (see 'maestro forges list')
-      --json           print the repositories as JSON
+<pre><code class="language-text">      --forge name   the name of the forge to use, as maestro forges list shows it
+      --json         print the repositories as JSON
 </code></pre>
 <h2 id="maestro-run"><a class="header" href="#maestro-run">maestro run</a></h2>
 <p>Run the image of one of your builds on the machines.</p>

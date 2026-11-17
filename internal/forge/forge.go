@@ -119,12 +119,12 @@ func TokenHint(kind, baseURL string) (hint, warning string) {
 			"by default the token expires in 30 days."
 	case Forgejo:
 		// Forgejo has no way to pre-fill the form, so spell it out.
-		return "Maestro needs a read-only token to list your repos and clone the one you build.\n\n" +
+		return "Maestro needs a read-only token to list your repositories and clone the one you build.\n\n" +
 			"  1. Open " + baseURL + "/user/settings/applications\n" +
-			"  2. Under \"Generate new token\", give it a name, e.g. maestro-cli.\n" +
+			"  2. Under \"Generate new token\", give it a name, such as maestro-cli.\n" +
 			"  3. Open \"Select permissions\" and set repository: Read and user: Read.\n" +
 			"     Leave everything else at No access.\n" +
-			"  4. Generate the token and copy it; it is only shown once.\n" +
+			"  4. Generate the token and copy it. It is shown only once.\n" +
 			"  5. Paste it here.", ""
 	case GitLab:
 		// The query string pre-fills the name and the scopes needed.

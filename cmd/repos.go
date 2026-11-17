@@ -33,11 +33,11 @@ var reposCmd = &cobra.Command{
 var reposListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List the repositories your forge tokens can see",
-	Long: `Lists one forge's repositories. Left and right arrows switch forge;
---forge picks the one shown first.
+	Long: `Lists one forge's repositories. The left and right arrows switch to
+another forge, and --forge picks the one shown first.
 
-Piped somewhere, or with --json, it prints every forge's repositories once
-instead, or only those of --forge.`,
+When its output goes to a pipe, or with --json, it prints every forge's
+repositories once instead, or only those of --forge.`,
 	Args:              cobra.NoArgs,
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE:              runReposList,
@@ -72,7 +72,7 @@ func runReposList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if len(configured) == 0 {
-		return fmt.Errorf("no forge configured\n\nRun `maestro forges add` to add GitHub, a Forgejo instance, or GitLab")
+		return fmt.Errorf("you have no forge yet\n\nRun `maestro forges add` to add GitHub, GitLab or a Forgejo server")
 	}
 
 	start := 0
@@ -88,7 +88,7 @@ func runReposList(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if repoListForge != "" && configured[start].Name != repoListForge {
-		return fmt.Errorf("no forge named %q (configured: %s)", repoListForge, forgeNames(configured))
+		return fmt.Errorf("you have no forge named %q, only %s", repoListForge, forgeNames(configured))
 	}
 	return tui.RunRepoList(cmd.Context(), forges, start)
 }
@@ -148,7 +148,7 @@ func loadRepos(ctx context.Context, forgeName string) ([]repoRow, error) {
 
 func writeReposList(out io.Writer, rows []repoRow) error {
 	if len(rows) == 0 {
-		_, err := fmt.Fprintln(out, "No repositories: your forge tokens see none.")
+		_, err := fmt.Fprintln(out, "No repositories. Your forge tokens can't see any.")
 		return err
 	}
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)

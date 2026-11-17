@@ -27,9 +27,10 @@ var (
 var forgesCmd = &cobra.Command{
 	Use:     "forges",
 	Aliases: []string{"forge"},
-	Short:   "Manage the git forges Maestro reads repositories from",
-	Long: `A forge is where your repositories live: GitHub, Forgejo (Codeberg,
-Gitea) or GitLab. Maestro only reads from it.`,
+	Short:   "Add, list and remove the git forges Maestro reads repositories from",
+	Long: `Lists the git forges the CLI keeps. A forge is where your repositories
+live: GitHub, GitLab, Codeberg, or another Forgejo or Gitea server. Maestro
+only reads from it.`,
 	Args: nounArgs,
 	RunE: runForgesList,
 }
@@ -37,11 +38,12 @@ Gitea) or GitLab. Maestro only reads from it.`,
 var forgesAddCmd = &cobra.Command{
 	Use:   "add [name]",
 	Short: "Add a forge and its token",
-	Long: `Adds a forge, or replaces the one with the same name. The token is
-checked before it is stored. Only Forgejo takes a --url.
+	Long: `Adds a forge, or replaces the one with the same name. It checks the
+token before it keeps it. Only a Forgejo forge takes --url.
 
-The token is kept in the system keyring. Without --store-in-file, adding a
-forge goes back to the keyring; with it, secrets are kept in the config file.`,
+The CLI keeps the token in the system keyring. Without --store-in-file,
+adding a forge goes back to the keyring. With it, the CLI keeps secrets in
+the config file.`,
 	Example: `  maestro forges add
   maestro forges add --kind gitlab
   maestro forges add work --kind forgejo --url https://git.example.com`,
@@ -61,7 +63,7 @@ forge goes back to the keyring; with it, secrets are kept in the config file.`,
 
 var forgesListCmd = &cobra.Command{
 	Use:               "list",
-	Short:             "List the configured forges",
+	Short:             "List your forges",
 	Args:              cobra.NoArgs,
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE:              runForgesList,
@@ -78,7 +80,7 @@ var forgesRmCmd = &cobra.Command{
 			return err
 		}
 		if !slices.ContainsFunc(forges, func(f config.Forge) bool { return f.Name == args[0] }) {
-			return fmt.Errorf("no forge named %q; see `maestro forges list`", args[0])
+			return fmt.Errorf("you have no forge named %q; `maestro forges list` shows yours", args[0])
 		}
 		if ok, err := confirm(fmt.Sprintf("Remove forge %s and forget its token?", args[0])); err != nil || !ok {
 			if err == nil {
@@ -91,7 +93,7 @@ var forgesRmCmd = &cobra.Command{
 			return err
 		}
 		if !removed {
-			return fmt.Errorf("no forge named %q; see `maestro forges list`", args[0])
+			return fmt.Errorf("you have no forge named %q; `maestro forges list` shows yours", args[0])
 		}
 		fmt.Println(successStyle.Render("Removed forge " + args[0] + "."))
 		return nil
@@ -118,7 +120,7 @@ func runForgesList(cmd *cobra.Command, args []string) error {
 
 func writeForgesList(out io.Writer, forges []config.Forge) error {
 	if len(forges) == 0 {
-		_, err := fmt.Fprintln(out, dimStyle.Render("No forges configured. Add one with: maestro forges add"))
+		_, err := fmt.Fprintln(out, dimStyle.Render("No forges yet. Add one with `maestro forges add`."))
 		return err
 	}
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
@@ -162,12 +164,12 @@ func selectForge(name string) (*activeForge, error) {
 		return nil, err
 	}
 	if len(forges) == 0 {
-		return nil, fmt.Errorf("no forge configured\n\nRun `maestro forges add` to add GitHub, a Forgejo instance, or GitLab")
+		return nil, fmt.Errorf("you have no forge yet\n\nRun `maestro forges add` to add GitHub, GitLab or a Forgejo server")
 	}
 
 	if name == "" {
 		if len(forges) > 1 {
-			return nil, fmt.Errorf("several forges are configured (%s); pick one with --forge", forgeNames(forges))
+			return nil, fmt.Errorf("you have several forges (%s); pick one with --forge", forgeNames(forges))
 		}
 		return openForge(forges[0])
 	}
@@ -176,7 +178,7 @@ func selectForge(name string) (*activeForge, error) {
 			return openForge(f)
 		}
 	}
-	return nil, fmt.Errorf("no forge named %q (configured: %s)", name, forgeNames(forges))
+	return nil, fmt.Errorf("you have no forge named %q, only %s", name, forgeNames(forges))
 }
 
 // selectForgeByHost finds the forge a repo URL belongs to. name, when set,
@@ -195,12 +197,12 @@ func selectForgeByHost(host, name string) (*activeForge, error) {
 		}
 	}
 	if name != "" {
-		return nil, fmt.Errorf("forge %q does not serve %s", name, host)
+		return nil, fmt.Errorf("forge %q doesn't serve %s", name, host)
 	}
 	if active, err := anonymousForge(host); active != nil || err != nil {
 		return active, err
 	}
-	return nil, fmt.Errorf("no configured forge serves %s\n\nRun `maestro forges add --kind forgejo --url https://%s` to add it", host, host)
+	return nil, fmt.Errorf("none of your forges serves %s\n\nRun `maestro forges add --kind forgejo --url https://%s` to add it", host, host)
 }
 
 // anonymousForge is how a public repo on GitHub, GitLab or Codeberg is built
@@ -223,8 +225,8 @@ func anonymousForge(host string) (*activeForge, error) {
 
 func init() {
 	addYesFlag(forgesRmCmd)
-	forgesAddCmd.Flags().StringVar(&forgeAddKind, "kind", "", "forge kind: "+strings.Join(forge.Kinds, ", "))
-	forgesAddCmd.Flags().StringVar(&forgeAddURL, "url", "", "Forgejo instance URL (default: https://codeberg.org)")
+	forgesAddCmd.Flags().StringVar(&forgeAddKind, "kind", "", "the `kind` of forge: "+strings.Join(forge.Kinds, ", "))
+	forgesAddCmd.Flags().StringVar(&forgeAddURL, "url", "", "the Forgejo server's `url` (default: https://codeberg.org)")
 	forgesAddCmd.RegisterFlagCompletionFunc("kind", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 		return forge.Kinds, cobra.ShellCompDirectiveNoFileComp
 	})
@@ -250,7 +252,7 @@ func completeForgeNames(cmd *cobra.Command, args []string, toComplete string) ([
 }
 
 func addForgeFlag(cmd *cobra.Command, target *string) {
-	cmd.Flags().StringVar(target, "forge", "", "which forge to use (see 'maestro forges list')")
+	cmd.Flags().StringVar(target, "forge", "", "the `name` of the forge to use, as maestro forges list shows it")
 	cmd.RegisterFlagCompletionFunc("forge", completeForgeNames)
 }
 
@@ -265,7 +267,7 @@ func addForge(ctx context.Context, stdin *bufio.Reader, name, kind, baseURL stri
 	}
 	kind = strings.ToLower(kind)
 	if !slices.Contains(forge.Kinds, kind) {
-		return fmt.Errorf("unknown forge kind %q: use %s", kind, strings.Join(forge.Kinds, ", "))
+		return fmt.Errorf("%q isn't a kind of forge; use %s", kind, strings.Join(forge.Kinds, ", "))
 	}
 
 	// Only Forgejo is commonly self-hosted; the others are always their
@@ -287,7 +289,7 @@ func addForge(ctx context.Context, stdin *bufio.Reader, name, kind, baseURL stri
 	baseURL = strings.TrimRight(baseURL, "/")
 	parsed, err := url.Parse(baseURL)
 	if err != nil || parsed.Host == "" {
-		return fmt.Errorf("invalid forge URL %q", baseURL)
+		return fmt.Errorf("%q isn't a forge's URL", baseURL)
 	}
 
 	if name == "" {
@@ -315,10 +317,10 @@ func addForge(ctx context.Context, stdin *bufio.Reader, name, kind, baseURL stri
 	if err != nil {
 		return err
 	}
-	fmt.Println(dimStyle.Render("Validating token..."))
+	fmt.Println(dimStyle.Render("Checking the token..."))
 	user, err := client.CurrentUser(ctx)
 	if err != nil {
-		return fmt.Errorf("token validation failed: %w", err)
+		return fmt.Errorf("couldn't check the token: %w", err)
 	}
 
 	stored := config.Forge{Name: name, Kind: kind}
@@ -326,7 +328,7 @@ func addForge(ctx context.Context, stdin *bufio.Reader, name, kind, baseURL stri
 		stored.BaseURL = baseURL
 	}
 	if err := config.AddForge(stored, token); err != nil {
-		return fmt.Errorf("saving forge: %w", err)
+		return fmt.Errorf("couldn't save the forge: %w", err)
 	}
 	fmt.Println(successStyle.Render(fmt.Sprintf("Forge %s: reading %s as %s.", name, client.Host(), user.Login)))
 	return nil
@@ -340,13 +342,13 @@ func readLine(stdin *bufio.Reader, label, fallback string) (string, error) {
 	}
 	line, err := stdin.ReadString('\n')
 	if err != nil && err != io.EOF {
-		return "", fmt.Errorf("reading input: %w", err)
+		return "", fmt.Errorf("couldn't read what you typed: %w", err)
 	}
 	if line = strings.TrimSpace(line); line != "" {
 		return line, nil
 	}
 	if fallback == "" {
-		return "", fmt.Errorf("no value provided")
+		return "", fmt.Errorf("nothing was typed")
 	}
 	return fallback, nil
 }
