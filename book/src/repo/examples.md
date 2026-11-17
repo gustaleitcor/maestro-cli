@@ -9,11 +9,9 @@ of what the previous chapters covered. `--ref` builds a branch:
 maestro build https://github.com/gustaleitcor/maestro-template --ref knapsack
 ```
 
-Both branches name the machines of the lab they were written for in
-`machines`. On another Maestro, a run of them is refused because those
-machines don't exist. Fork the repository and remove the `machines` line, or
-start the run with a `maestro.toml` of your own:
-`maestro run <build> -c my.toml`.
+Both branches leave `machines` out, so their lines run on any machine your
+Maestro has. To keep a run to some of them, start it with a `maestro.toml`
+of your own: `maestro run <build> -c my.toml`.
 
 ## `knapsack`: a solver job
 
@@ -68,7 +66,9 @@ with what it used.
 A run could have 5000, but ten runs of 1000 show more of how the queue takes
 turns. The generator draws each line's size from ten shapes, from 1 core and
 64 MB up to 10 cores and 10 GB, with a fixed seed so that every build yields
-the same lines. One line in ten also keeps a `samples.csv`, and every
+the same lines. Maestro refuses a run when no machine has 10 cores and
+10 GB for lines. On smaller machines, make the shapes in `genvrs.py` smaller
+and send it with `maestro run <build> -g genvrs.py`. One line in ten also keeps a `samples.csv`, and every
 hundredth line exits with code 3 on purpose, so the run has failed lines to
 look at.
 
