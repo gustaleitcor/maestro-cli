@@ -25,9 +25,9 @@ var exportCmd = &cobra.Command{
 line, whose it is, its cores and memory, the machine it ran on, its status,
 the scheduler settings it was assigned under, when it was submitted,
 assigned, started and finished, and the group its user was in when it was
-assigned. It is what ` + "`sim evaluate`" + `, in maestro-orq, measures
-waits, slowdowns, utilization, fairness and the objective Z from, the same
-as for a simulation.
+assigned. An administrator can measure it with orq's ` + "`sim evaluate`" + `,
+as for a simulation: waits, slowdowns, utilization, fairness and the
+objective Z.
 
 Administrators can export everyone's lines with --all.`,
 	Example: `  maestro export --since 2026-11-01 --until 2026-11-08 > lines.csv
@@ -57,10 +57,10 @@ Administrators can export everyone's lines with --all.`,
 }
 
 func init() {
-	exportCmd.Flags().StringVar(&exportSince, "since", "", "from this day (2026-11-01), RFC 3339 time or so long ago (12h, 7d, 2w) on; a week ago when left out")
-	exportCmd.Flags().StringVar(&exportUntil, "until", "", "until before this day, time or so long ago; now when left out")
-	exportCmd.Flags().BoolVar(&exportAll, "all", false, "everyone's lines (administrators)")
-	exportCmd.Flags().StringVarP(&exportOut, "output", "o", "", "the file to write; the standard output when left out")
+	exportCmd.Flags().StringVar(&exportSince, "since", "", "start at this `time`: a day (2026-11-01), an RFC 3339 time, or an age such as 12h, 7d or 2w (default: a week ago)")
+	exportCmd.Flags().StringVar(&exportUntil, "until", "", "end before this `time`, given the same ways (default: now)")
+	exportCmd.Flags().BoolVar(&exportAll, "all", false, "everyone's lines (administrators only)")
+	exportCmd.Flags().StringVarP(&exportOut, "output", "o", "", "the `file` to write (default: standard output)")
 	rootCmd.AddCommand(exportCmd)
 }
 

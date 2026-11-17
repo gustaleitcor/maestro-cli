@@ -25,12 +25,12 @@ var usageCmd = &cobra.Command{
 	Use:   "usage",
 	Short: "Show how much your lines have used",
 	Long: `Shows the core-hours and memory GB-hours your lines used over the last
-days, counted as each line ends. What you used counts against you, less as
-it gets older, when the scheduler weighs whose line goes next, if an
-administrator set it up so.
+30 days, or as many as --days says. A line counts when it ends. If an
+administrator set the scheduler up so, what you used counts against you
+when it chooses whose line goes next, and older usage counts less.
 
-Administrators see everyone's, or one user's with --user, by their number
-or email.`,
+Administrators see everyone's usage, or one user's with --user, by their
+number or email.`,
 	Example: `  maestro usage --daily --days 7
   maestro usage --user ana@example.org`,
 	Args:              cobra.MatchAll(cobra.NoArgs, flagCheck(checkUsageUser)),
@@ -45,7 +45,7 @@ or email.`,
 			// Everyone's usage says whose each is: the one asked for is kept.
 			usage = slices.DeleteFunc(usage, func(u maestroapi.Usage) bool { return !strings.EqualFold(u.Email, email) })
 			if len(usage) == 0 {
-				return fmt.Errorf("nothing used by %s in the last %d day(s), or no such user", email, usageDays)
+				return fmt.Errorf("%s used nothing in the last %d day(s), or there is no such user", email, usageDays)
 			}
 		}
 		if usageAsJSON {
@@ -57,8 +57,8 @@ or email.`,
 
 func init() {
 	usageCmd.Flags().BoolVar(&usageAsJSON, "json", false, "print the usage as JSON, a day at a time")
-	usageCmd.Flags().IntVar(&usageDays, "days", 30, "how many days back")
-	usageCmd.Flags().StringVar(&usageUser, "user", "", "one user's usage, by their number or email (administrators)")
+	usageCmd.Flags().IntVar(&usageDays, "days", 30, "look back `n` days")
+	usageCmd.Flags().StringVar(&usageUser, "user", "", "one `user`'s usage, by their number or email (administrators only)")
 	usageCmd.Flags().BoolVar(&usageDaily, "daily", false, "a row for each day")
 	rootCmd.AddCommand(usageCmd)
 }

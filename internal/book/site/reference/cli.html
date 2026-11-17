@@ -423,9 +423,9 @@ maestro docs queue --web --url
 line, whose it is, its cores and memory, the machine it ran on, its status,
 the scheduler settings it was assigned under, when it was submitted,
 assigned, started and finished, and the group its user was in when it was
-assigned. It is what <code>sim evaluate</code>, in maestro-orq, measures
-waits, slowdowns, utilization, fairness and the objective Z from, the same
-as for a simulation.</p>
+assigned. An administrator can measure it with orq's <code>sim evaluate</code>,
+as for a simulation: waits, slowdowns, utilization, fairness and the
+objective Z.</p>
 <p>Administrators can export everyone's lines with --all.</p>
 <p>Examples:</p>
 <pre><code class="language-sh">maestro export --since 2026-11-01 --until 2026-11-08 &gt; lines.csv
@@ -433,10 +433,10 @@ maestro export --since 2026-11-01 --all -o lines.csv
 maestro export --since 30d -o month.csv
 </code></pre>
 <p>Flags:</p>
-<pre><code class="language-text">      --all             everyone's lines (administrators)
-  -o, --output string   the file to write; the standard output when left out
-      --since string    from this day (2026-11-01), RFC 3339 time or so long ago (12h, 7d, 2w) on; a week ago when left out
-      --until string    until before this day, time or so long ago; now when left out
+<pre><code class="language-text">      --all           everyone's lines (administrators only)
+  -o, --output file   the file to write (default: standard output)
+      --since time    start at this time: a day (2026-11-01), an RFC 3339 time, or an age such as 12h, 7d or 2w (default: a week ago)
+      --until time    end before this time, given the same ways (default: now)
 </code></pre>
 <h2 id="maestro-forges"><a class="header" href="#maestro-forges">maestro forges</a></h2>
 <p>Add, list and remove the git forges Maestro reads repositories from.</p>
@@ -810,20 +810,20 @@ of seconds, however many windows are open.</p>
 <pre><code class="language-text">maestro usage [flags]
 </code></pre>
 <p>Shows the core-hours and memory GB-hours your lines used over the last
-days, counted as each line ends. What you used counts against you, less as
-it gets older, when the scheduler weighs whose line goes next, if an
-administrator set it up so.</p>
-<p>Administrators see everyone's, or one user's with --user, by their number
-or email.</p>
+30 days, or as many as --days says. A line counts when it ends. If an
+administrator set the scheduler up so, what you used counts against you
+when it chooses whose line goes next, and older usage counts less.</p>
+<p>Administrators see everyone's usage, or one user's with --user, by their
+number or email.</p>
 <p>Examples:</p>
 <pre><code class="language-sh">maestro usage --daily --days 7
 maestro usage --user ana@example.org
 </code></pre>
 <p>Flags:</p>
-<pre><code class="language-text">      --daily         a row for each day
-      --days int      how many days back (default 30)
-      --json          print the usage as JSON, a day at a time
-      --user string   one user's usage, by their number or email (administrators)
+<pre><code class="language-text">      --daily       a row for each day
+      --days n      look back n days (default 30)
+      --json        print the usage as JSON, a day at a time
+      --user user   one user's usage, by their number or email (administrators only)
 </code></pre>
 
                     </main>

@@ -203,7 +203,7 @@ func TestUsageOfOneUser(t *testing.T) {
 	if code, said := maestro(t, "usage", "--user", "ana"); code != exitUsage || !strings.Contains(said, "number or email") {
 		t.Errorf("--user ana: exit %d, %q", code, said)
 	}
-	if code, said := maestro(t, "usage", "--user", "zoe@example.org"); code != exitFailed || !strings.Contains(said, "nothing used by zoe@example.org") {
+	if code, said := maestro(t, "usage", "--user", "zoe@example.org"); code != exitFailed || !strings.Contains(said, "zoe@example.org used nothing") {
 		t.Errorf("--user of no one: exit %d, %q", code, said)
 	}
 	if len(asked) != 2 || asked[0] != "/api/usage?days=30" {
