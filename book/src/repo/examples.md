@@ -44,10 +44,10 @@ Each one sleeps, keeps its cores busy, fills part of its memory, or does
 both, for between ten seconds and four minutes, and writes a `report.json`
 with what it used.
 
-`maestro.toml` lists four lines and `genvrs.py` adds 996, which makes 1000,
-the most a run can have. The generator draws each line's size from ten
-shapes, from 1 core and 64 MB up to 10 cores and 10 GB, with a fixed seed so
-that every build yields the same lines. One line in ten also keeps a
+`maestro.toml` lists four lines and `genvrs.py` adds 996, which makes 1000.
+The generator draws each line's size from ten shapes, from 1 core and 64 MB
+up to 10 cores and 10 GB, with a fixed seed so that every build yields the
+same lines. One line in ten also keeps a
 `samples.csv`, and every hundredth line exits with code 3 on purpose, so the
 run has failed lines to look at.
 

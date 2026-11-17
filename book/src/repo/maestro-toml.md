@@ -54,7 +54,7 @@ parameters = [
 ]
 ```
 
-A run has at most 1000 lines. When a list gets long or follows a pattern, a
+A run has at most 5000 lines. When a list gets long or follows a pattern, a
 [generator](generator.md) can compute it.
 
 ## `outputs`

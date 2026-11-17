@@ -22,7 +22,7 @@ introduces the keys one at a time, and this page is the lookup table.
 
 | What | Limit |
 | --- | --- |
-| Lines in a run, from `parameters` and the generator together | 1000 |
+| Lines in a run, from `parameters` and the generator together | 5000 |
 | `cpus` | 1 to 1024 |
 | `memory` | 6 to 16777216 MB |
 | `env`, all names and values together | 64 KiB |

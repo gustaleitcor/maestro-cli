@@ -547,7 +547,7 @@ program that needs a shell can be a shell script.</p>
   "-t 5 --label quick out.txt",
 ]
 </code></pre>
-<p>A run has at most 1000 lines. When a list gets long or follows a pattern, a
+<p>A run has at most 5000 lines. When a list gets long or follows a pattern, a
 <a href="repo/generator.html">generator</a> can compute it.</p>
 <h2 id="outputs"><a class="header" href="#outputs"><code>outputs</code></a></h2>
 <pre><code class="language-toml">outputs = ["out.txt", "results/", "plots/summary.png"]
@@ -720,7 +720,7 @@ to check what it computed.</p>
 <li>doesn't define <code>genvrs</code></li>
 <li>yields nothing</li>
 <li>yields something that isn't a string</li>
-<li>brings the run to more than 1000 lines, counting those of <code>parameters</code></li>
+<li>brings the run to more than 5000 lines, counting those of <code>parameters</code></li>
 <li>sets a <code>Config</code> attribute to a value <code>maestro.toml</code> wouldn't accept, or
 sets one that isn't a setting</li>
 </ul>
@@ -865,10 +865,10 @@ nine from the generator.</p>
 Each one sleeps, keeps its cores busy, fills part of its memory, or does
 both, for between ten seconds and four minutes, and writes a <code>report.json</code>
 with what it used.</p>
-<p><code>maestro.toml</code> lists four lines and <code>genvrs.py</code> adds 996, which makes 1000,
-the most a run can have. The generator draws each line's size from ten
-shapes, from 1 core and 64 MB up to 10 cores and 10 GB, with a fixed seed so
-that every build yields the same lines. One line in ten also keeps a
+<p><code>maestro.toml</code> lists four lines and <code>genvrs.py</code> adds 996, which makes 1000.
+The generator draws each line's size from ten shapes, from 1 core and 64 MB
+up to 10 cores and 10 GB, with a fixed seed so that every build yields the
+same lines. One line in ten also keeps a
 <code>samples.csv</code>, and every hundredth line exits with code 3 on purpose, so the
 run has failed lines to look at.</p>
 <p>It is a good run to have going while you read
@@ -3014,7 +3014,7 @@ introduces the keys one at a time, and this page is the lookup table.</p>
 </div>
 <h2 id="limits-1"><a class="header" href="#limits-1">Limits</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>What</th><th>Limit</th></tr></thead><tbody>
-<tr><td>Lines in a run, from <code>parameters</code> and the generator together</td><td>1000</td></tr>
+<tr><td>Lines in a run, from <code>parameters</code> and the generator together</td><td>5000</td></tr>
 <tr><td><code>cpus</code></td><td>1 to 1024</td></tr>
 <tr><td><code>memory</code></td><td>6 to 16777216 MB</td></tr>
 <tr><td><code>env</code>, all names and values together</td><td>64 KiB</td></tr>
@@ -3165,7 +3165,7 @@ an administrator sets.</li>
 <li><code>maestro.toml</code> is invalid, or has a key Maestro doesn't know, which
 includes a misspelt one</li>
 <li>the generator raised an exception, yielded nothing, yielded something
-that isn't a string, or brought the run to more than 1000 lines</li>
+that isn't a string, or brought the run to more than 5000 lines</li>
 <li>the generator set a <code>Config</code> attribute other than <code>outputs</code>, <code>cpus</code>,
 <code>memory</code> and <code>env</code></li>
 <li>the generator imports a package outside Python's standard library, such
@@ -3257,7 +3257,7 @@ terminal.</p>
 <tr><td>Build</td><td>The result of <code>maestro build &lt;repo&gt;</code>, which clones a repository at one commit and builds a container image from it. A build has a number, written <code>#12</code>. The build also reads <code>maestro.toml</code> and computes the lines, so every run of a build has the same lines.</td><td><a href="reference/../use/builds.html">Builds and images</a></td></tr>
 <tr><td>Image</td><td>What a build makes: your program and everything it needs, ready to start as a container. You keep 10 at a time unless your administrator set another number. When a new build needs room, the image you ran least recently is removed.</td><td><a href="reference/../use/builds.html#how-many-images-you-keep">How many images you keep</a></td></tr>
 <tr><td>Run</td><td>The result of <code>maestro run &lt;build&gt;</code>, which runs a build's image on the machines. A run has a number of its own, written <code>run 31</code>. Build numbers and run numbers count separately.</td><td><a href="reference/../use/runs.html">Runs and lines</a></td></tr>
-<tr><td>Line</td><td>One container of a run. <code>maestro.toml</code> lists lines of parameters and can name a generator that computes more. A run starts one container for each line, with the line's words in place of the image's <code>CMD</code>. Without a <code>maestro.toml</code>, a run is one line that runs the image's own command. A run has at most 1000 lines.</td><td><a href="reference/../repo/maestro-toml.html#parameters"><code>parameters</code></a></td></tr>
+<tr><td>Line</td><td>One container of a run. <code>maestro.toml</code> lists lines of parameters and can name a generator that computes more. A run starts one container for each line, with the line's words in place of the image's <code>CMD</code>. Without a <code>maestro.toml</code>, a run is one line that runs the image's own command. A run has at most 5000 lines.</td><td><a href="reference/../repo/maestro-toml.html#parameters"><code>parameters</code></a></td></tr>
 <tr><td>Generator</td><td>A Python script in the repository whose <code>genvrs</code> function yields lines.</td><td><a href="reference/../repo/generator.html">Generating lines with Python</a></td></tr>
 <tr><td>Outputs</td><td>The files <code>maestro.toml</code> names, copied out of each container when it ends. They are kept beside what the container printed, <code>stdout.log</code> and <code>stderr.log</code>. <code>maestro runs get</code> downloads all of it.</td><td><a href="reference/../use/results.html">What a line leaves behind</a></td></tr>
 <tr><td>Machine</td><td>A computer whose Podman runs the containers. Maestro reaches it over SSH. A line runs on one machine, the first allowed one that has room for its cores and memory.</td><td><a href="reference/../use/machines.html">Watching the machines</a></td></tr>

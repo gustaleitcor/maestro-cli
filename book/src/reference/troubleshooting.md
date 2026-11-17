@@ -46,7 +46,7 @@ The last lines of the build log say why. The usual causes are:
 - `maestro.toml` is invalid, or has a key Maestro doesn't know, which
   includes a misspelt one
 - the generator raised an exception, yielded nothing, yielded something
-  that isn't a string, or brought the run to more than 1000 lines
+  that isn't a string, or brought the run to more than 5000 lines
 - the generator set a `Config` attribute other than `outputs`, `cpus`,
   `memory` and `env`
 - the generator imports a package outside Python's standard library, such

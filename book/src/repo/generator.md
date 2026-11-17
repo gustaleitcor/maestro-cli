@@ -119,7 +119,7 @@ The build fails, and the log says why, when the script:
 - doesn't define `genvrs`
 - yields nothing
 - yields something that isn't a string
-- brings the run to more than 1000 lines, counting those of `parameters`
+- brings the run to more than 5000 lines, counting those of `parameters`
 - sets a `Config` attribute to a value `maestro.toml` wouldn't accept, or
   sets one that isn't a setting
 
