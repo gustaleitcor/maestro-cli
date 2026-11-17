@@ -2234,6 +2234,18 @@ been running</li>
 <p>A build that orq was making when it stopped is marked failed, so it doesn't
 count against the user's image limit. orq removes any image that build left
 behind.</p>
+<h3 id="backing-up-the-database"><a class="header" href="#backing-up-the-database">Backing up the database</a></h3>
+<p>The database is <code>MAESTRO_ORQ_DB</code>, which the compose file puts at
+<code>/data/maestro-orq.db</code> in the <code>maestro-orq-data</code> volume. orq opens it in WAL
+mode, so the latest writes sit in <code>maestro-orq.db-wal</code> beside it until
+SQLite moves them into the database. A copy of <code>maestro-orq.db</code> alone can
+miss them. Back the database up in one of two ways:</p>
+<ul>
+<li>While orq runs, use SQLite's own backup, which reads both files
+consistently: <code>sqlite3 maestro-orq.db ".backup maestro-orq-backup.db"</code>.</li>
+<li>Stop orq, then copy <code>maestro-orq.db</code> together with <code>maestro-orq.db-wal</code>
+and <code>maestro-orq.db-shm</code>, if they are there.</li>
+</ul>
 <h2 id="files-in-maestrodata"><a class="header" href="#files-in-maestrodata">Files, in <code>/maestro/data</code></a></h2>
 <p>orq keeps the logs and outputs of runs under <code>DATA_DIR</code>, which is
 <code>/maestro/data</code> by default, as <code>&lt;user&gt;/&lt;run&gt;/&lt;line&gt;/&lt;file&gt;</code>. Each line

@@ -17,6 +17,19 @@ A build that orq was making when it stopped is marked failed, so it doesn't
 count against the user's image limit. orq removes any image that build left
 behind.
 
+### Backing up the database
+
+The database is `MAESTRO_ORQ_DB`, which the compose file puts at
+`/data/maestro-orq.db` in the `maestro-orq-data` volume. orq opens it in WAL
+mode, so the latest writes sit in `maestro-orq.db-wal` beside it until
+SQLite moves them into the database. A copy of `maestro-orq.db` alone can
+miss them. Back the database up in one of two ways:
+
+- While orq runs, use SQLite's own backup, which reads both files
+  consistently: `sqlite3 maestro-orq.db ".backup maestro-orq-backup.db"`.
+- Stop orq, then copy `maestro-orq.db` together with `maestro-orq.db-wal`
+  and `maestro-orq.db-shm`, if they are there.
+
 ## Files, in `/maestro/data`
 
 orq keeps the logs and outputs of runs under `DATA_DIR`, which is
