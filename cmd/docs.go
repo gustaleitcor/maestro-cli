@@ -18,7 +18,6 @@ import (
 	"golang.org/x/term"
 
 	"maestro-cli/internal/book"
-	"maestro-cli/internal/maestroapi"
 )
 
 // docTopic is a page of the Maestro book. Names are what `maestro docs`
@@ -74,7 +73,6 @@ var topics = []docTopic{
 
 var (
 	docsURLOnly   bool
-	docsWeb       bool
 	docsTopicList bool
 
 	// serveBook serves the book maestro carries until ctx ends; tests
@@ -103,12 +101,13 @@ Name a topic (` + "`maestro docs queue`" + `) to open its page, or a command
 
 maestro carries the book, so it opens offline and without signing in. The
 CLI serves it from your computer only (127.0.0.1) until you press Ctrl-C,
-so any browser opens it whole, a sandboxed one too. --web opens the copy
-your Maestro server serves instead, which you can open on another
-computer, as when you reach this one over SSH. MAESTRO_DOCS_URL points at
-another copy still.`,
-	Example: "  maestro docs\n  maestro docs toml\n  maestro docs runs logs\n  maestro docs queue --web --url",
-	// What args name is checked before a server is asked for.
+so any browser on your computer opens it whole, a sandboxed one too.
+Without a browser, as over SSH, it prints the link and serves the book
+all the same.
+
+With MAESTRO_DOCS_URL set, it opens the copy of the book at that address
+instead, and serves nothing itself.`,
+	Example: "  maestro docs\n  maestro docs toml\n  maestro docs runs logs\n  maestro docs queue --url",
 	Args: func(cmd *cobra.Command, args []string) error {
 		_, err := topicPath(args)
 		return err
@@ -119,7 +118,6 @@ another copy still.`,
 
 func init() {
 	docsCmd.Flags().BoolVar(&docsURLOnly, "url", false, "only print the link, without opening a browser")
-	docsCmd.Flags().BoolVar(&docsWeb, "web", false, "open the book your Maestro server serves, instead of the one maestro carries")
 	docsCmd.Flags().BoolVar(&docsTopicList, "topics", false, "print every topic and its page, for scripts")
 	_ = docsCmd.Flags().MarkHidden("topics")
 	rootCmd.AddCommand(docsCmd)
@@ -134,11 +132,7 @@ func runDocs(cmd *cobra.Command, args []string) error {
 	if docsTopicList {
 		return writeTopics(out)
 	}
-	base, err := docsBase()
-	if err != nil {
-		return err
-	}
-	if base != "" {
+	if base := docsBase(); base != "" {
 		return showDocs(out, base, args, "No browser opened here. Open the link in one.")
 	}
 
@@ -150,7 +144,7 @@ func runDocs(cmd *cobra.Command, args []string) error {
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
 	defer stop()
 	return serveBook(ctx, func(base string) error {
-		if err := showDocs(out, base, args, "No browser opened here. `maestro docs --web --url` gives the server's copy, to open elsewhere."); err != nil {
+		if err := showDocs(out, base, args, "No browser opened here. The link opens only on this computer. Set MAESTRO_DOCS_URL to open a copy of the book served somewhere else."); err != nil {
 			return err
 		}
 		fmt.Fprintln(out, dimStyle.Render("Serving the book from your computer. Ctrl-C stops it."))
@@ -178,19 +172,9 @@ func showDocs(out io.Writer, base string, args []string, noBrowser string) error
 }
 
 // docsBase is where the book is when it isn't the one maestro carries:
-// MAESTRO_DOCS_URL, or with --web the server's /docs, beside its page. It is
-// empty for the carried one, which serveBook serves.
-func docsBase() (string, error) {
-	if u := os.Getenv("MAESTRO_DOCS_URL"); u != "" {
-		return strings.TrimRight(u, "/"), nil
-	}
-	if !docsWeb {
-		return "", nil
-	}
-	if err := ensureServer(os.Stdin, os.Stderr); err != nil {
-		return "", err
-	}
-	return maestroapi.BaseURL() + "/docs", nil
+// MAESTRO_DOCS_URL. It is empty for the carried one, which serveBook serves.
+func docsBase() string {
+	return strings.TrimRight(os.Getenv("MAESTRO_DOCS_URL"), "/")
 }
 
 // serveSite serves site on 127.0.0.1, on a port the system picks, until ctx

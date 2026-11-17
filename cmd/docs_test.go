@@ -81,20 +81,13 @@ func carriedBook(t *testing.T) {
 }
 
 func TestDocsBase(t *testing.T) {
-	t.Setenv("MAESTRO_ORQ_URL", "http://localhost:8081/")
-	t.Cleanup(func() { docsWeb = false })
-
 	t.Setenv("MAESTRO_DOCS_URL", "http://localhost:3000/")
-	if base, err := docsBase(); err != nil || base != "http://localhost:3000" {
-		t.Errorf("MAESTRO_DOCS_URL: %s (%v)", base, err)
+	if base := docsBase(); base != "http://localhost:3000" {
+		t.Errorf("MAESTRO_DOCS_URL: %s", base)
 	}
 	t.Setenv("MAESTRO_DOCS_URL", "")
-	if base, err := docsBase(); err != nil || base != "" {
-		t.Errorf("the carried book: %s (%v)", base, err)
-	}
-	docsWeb = true
-	if base, err := docsBase(); err != nil || base != "http://localhost:8081/docs" {
-		t.Errorf("--web: %s (%v)", base, err)
+	if base := docsBase(); base != "" {
+		t.Errorf("the carried book: %s", base)
 	}
 }
 
@@ -170,8 +163,9 @@ func TestTopicsAreInTheBook(t *testing.T) {
 	}
 }
 
-// The book needs no key, nor a server when MAESTRO_DOCS_URL says where it
-// is; a topic that isn't one is a usage mistake, found before anything else.
+// The book needs no key and no server, whether maestro serves it or
+// MAESTRO_DOCS_URL says where it is; a topic that isn't one is a usage
+// mistake.
 func TestDocsWithoutAServer(t *testing.T) {
 	signedIn(t, "")
 	t.Setenv("MAESTRO_ORQ_URL", "")
@@ -192,8 +186,8 @@ func TestDocsWithoutAServer(t *testing.T) {
 	if code, said := maestro(t, "docs", "queue", "--url"); code != 0 {
 		t.Errorf("the carried book, without a server: exit %d, %q", code, said)
 	}
-	if code, said := maestro(t, "docs", "--web", "--url"); code != exitFailed || !strings.Contains(said, "no Maestro server is set") {
-		t.Errorf("--web without a server: exit %d, %q", code, said)
+	if code, said := maestro(t, "docs", "--web"); code != exitUsage || !strings.Contains(said, "unknown flag: --web") {
+		t.Errorf("--web, which is gone: exit %d, %q", code, said)
 	}
 }
 

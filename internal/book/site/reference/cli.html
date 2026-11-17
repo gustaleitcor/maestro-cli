@@ -401,20 +401,20 @@ set it up.</p>
 (<code>maestro docs runs logs</code>) to see what it takes.</p>
 <p>maestro carries the book, so it opens offline and without signing in. The
 CLI serves it from your computer only (127.0.0.1) until you press Ctrl-C,
-so any browser opens it whole, a sandboxed one too. --web opens the copy
-your Maestro server serves instead, which you can open on another
-computer, as when you reach this one over SSH. MAESTRO_DOCS_URL points at
-another copy still.</p>
+so any browser on your computer opens it whole, a sandboxed one too.
+Without a browser, as over SSH, it prints the link and serves the book
+all the same.</p>
+<p>With MAESTRO_DOCS_URL set, it opens the copy of the book at that address
+instead, and serves nothing itself.</p>
 <p>Also: <code>doc</code>.</p>
 <p>Examples:</p>
 <pre><code class="language-sh">maestro docs
 maestro docs toml
 maestro docs runs logs
-maestro docs queue --web --url
+maestro docs queue --url
 </code></pre>
 <p>Flags:</p>
 <pre><code class="language-text">      --url    only print the link, without opening a browser
-      --web    open the book your Maestro server serves, instead of the one maestro carries
 </code></pre>
 <h2 id="maestro-export"><a class="header" href="#maestro-export">maestro export</a></h2>
 <p>Write what happened to your lines over a period, as CSV.</p>

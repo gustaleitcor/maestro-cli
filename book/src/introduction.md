@@ -61,3 +61,10 @@ maestro docs runs logs    # the reference entry for a command
 ```
 
 Every command's `--help` ends with the topic that explains it.
+
+`maestro` serves the book from your computer until you press Ctrl-C, and
+only your computer can open it. Without a browser, as over SSH, it prints
+the link and serves the book all the same. With `MAESTRO_DOCS_URL` set, it
+opens the copy of the book at that address instead, such as
+`http://localhost:3000`, where `mdbook serve` serves it while you work on
+it.

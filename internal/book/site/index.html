@@ -232,6 +232,12 @@ maestro docs queue        # why a line is waiting
 maestro docs runs logs    # the reference entry for a command
 </code></pre>
 <p>Every command's <code>--help</code> ends with the topic that explains it.</p>
+<p><code>maestro</code> serves the book from your computer until you press Ctrl-C, and
+only your computer can open it. Without a browser, as over SSH, it prints
+the link and serves the book all the same. With <code>MAESTRO_DOCS_URL</code> set, it
+opens the copy of the book at that address instead, such as
+<code>http://localhost:3000</code>, where <code>mdbook serve</code> serves it while you work on
+it.</p>
 
                     </main>
 
