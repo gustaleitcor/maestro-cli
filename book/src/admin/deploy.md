@@ -56,6 +56,19 @@ maestro.example.org {
 }
 ```
 
+## Keeping rootless Podman running
+
+The compose file runs Maestro with the Podman of the user who starts it,
+without root. systemd stops that user's services, Podman's among them, when
+their last session ends, and orq's container stops with them. Turn on
+lingering for that user, so that their services keep running after they
+sign out:
+
+```sh
+sudo loginctl enable-linger <user>
+loginctl show-user <user> --property=Linger   # Linger=yes
+```
+
 ## Updating
 
 Pull, then build again. Compose replaces a container that already exists

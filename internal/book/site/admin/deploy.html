@@ -228,6 +228,15 @@ the copy inside the CLI and needs none of this.</li>
 	}
 }
 </code></pre>
+<h2 id="keeping-rootless-podman-running"><a class="header" href="#keeping-rootless-podman-running">Keeping rootless Podman running</a></h2>
+<p>The compose file runs Maestro with the Podman of the user who starts it,
+without root. systemd stops that user's services, Podman's among them, when
+their last session ends, and orq's container stops with them. Turn on
+lingering for that user, so that their services keep running after they
+sign out:</p>
+<pre><code class="language-sh">sudo loginctl enable-linger &lt;user&gt;
+loginctl show-user &lt;user&gt; --property=Linger   # Linger=yes
+</code></pre>
 <h2 id="updating"><a class="header" href="#updating">Updating</a></h2>
 <p>Pull, then build again. Compose replaces a container that already exists
 only when you pass <code>--force-recreate</code>:</p>
