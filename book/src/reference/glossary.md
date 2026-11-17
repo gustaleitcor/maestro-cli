@@ -64,5 +64,6 @@ It then ends in one of four ways.
 | Policy | The rule that picks who leaves one of the three queues, such as `fifo` or `pq` |
 | Score | The number `pq` ranks lines by, built from a line's cores, memory and waiting time and its user's share |
 | Share | How much of the machines a user holds or has used, as the chosen measure counts it |
+| Ceiling | The most cores a user's lines assigned, starting and running may hold together, `user_max_cpus`. A head that would take its user over it waits. 0 means no ceiling. |
 
 [The queue](../how/queue.md) describes the queues, and [Policies and the score](../how/score.md) the policies, the score and the share.

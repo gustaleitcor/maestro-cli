@@ -234,6 +234,7 @@ dispatcher queue as its user's head, and a machine's queue.</p>
 <tr><td>Policy</td><td>The rule that picks who leaves one of the three queues, such as <code>fifo</code> or <code>pq</code></td></tr>
 <tr><td>Score</td><td>The number <code>pq</code> ranks lines by, built from a line's cores, memory and waiting time and its user's share</td></tr>
 <tr><td>Share</td><td>How much of the machines a user holds or has used, as the chosen measure counts it</td></tr>
+<tr><td>Ceiling</td><td>The most cores a user's lines assigned, starting and running may hold together, <code>user_max_cpus</code>. A head that would take its user over it waits. 0 means no ceiling.</td></tr>
 </tbody></table>
 </div>
 <p><a href="../how/queue.html">The queue</a> describes the queues, and <a href="../how/score.html">Policies and the score</a> the policies, the score and the share.</p>

@@ -237,6 +237,12 @@ machine has to be one the line may run on, by its
 its queue. Only three lines wait on each machine by default. When several
 machines qualify, the scheduler draws one at random. A group with no head
 that can go anywhere passes its turn.</p>
+<p>Your administrator may set a ceiling on the cores each user holds,
+<code>user_max_cpus</code>. Your lines assigned, starting and running count toward
+it, and your queued lines don't. While your head's cores, added to theirs,
+would be over the ceiling, your head isn't a candidate. It stays in the
+dispatcher queue, and the heads of other users go as usual. It goes once
+enough of your lines end.</p>
 <p>Once your head is given a machine, your next line is your head. The
 dispatcher policy can be as simple as the oldest head, or it can weigh how
 much of the machines each user already holds.</p>
@@ -269,6 +275,10 @@ all users hold is yours, as the scheduler measures it. The second table
 shows your group: its queued lines, the heads among them, which make its
 dispatcher queue, and its assigned lines. The last line names the three
 policies in force.</p>
+<p>When your next line waits because of the ceiling on cores, a sentence
+before the last line says so:</p>
+<pre><code class="language-text">Your next line waits until some of yours end. With it, your lines assigned, starting and running would take more than 16 cores, the most a user may hold.
+</code></pre>
 <p>The Maestro page shows the same under Queue and reads it again every 5
 seconds.</p>
 <h2 id="why-a-line-is-waiting"><a class="header" href="#why-a-line-is-waiting">Why a line is waiting</a></h2>
@@ -280,6 +290,14 @@ turn behind your head.</p>
 <h3 id="your-head-waits-in-the-dispatcher-queue"><a class="header" href="#your-head-waits-in-the-dispatcher-queue">Your head waits in the dispatcher queue</a></h3>
 <p>Either the machines' queues are full or it is another group's turn. A line
 with <code>machines = [...]</code> waits for room on those machines only.</p>
+<h3 id="you-hold-the-most-cores-a-user-may"><a class="header" href="#you-hold-the-most-cores-a-user-may">You hold the most cores a user may</a></h3>
+<p>With a ceiling on cores, your head waits while it would take you over it,
+even when machines have room. <code>maestro queue</code> says so. <code>maestro settings</code>
+shows the ceiling as "cores per user". Your head goes once enough of your
+lines end. A line that asks for more cores than the ceiling never goes,
+and while it is your head, your lines behind it wait too. Ask for fewer
+with <a href="../repo/maestro-toml.html#cpus-and-memory"><code>cpus</code></a>, or ask your
+administrator to raise the ceiling.</p>
 <h3 id="a-line-assigned-for-a-long-time"><a class="header" href="#a-line-assigned-for-a-long-time">A line assigned for a long time</a></h3>
 <p>The machine doesn't yet have the cores and memory the line asked for, or
 the line's image is still being copied there. The copy happens only for the
@@ -313,7 +331,8 @@ them when the machine is back.</p>
 <pre><code class="language-sh">maestro settings
 </code></pre>
 <p><code>maestro settings</code> shows how the scheduler is set up: the three policies,
-the weights of the score, and how many lines wait on a machine.
+the weights of the score, how many lines wait on a machine, and the most
+cores a user may hold.
 <a href="score.html">Policies and the score</a> explains each of them.</p>
 <p>Each line records the settings it was assigned under and the group its
 user was in. <a href="../use/usage.html#maestro-export"><code>maestro export</code></a> writes both, so

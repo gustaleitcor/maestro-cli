@@ -36,6 +36,19 @@ func TestWriteQueue(t *testing.T) {
 			t.Errorf("the summary of the scheduler lacks %q: %q", want, got)
 		}
 	}
+	if strings.Contains(got, "most a user may hold") {
+		t.Errorf("a caller under the ceiling is told of it: %q", got)
+	}
+
+	// A caller at the ceiling is told why their next line waits.
+	q.UserMaxCPUs, q.AtCeiling = 16, true
+	out.Reset()
+	if err := writeQueue(&out, &q); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "more than 16 cores, the most a user may hold") {
+		t.Errorf("a caller at the ceiling isn't told: %q", out.String())
+	}
 }
 
 // A server from before the three queues is shown as it answers: staged

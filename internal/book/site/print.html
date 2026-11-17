@@ -1673,6 +1673,12 @@ machine has to be one the line may run on, by its
 its queue. Only three lines wait on each machine by default. When several
 machines qualify, the scheduler draws one at random. A group with no head
 that can go anywhere passes its turn.</p>
+<p>Your administrator may set a ceiling on the cores each user holds,
+<code>user_max_cpus</code>. Your lines assigned, starting and running count toward
+it, and your queued lines don't. While your head's cores, added to theirs,
+would be over the ceiling, your head isn't a candidate. It stays in the
+dispatcher queue, and the heads of other users go as usual. It goes once
+enough of your lines end.</p>
 <p>Once your head is given a machine, your next line is your head. The
 dispatcher policy can be as simple as the oldest head, or it can weigh how
 much of the machines each user already holds.</p>
@@ -1705,6 +1711,10 @@ all users hold is yours, as the scheduler measures it. The second table
 shows your group: its queued lines, the heads among them, which make its
 dispatcher queue, and its assigned lines. The last line names the three
 policies in force.</p>
+<p>When your next line waits because of the ceiling on cores, a sentence
+before the last line says so:</p>
+<pre><code class="language-text">Your next line waits until some of yours end. With it, your lines assigned, starting and running would take more than 16 cores, the most a user may hold.
+</code></pre>
 <p>The Maestro page shows the same under Queue and reads it again every 5
 seconds.</p>
 <h2 id="why-a-line-is-waiting"><a class="header" href="#why-a-line-is-waiting">Why a line is waiting</a></h2>
@@ -1716,6 +1726,14 @@ turn behind your head.</p>
 <h3 id="your-head-waits-in-the-dispatcher-queue"><a class="header" href="#your-head-waits-in-the-dispatcher-queue">Your head waits in the dispatcher queue</a></h3>
 <p>Either the machines' queues are full or it is another group's turn. A line
 with <code>machines = [...]</code> waits for room on those machines only.</p>
+<h3 id="you-hold-the-most-cores-a-user-may"><a class="header" href="#you-hold-the-most-cores-a-user-may">You hold the most cores a user may</a></h3>
+<p>With a ceiling on cores, your head waits while it would take you over it,
+even when machines have room. <code>maestro queue</code> says so. <code>maestro settings</code>
+shows the ceiling as "cores per user". Your head goes once enough of your
+lines end. A line that asks for more cores than the ceiling never goes,
+and while it is your head, your lines behind it wait too. Ask for fewer
+with <a href="how/../repo/maestro-toml.html#cpus-and-memory"><code>cpus</code></a>, or ask your
+administrator to raise the ceiling.</p>
 <h3 id="a-line-assigned-for-a-long-time"><a class="header" href="#a-line-assigned-for-a-long-time">A line assigned for a long time</a></h3>
 <p>The machine doesn't yet have the cores and memory the line asked for, or
 the line's image is still being copied there. The copy happens only for the
@@ -1749,7 +1767,8 @@ them when the machine is back.</p>
 <pre><code class="language-sh">maestro settings
 </code></pre>
 <p><code>maestro settings</code> shows how the scheduler is set up: the three policies,
-the weights of the score, and how many lines wait on a machine.
+the weights of the score, how many lines wait on a machine, and the most
+cores a user may hold.
 <a href="how/score.html">Policies and the score</a> explains each of them.</p>
 <p>Each line records the settings it was assigned under and the group its
 user was in. <a href="how/../use/usage.html#maestro-export"><code>maestro export</code></a> writes both, so
@@ -1868,6 +1887,7 @@ later whether the line fits. The <code>seed</code> setting makes that draw, and
 <code>siro</code>, repeat the same choices.</p>
 <h2 id="seeing-the-settings"><a class="header" href="#seeing-the-settings">Seeing the settings</a></h2>
 <pre><code class="language-text">images per user            10
+cores per user             no ceiling
 a user's head              fifo
 among a group's heads      pq
 on a machine               best-fit
@@ -1879,7 +1899,7 @@ half-life                  168 h
 seed (siro, machine draw)  0
 user weights               everyone 1
 </code></pre>
-<p>The three rows after the image limit in <code>maestro settings</code> are the <code>user</code>,
+<p>The three rows after the limits in <code>maestro settings</code> are the <code>user</code>,
 <code>dispatcher</code> and <code>machine</code> policies, in that order.
 <a href="how/../admin/policies.html">Choosing the policies</a> shows an administrator where
 to change them.</p>
@@ -2244,6 +2264,7 @@ for both. <code>maestro queue</code> shows an administrator each user's number, 
 <h3 id="limits"><a class="header" href="#limits">Limits</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Label</th><th>Setting</th><th>Default</th></tr></thead><tbody>
 <tr><td>Images per user</td><td><code>images_per_user</code></td><td>10, and at most 1000</td></tr>
+<tr><td>Cores per user</td><td><code>user_max_cpus</code></td><td>0, which means no ceiling</td></tr>
 </tbody></table>
 </div>
 <p>Lowering "Images per user" removes nobody's images at that moment. A user
@@ -2251,6 +2272,15 @@ who is over the new number loses images at their next build, which removes
 as many of the ones they ran least recently as it takes to make room. The
 build is refused only when runs are still using all the images that are
 left.</p>
+<p>"Cores per user" is a ceiling on the cores each user holds. A user's lines
+assigned, starting and running count toward it, and their queued lines
+don't. In a group's turn, a user's head isn't a candidate while its cores,
+added to those, would be over the ceiling. The heads of other users go as
+usual. Lowering it stops no line. It only holds back a user's next lines
+until enough of theirs end. A line that asks for more cores than the
+ceiling never starts, and while it is its user's head, their lines behind
+it wait too. <code>maestro queue</code> tells a user when their next line waits for
+the ceiling.</p>
 <h2 id="checking-what-is-in-force"><a class="header" href="#checking-what-is-in-force">Checking what is in force</a></h2>
 <p><code>maestro settings</code> prints the saved settings for any user, and
 <code>maestro queue</code> ends with a one-line summary of them.</p>
@@ -2340,6 +2370,10 @@ without that column has every user in group 1.</p>
 <tr><td>The machine queue and the draw</td><td><code>depth</code>, <code>seed</code></td></tr>
 </tbody></table>
 </div>
+<p><code>-user-max-cpus</code> is the ceiling on the cores each user holds, as "Cores
+per user" sets it on the Maestro page. It is 0, no ceiling, by default.
+<code>sim run</code>, <code>sim replay</code> and <code>sim grid</code> all take it, and <code>sim grid</code> takes one
+value.</p>
 <p>A file from before the three queues still works. Its <code>select</code> is read as
 <code>dispatcher</code>, and its <code>allocate</code> and <code>staged_capacity</code> are ignored.</p>
 <p>A simulated line starts the moment it is chosen. A real line first waits
@@ -2398,7 +2432,7 @@ combination of them:</p>
 </tbody></table>
 </div>
 <p>A list you leave out keeps the value in the <code>-config</code> file. It also takes
-<code>-machines</code>, <code>-config</code> and <code>-tick</code> as <code>sim run</code> does, and <code>-theta</code>,
+<code>-machines</code>, <code>-config</code>, <code>-tick</code> and <code>-user-max-cpus</code> as <code>sim run</code> does, and <code>-theta</code>,
 <code>-lambda-j</code> and <code>-lambda-o</code> as <code>sim evaluate</code> does.</p>
 <pre><code class="language-sh">go run ./cmd/sim grid -machines Q1:32:65536:2:4096 -config base.json \
   -dispatcher fifo,pq -share drf,decay -seed 1,2,3,4,5 &lt; workload.csv &gt; grid.csv
@@ -2431,7 +2465,7 @@ assigned under, so every line of the week should have the same one.</p>
 <li>
 <p>Write the machines as they were that week, with what each kept back,
 for <code>-machines</code>. Save the scheduler's settings from that week as a JSON
-file for <code>-config</code>.</p>
+file for <code>-config</code>, and give its cores per user to <code>-user-max-cpus</code>.</p>
 </li>
 <li>
 <p>Replay the week, and compare the replay with what happened:</p>
@@ -3020,6 +3054,8 @@ the heads of a group's users make its dispatcher queue. Groups take turns
 at the machines, and in a group's turn one of its heads goes to a machine.
 You see your group. Administrators see every user and every group, with
 the number an administrator weighs a user by.</p>
+<p>When an administrator has set the most cores a user's lines may hold, it
+says so when your next line waits for that.</p>
 <p>It ends with how the scheduler is set up. <code>maestro settings</code> shows all of it.</p>
 <p>Flags:</p>
 <pre><code class="language-text">      --json   print the queue as JSON
@@ -3226,11 +3262,11 @@ status 1 if the run failed.</p>
   -w, --watch               keep showing it as it changes, and exit with status 1 if the run failed
 </code></pre>
 <h2 id="maestro-settings"><a class="header" href="#maestro-settings">maestro settings</a></h2>
-<p>Show the server's settings: the image limit and how lines are scheduled.</p>
+<p>Show the server's settings: the limits on each user and how lines are scheduled.</p>
 <pre><code class="language-text">maestro settings [flags]
 </code></pre>
-<p>Shows how many images each user may keep, and how the scheduler chooses
-whose line goes next and where: the policy of each of the three queues,
+<p>Shows how many images each user may keep and how many cores each user's
+lines may hold, and how the scheduler chooses whose line goes next and where: the policy of each of the three queues,
 the score's weights and how a user's share of the machines is measured. An
 administrator changes them on the Maestro page.</p>
 <p>Flags:</p>
@@ -3599,6 +3635,7 @@ dispatcher queue as its user's head, and a machine's queue.</p>
 <tr><td>Policy</td><td>The rule that picks who leaves one of the three queues, such as <code>fifo</code> or <code>pq</code></td></tr>
 <tr><td>Score</td><td>The number <code>pq</code> ranks lines by, built from a line's cores, memory and waiting time and its user's share</td></tr>
 <tr><td>Share</td><td>How much of the machines a user holds or has used, as the chosen measure counts it</td></tr>
+<tr><td>Ceiling</td><td>The most cores a user's lines assigned, starting and running may hold together, <code>user_max_cpus</code>. A head that would take its user over it waits. 0 means no ceiling.</td></tr>
 </tbody></table>
 </div>
 <p><a href="reference/../how/queue.html">The queue</a> describes the queues, and <a href="reference/../how/score.html">Policies and the score</a> the policies, the score and the share.</p>

@@ -34,6 +34,9 @@ at the machines, and in a group's turn one of its heads goes to a machine.
 You see your group. Administrators see every user and every group, with
 the number an administrator weighs a user by.
 
+When an administrator has set the most cores a user's lines may hold, it
+says so when your next line waits for that.
+
 It ends with how the scheduler is set up. ` + "`maestro settings`" + ` shows all of it.`,
 	Args:              cobra.NoArgs,
 	ValidArgsFunction: cobra.NoFileCompletions,
@@ -108,6 +111,9 @@ func writeQueue(out io.Writer, q *maestroapi.Queue) error {
 		if err := w.Flush(); err != nil {
 			return err
 		}
+	}
+	if q.AtCeiling {
+		fmt.Fprintf(out, "\nYour next line waits until some of yours end. With it, your lines assigned, starting and running would take more than %d cores, the most a user may hold.\n", q.UserMaxCPUs)
 	}
 	_, err := fmt.Fprintf(out, "\n%s\n", schedulerSummary(q.Scheduler))
 	return err

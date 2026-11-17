@@ -218,6 +218,7 @@ for both. <code>maestro queue</code> shows an administrator each user's number, 
 <h3 id="limits"><a class="header" href="#limits">Limits</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Label</th><th>Setting</th><th>Default</th></tr></thead><tbody>
 <tr><td>Images per user</td><td><code>images_per_user</code></td><td>10, and at most 1000</td></tr>
+<tr><td>Cores per user</td><td><code>user_max_cpus</code></td><td>0, which means no ceiling</td></tr>
 </tbody></table>
 </div>
 <p>Lowering "Images per user" removes nobody's images at that moment. A user
@@ -225,6 +226,15 @@ who is over the new number loses images at their next build, which removes
 as many of the ones they ran least recently as it takes to make room. The
 build is refused only when runs are still using all the images that are
 left.</p>
+<p>"Cores per user" is a ceiling on the cores each user holds. A user's lines
+assigned, starting and running count toward it, and their queued lines
+don't. In a group's turn, a user's head isn't a candidate while its cores,
+added to those, would be over the ceiling. The heads of other users go as
+usual. Lowering it stops no line. It only holds back a user's next lines
+until enough of theirs end. A line that asks for more cores than the
+ceiling never starts, and while it is its user's head, their lines behind
+it wait too. <code>maestro queue</code> tells a user when their next line waits for
+the ceiling.</p>
 <h2 id="checking-what-is-in-force"><a class="header" href="#checking-what-is-in-force">Checking what is in force</a></h2>
 <p><code>maestro settings</code> prints the saved settings for any user, and
 <code>maestro queue</code> ends with a one-line summary of them.</p>

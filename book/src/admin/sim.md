@@ -50,6 +50,11 @@ Without `-config`, every queue is FIFO. The names are the settings of
 | Share | `share`, `half_life_hours` |
 | The machine queue and the draw | `depth`, `seed` |
 
+`-user-max-cpus` is the ceiling on the cores each user holds, as "Cores
+per user" sets it on the Maestro page. It is 0, no ceiling, by default.
+`sim run`, `sim replay` and `sim grid` all take it, and `sim grid` takes one
+value.
+
 A file from before the three queues still works. Its `select` is read as
 `dispatcher`, and its `allocate` and `staged_capacity` are ignored.
 
@@ -124,7 +129,7 @@ combination of them:
 | `-seed` | seeds |
 
 A list you leave out keeps the value in the `-config` file. It also takes
-`-machines`, `-config` and `-tick` as `sim run` does, and `-theta`,
+`-machines`, `-config`, `-tick` and `-user-max-cpus` as `sim run` does, and `-theta`,
 `-lambda-j` and `-lambda-o` as `sim evaluate` does.
 
 ```sh
@@ -162,7 +167,7 @@ To see how closely the simulator follows your machines:
 
 3. Write the machines as they were that week, with what each kept back,
    for `-machines`. Save the scheduler's settings from that week as a JSON
-   file for `-config`.
+   file for `-config`, and give its cores per user to `-user-max-cpus`.
 4. Replay the week, and compare the replay with what happened:
 
    ```sh

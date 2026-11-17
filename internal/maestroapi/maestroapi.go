@@ -180,8 +180,11 @@ type RunFile struct {
 // Settings are maestro-orq's server-wide settings. Scheduler is nil from
 // a server from before it had one.
 type Settings struct {
-	ImagesPerUser int        `json:"images_per_user"`
-	Scheduler     *Scheduler `json:"scheduler"`
+	ImagesPerUser int `json:"images_per_user"`
+	// UserMaxCPUs is the most cores a user's lines assigned, starting and
+	// running may take together; 0 means no ceiling.
+	UserMaxCPUs int64      `json:"user_max_cpus"`
+	Scheduler   *Scheduler `json:"scheduler"`
 }
 
 // Scheduler is how waiting lines are chosen and given machines: the three

@@ -293,6 +293,7 @@ later whether the line fits. The <code>seed</code> setting makes that draw, and
 <code>siro</code>, repeat the same choices.</p>
 <h2 id="seeing-the-settings"><a class="header" href="#seeing-the-settings">Seeing the settings</a></h2>
 <pre><code class="language-text">images per user            10
+cores per user             no ceiling
 a user's head              fifo
 among a group's heads      pq
 on a machine               best-fit
@@ -304,7 +305,7 @@ half-life                  168 h
 seed (siro, machine draw)  0
 user weights               everyone 1
 </code></pre>
-<p>The three rows after the image limit in <code>maestro settings</code> are the <code>user</code>,
+<p>The three rows after the limits in <code>maestro settings</code> are the <code>user</code>,
 <code>dispatcher</code> and <code>machine</code> policies, in that order.
 <a href="../admin/policies.html">Choosing the policies</a> shows an administrator where
 to change them.</p>

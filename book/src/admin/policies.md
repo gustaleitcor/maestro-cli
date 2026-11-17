@@ -51,12 +51,23 @@ for both. `maestro queue` shows an administrator each user's number, as in
 | Label | Setting | Default |
 | --- | --- | --- |
 | Images per user | `images_per_user` | 10, and at most 1000 |
+| Cores per user | `user_max_cpus` | 0, which means no ceiling |
 
 Lowering "Images per user" removes nobody's images at that moment. A user
 who is over the new number loses images at their next build, which removes
 as many of the ones they ran least recently as it takes to make room. The
 build is refused only when runs are still using all the images that are
 left.
+
+"Cores per user" is a ceiling on the cores each user holds. A user's lines
+assigned, starting and running count toward it, and their queued lines
+don't. In a group's turn, a user's head isn't a candidate while its cores,
+added to those, would be over the ceiling. The heads of other users go as
+usual. Lowering it stops no line. It only holds back a user's next lines
+until enough of theirs end. A line that asks for more cores than the
+ceiling never starts, and while it is its user's head, their lines behind
+it wait too. `maestro queue` tells a user when their next line waits for
+the ceiling.
 
 ## Checking what is in force
 

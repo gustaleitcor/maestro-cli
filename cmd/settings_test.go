@@ -19,6 +19,18 @@ func TestWriteSettings(t *testing.T) {
 	if !regexp.MustCompile(`images per user\s+10\n`).MatchString(out.String()) {
 		t.Errorf("no image limit:\n%s", out.String())
 	}
+	if !regexp.MustCompile(`cores per user\s+no ceiling\n`).MatchString(out.String()) {
+		t.Errorf("no ceiling on cores:\n%s", out.String())
+	}
+	out.Reset()
+	s.UserMaxCPUs = 16
+	writeSettings(&out, s)
+	if !regexp.MustCompile(`cores per user\s+16\n`).MatchString(out.String()) {
+		t.Errorf("no ceiling of 16 cores:\n%s", out.String())
+	}
+	out.Reset()
+	s.UserMaxCPUs = 0
+	writeSettings(&out, s)
 	for _, want := range []string{"among a group's heads", "pq", "decay", "168 h", "user 7: 2 cpu, 1 memory"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("settings lack %q:\n%s", want, out.String())

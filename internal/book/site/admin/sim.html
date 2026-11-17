@@ -217,6 +217,10 @@ without that column has every user in group 1.</p>
 <tr><td>The machine queue and the draw</td><td><code>depth</code>, <code>seed</code></td></tr>
 </tbody></table>
 </div>
+<p><code>-user-max-cpus</code> is the ceiling on the cores each user holds, as "Cores
+per user" sets it on the Maestro page. It is 0, no ceiling, by default.
+<code>sim run</code>, <code>sim replay</code> and <code>sim grid</code> all take it, and <code>sim grid</code> takes one
+value.</p>
 <p>A file from before the three queues still works. Its <code>select</code> is read as
 <code>dispatcher</code>, and its <code>allocate</code> and <code>staged_capacity</code> are ignored.</p>
 <p>A simulated line starts the moment it is chosen. A real line first waits
@@ -275,7 +279,7 @@ combination of them:</p>
 </tbody></table>
 </div>
 <p>A list you leave out keeps the value in the <code>-config</code> file. It also takes
-<code>-machines</code>, <code>-config</code> and <code>-tick</code> as <code>sim run</code> does, and <code>-theta</code>,
+<code>-machines</code>, <code>-config</code>, <code>-tick</code> and <code>-user-max-cpus</code> as <code>sim run</code> does, and <code>-theta</code>,
 <code>-lambda-j</code> and <code>-lambda-o</code> as <code>sim evaluate</code> does.</p>
 <pre><code class="language-sh">go run ./cmd/sim grid -machines Q1:32:65536:2:4096 -config base.json \
   -dispatcher fifo,pq -share drf,decay -seed 1,2,3,4,5 &lt; workload.csv &gt; grid.csv
@@ -308,7 +312,7 @@ assigned under, so every line of the week should have the same one.</p>
 <li>
 <p>Write the machines as they were that week, with what each kept back,
 for <code>-machines</code>. Save the scheduler's settings from that week as a JSON
-file for <code>-config</code>.</p>
+file for <code>-config</code>, and give its cores per user to <code>-user-max-cpus</code>.</p>
 </li>
 <li>
 <p>Replay the week, and compare the replay with what happened:</p>

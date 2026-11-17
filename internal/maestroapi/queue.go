@@ -27,9 +27,16 @@ type Queue struct {
 		Lines map[string]int64 `json:"lines"`
 		Heads int64            `json:"heads"`
 		Share float64          `json:"share"`
+		// AtCeiling says their head waits because of UserMaxCPUs.
+		AtCeiling bool `json:"at_ceiling"`
 	} `json:"users"`
 	Groups    []QueueGroup `json:"groups"`
 	Scheduler Scheduler    `json:"scheduler"`
+	// UserMaxCPUs is the most cores a user's lines assigned, starting and
+	// running may take together; 0 means no ceiling. AtCeiling says the
+	// caller's head waits because of it.
+	UserMaxCPUs int64 `json:"user_max_cpus"`
+	AtCeiling   bool  `json:"at_ceiling"`
 }
 
 // QueueGroup is one group's waiting lines. Staged and Capacity are only

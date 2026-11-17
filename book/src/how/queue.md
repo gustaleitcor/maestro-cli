@@ -73,6 +73,13 @@ its queue. Only three lines wait on each machine by default. When several
 machines qualify, the scheduler draws one at random. A group with no head
 that can go anywhere passes its turn.
 
+Your administrator may set a ceiling on the cores each user holds,
+`user_max_cpus`. Your lines assigned, starting and running count toward
+it, and your queued lines don't. While your head's cores, added to theirs,
+would be over the ceiling, your head isn't a candidate. It stays in the
+dispatcher queue, and the heads of other users go as usual. It goes once
+enough of your lines end.
+
 Once your head is given a machine, your next line is your head. The
 dispatcher policy can be as simple as the oldest head, or it can weigh how
 much of the machines each user already holds.
@@ -115,6 +122,13 @@ shows your group: its queued lines, the heads among them, which make its
 dispatcher queue, and its assigned lines. The last line names the three
 policies in force.
 
+When your next line waits because of the ceiling on cores, a sentence
+before the last line says so:
+
+```text
+Your next line waits until some of yours end. With it, your lines assigned, starting and running would take more than 16 cores, the most a user may hold.
+```
+
 The Maestro page shows the same under Queue and reads it again every 5
 seconds.
 
@@ -131,6 +145,16 @@ turn behind your head.
 
 Either the machines' queues are full or it is another group's turn. A line
 with `machines = [...]` waits for room on those machines only.
+
+### You hold the most cores a user may
+
+With a ceiling on cores, your head waits while it would take you over it,
+even when machines have room. `maestro queue` says so. `maestro settings`
+shows the ceiling as "cores per user". Your head goes once enough of your
+lines end. A line that asks for more cores than the ceiling never goes,
+and while it is your head, your lines behind it wait too. Ask for fewer
+with [`cpus`](../repo/maestro-toml.md#cpus-and-memory), or ask your
+administrator to raise the ceiling.
 
 ### A line assigned for a long time
 
@@ -176,7 +200,8 @@ maestro settings
 ```
 
 `maestro settings` shows how the scheduler is set up: the three policies,
-the weights of the score, and how many lines wait on a machine.
+the weights of the score, how many lines wait on a machine, and the most
+cores a user may hold.
 [Policies and the score](score.md) explains each of them.
 
 Each line records the settings it was assigned under and the group its

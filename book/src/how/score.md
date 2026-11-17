@@ -137,6 +137,7 @@ later whether the line fits. The `seed` setting makes that draw, and
 
 ```text
 images per user            10
+cores per user             no ceiling
 a user's head              fifo
 among a group's heads      pq
 on a machine               best-fit
@@ -149,7 +150,7 @@ seed (siro, machine draw)  0
 user weights               everyone 1
 ```
 
-The three rows after the image limit in `maestro settings` are the `user`,
+The three rows after the limits in `maestro settings` are the `user`,
 `dispatcher` and `machine` policies, in that order.
 [Choosing the policies](../admin/policies.md) shows an administrator where
 to change them.
